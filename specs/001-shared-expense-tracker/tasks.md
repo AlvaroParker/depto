@@ -87,21 +87,21 @@ correctly ordered shares and visible list/detail information; invalid input writ
 
 ### Tests for User Story 2
 
-- [ ] T027 [P] [US2] Add exact split property, boundary, and ordering tests in `tests/unit/split-amount.test.ts`
-- [ ] T028 [P] [US2] Add expense create/list/detail atomicity and validation integration tests in `tests/integration/expenses.test.ts`
+- [x] T027 [P] [US2] Add exact split property, boundary, and ordering tests in `tests/unit/split-amount.test.ts`
+- [x] T028 [P] [US2] Add expense create/list/detail atomicity and validation integration tests in `tests/integration/expenses.test.ts`
 - [ ] T029 [P] [US2] Add authenticated create, validation, list, and detail browser journey in `tests/e2e/create-expense.spec.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T030 [P] [US2] Implement deterministic integer split calculation in `src/lib/util/split-amount.ts`
-- [ ] T031 [US2] Implement create, list, count, and detail D1 operations in `src/lib/db/expenses.ts`
-- [ ] T032 [US2] Implement authenticated expense collection contract in `src/app/api/expenses/route.ts`
-- [ ] T033 [US2] Implement authenticated expense detail read contract in `src/app/api/expenses/[id]/route.ts`
-- [ ] T034 [P] [US2] Implement participant collection contract in `src/app/api/participants/route.ts`
-- [ ] T035 [P] [US2] Build reusable Spanish expense fields and amount parsing in `src/components/expenses/expense-form.tsx`
-- [ ] T036 [US2] Build add-expense page and post-create navigation in `src/app/(protected)/expenses/new/page.tsx`
-- [ ] T037 [P] [US2] Build responsive expense table/cards and status summaries in `src/components/expenses/expense-list.tsx`
-- [ ] T038 [US2] Build expense list and detail routes in `src/app/(protected)/expenses/page.tsx` and `src/app/(protected)/expenses/[id]/page.tsx`
+- [x] T030 [P] [US2] Implement deterministic integer split calculation in `src/lib/util/split-amount.ts`
+- [x] T031 [US2] Implement create, list, count, and detail D1 operations in `src/lib/db/expenses.ts`
+- [x] T032 [US2] Implement authenticated expense collection contract in `src/app/api/expenses/route.ts`
+- [x] T033 [US2] Implement authenticated expense detail read contract in `src/app/api/expenses/[id]/route.ts`
+- [x] T034 [P] [US2] Implement participant collection contract in `src/app/api/participants/route.ts`
+- [x] T035 [P] [US2] Build reusable Spanish expense fields and amount parsing in `src/components/expenses/expense-form.tsx`
+- [x] T036 [US2] Build add-expense page and post-create navigation in `src/app/(protected)/expenses/new/page.tsx`
+- [x] T037 [P] [US2] Build responsive expense table/cards and status summaries in `src/components/expenses/expense-list.tsx`
+- [x] T038 [US2] Build expense list and detail routes in `src/app/(protected)/expenses/page.tsx` and `src/app/(protected)/expenses/[id]/page.tsx`
 
 **Checkpoint**: US2 independently replaces spreadsheet entry and inspection with exact totals.
 
