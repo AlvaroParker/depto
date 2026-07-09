@@ -116,19 +116,19 @@ balances, and total pending while payer shares remain immutable.
 
 ### Tests for User Story 3
 
-- [ ] T039 [P] [US3] Add paid/pending transition, payer immutability, and audit integration tests in `tests/integration/reimbursements.test.ts`
-- [ ] T040 [P] [US3] Add dashboard paid/share/net/matrix calculation integration tests in `tests/integration/dashboard.test.ts`
+- [x] T039 [P] [US3] Add paid/pending transition, payer immutability, and audit integration tests in `tests/integration/reimbursements.test.ts`
+- [x] T040 [P] [US3] Add dashboard paid/share/net/matrix calculation integration tests in `tests/integration/dashboard.test.ts`
 - [ ] T041 [P] [US3] Add dashboard and reimbursement toggle browser journey in `tests/e2e/reimbursements.spec.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T042 [P] [US3] Implement reimbursement state transitions in `src/lib/db/expense-shares.ts`
-- [ ] T043 [P] [US3] Implement dashboard aggregates and recent expenses in `src/lib/db/dashboard.ts`
-- [ ] T044 [US3] Implement authenticated share status contract in `src/app/api/expense-shares/[id]/status/route.ts`
-- [ ] T045 [US3] Implement authenticated dashboard contract in `src/app/api/dashboard/route.ts`
-- [ ] T046 [P] [US3] Build reimbursement breakdown and toggle controls in `src/components/expenses/reimbursement-list.tsx`
-- [ ] T047 [P] [US3] Build summary cards, participant balances, and pending matrix in `src/components/dashboard/`
-- [ ] T048 [US3] Build the Spanish dashboard route in `src/app/(protected)/page.tsx`
+- [x] T042 [P] [US3] Implement reimbursement state transitions in `src/lib/db/expense-shares.ts`
+- [x] T043 [P] [US3] Implement dashboard aggregates and recent expenses in `src/lib/db/dashboard.ts`
+- [x] T044 [US3] Implement authenticated share status contract in `src/app/api/expense-shares/[id]/status/route.ts`
+- [x] T045 [US3] Implement authenticated dashboard contract in `src/app/api/dashboard/route.ts`
+- [x] T046 [P] [US3] Build reimbursement breakdown and toggle controls in `src/components/expenses/reimbursement-list.tsx`
+- [x] T047 [P] [US3] Build summary cards, participant balances, and pending matrix in `src/components/dashboard/`
+- [x] T048 [US3] Build the Spanish dashboard route in `src/app/(protected)/page.tsx`
 
 **Checkpoint**: US3 gives the household a current, auditable answer to who owes whom.
 
