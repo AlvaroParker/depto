@@ -36,10 +36,22 @@ export async function PUT(request: Request, { params }: ReceiptRouteContext) {
 	const objectKey = createReceiptObjectKey(expenseId, metadata.contentType);
 	let object: R2Object;
 	try {
-		object = await RECEIPTS.put(objectKey, request.body, {
-			httpMetadata: { contentType: metadata.contentType },
-		});
-	} catch {
+		if (typeof FixedLengthStream === "undefined") {
+			object = await RECEIPTS.put(objectKey, await request.arrayBuffer(), {
+				httpMetadata: { contentType: metadata.contentType },
+			});
+		} else {
+			const fixedLengthBody = new FixedLengthStream(metadata.sizeBytes);
+			const [stored] = await Promise.all([
+				RECEIPTS.put(objectKey, fixedLengthBody.readable, {
+					httpMetadata: { contentType: metadata.contentType },
+				}),
+				request.body.pipeTo(fixedLengthBody.writable),
+			]);
+			object = stored;
+		}
+	} catch (error) {
+		console.error("R2 receipt upload failed.", error);
 		return NextResponse.json(
 			{ message: "No pudimos guardar el comprobante. Inténtalo nuevamente." },
 			{ status: 503 },

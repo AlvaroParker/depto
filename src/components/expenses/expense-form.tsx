@@ -81,7 +81,13 @@ export function ExpenseForm({ defaultDate, expense, participants }: ExpenseFormP
 	}
 
 	return (
-		<form action={submit} className="grid gap-7">
+		<form
+			className="grid gap-7"
+			onSubmit={(event) => {
+				event.preventDefault();
+				submit(new FormData(event.currentTarget));
+			}}
+		>
 			<div className="grid gap-5 sm:grid-cols-2">
 				<div className="sm:col-span-2">
 					<Field

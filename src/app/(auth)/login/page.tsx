@@ -11,7 +11,7 @@ interface LoginPageProps {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
 	const session = await auth();
-	if (session) redirect("/");
+	if (session?.user) redirect("/");
 	const requestedCallback = (await searchParams).callbackUrl;
 	const callbackUrl =
 		typeof requestedCallback === "string" &&

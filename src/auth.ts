@@ -63,4 +63,5 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 	secret: process.env.AUTH_SECRET,
 	session: { maxAge: SESSION_MAX_AGE_SECONDS, strategy: "jwt" },
 	trustHost: true,
+	useSecureCookies: process.env.NEXTJS_ENV !== "development",
 });
