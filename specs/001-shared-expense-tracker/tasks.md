@@ -19,11 +19,11 @@ and `quickstart.md`
 
 **Purpose**: Complete shared tooling and Cloudflare resource configuration on the committed scaffold.
 
-- [ ] T001 Add runtime/test dependencies and quality scripts in `package.json` and `pnpm-lock.yaml`
-- [ ] T002 Configure D1 `DB` and R2 `RECEIPTS` local bindings in `wrangler.jsonc` and regenerate `cloudflare-env.d.ts`
-- [ ] T003 [P] Add local secret template and exclude generated declarations from lint in `.dev.vars.example` and `eslint.config.mjs`
-- [ ] T004 [P] Add Vitest, Miniflare, React Testing Library, and Playwright configuration in `vitest.config.ts`, `vitest.integration.config.ts`, and `playwright.config.ts`
-- [ ] T005 [P] Add shared test environment setup in `tests/setup.ts` and `tests/fixtures/`
+- [x] T001 Add runtime/test dependencies and quality scripts in `package.json` and `pnpm-lock.yaml`
+- [x] T002 Configure D1 `DB` and R2 `RECEIPTS` local bindings in `wrangler.jsonc` and regenerate `cloudflare-env.d.ts`
+- [x] T003 [P] Add local secret template and exclude generated declarations from lint in `.dev.vars.example` and `eslint.config.mjs`
+- [x] T004 [P] Add Vitest, Miniflare, React Testing Library, and Playwright configuration in `vitest.config.ts`, `vitest.integration.config.ts`, and `playwright.config.ts`
+- [x] T005 [P] Add shared test environment setup in `tests/setup.ts` and `tests/fixtures/`
 
 ---
 
@@ -33,17 +33,17 @@ and `quickstart.md`
 
 **⚠️ CRITICAL**: No user story can complete before this phase.
 
-- [ ] T006 Add participant, user, login-attempt, expense, and share tables plus indexes in `migrations/0001_initial.sql`
-- [ ] T007 Seed ordered Alvaro, Camila, and Trinidad participants in `migrations/0002_seed_participants.sql`
-- [ ] T008 [P] Define constants for currencies, participants, receipts, and login limits in `src/lib/const/`
-- [ ] T009 [P] Define shared API, participant, user, expense, share, receipt, and dashboard schemas/types in `src/lib/types/`
-- [ ] T010 Implement Cloudflare binding access and typed database result handling in `src/lib/db/bindings.ts` and `src/lib/db/safe-db-call.ts`
-- [ ] T011 [P] Implement normalized API fetch/error handling in `src/lib/api/client.ts`
-- [ ] T012 [P] Implement ID, Chilean currency/date, filename, and client-address utilities in `src/lib/util/`
-- [ ] T013 Implement participant lookup and seed assertions in `src/lib/db/participants.ts`
-- [ ] T014 Implement environment-only PBKDF2 user seeding in `scripts/seed-users.ts`
-- [ ] T015 Add base semantic tokens, typography, focus styles, and motion preferences in `src/app/globals.css`
-- [ ] T016 [P] Add reusable button, field, badge, dialog, empty-state, and skeleton primitives in `src/components/ui/`
+- [x] T006 Add participant, user, login-attempt, expense, and share tables plus indexes in `migrations/0001_initial.sql`
+- [x] T007 Seed ordered Alvaro, Camila, and Trinidad participants in `migrations/0002_seed_participants.sql`
+- [x] T008 [P] Define constants for currencies, participants, receipts, and login limits in `src/lib/const/`
+- [x] T009 [P] Define shared API, participant, user, expense, share, receipt, and dashboard schemas/types in `src/lib/types/`
+- [x] T010 Implement Cloudflare binding access and typed database result handling in `src/lib/db/bindings.ts` and `src/lib/db/safe-db-call.ts`
+- [x] T011 [P] Implement normalized API fetch/error handling in `src/lib/api/client.ts`
+- [x] T012 [P] Implement ID, Chilean currency/date, filename, and client-address utilities in `src/lib/util/`
+- [x] T013 Implement participant lookup and seed assertions in `src/lib/db/participants.ts`
+- [x] T014 Implement environment-only PBKDF2 user seeding in `scripts/seed-users.ts`
+- [x] T015 Add base semantic tokens, typography, focus styles, and motion preferences in `src/app/globals.css`
+- [x] T016 [P] Add reusable button, field, badge, dialog, empty-state, and skeleton primitives in `src/components/ui/`
 
 **Checkpoint**: Migrations apply locally, three participants are ordered, bindings resolve, and shared
 contracts compile.
@@ -60,19 +60,19 @@ produce the same safe response; unauthenticated protected page and API requests 
 
 ### Tests for User Story 1
 
-- [ ] T017 [P] [US1] Add PBKDF2 format, verification, constant-time, and invalid-input tests in `tests/unit/password.test.ts`
-- [ ] T018 [P] [US1] Add login-attempt window, dual-scope limit, expiry, and disabled-user integration tests in `tests/integration/auth.test.ts`
+- [x] T017 [P] [US1] Add PBKDF2 format, verification, constant-time, and invalid-input tests in `tests/unit/password.test.ts`
+- [x] T018 [P] [US1] Add login-attempt window, dual-scope limit, expiry, and disabled-user integration tests in `tests/integration/auth.test.ts`
 - [ ] T019 [P] [US1] Add valid, invalid, rate-limited, and unauthenticated browser journeys in `tests/e2e/auth.spec.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T020 [P] [US1] Implement PBKDF2-SHA-256 hashing and verification in `src/lib/util/password.ts`
-- [ ] T021 [US1] Implement application-user and D1 login-attempt data access in `src/lib/db/users.ts` and `src/lib/db/login-attempts.ts`
-- [ ] T022 [US1] Configure Auth.js Credentials, JWT/session callbacks, generic errors, and rate limits in `src/auth.ts` and `src/types/next-auth.d.ts`
-- [ ] T023 [US1] Expose Auth.js handlers and protect pages in `src/app/api/auth/[...nextauth]/route.ts` and `src/proxy.ts`
-- [ ] T024 [P] [US1] Build the accessible Spanish sign-in form in `src/components/auth/login-form.tsx`
-- [ ] T025 [US1] Build the public login route and authenticated redirect in `src/app/(auth)/login/page.tsx` and `src/app/(auth)/layout.tsx`
-- [ ] T026 [US1] Add protected application shell, navigation, session identity, and sign-out in `src/app/(protected)/layout.tsx` and `src/components/layout/`
+- [x] T020 [P] [US1] Implement PBKDF2-SHA-256 hashing and verification in `src/lib/util/password.ts`
+- [x] T021 [US1] Implement application-user and D1 login-attempt data access in `src/lib/db/users.ts` and `src/lib/db/login-attempts.ts`
+- [x] T022 [US1] Configure Auth.js Credentials, JWT/session callbacks, generic errors, and rate limits in `src/auth.ts` and `src/types/next-auth.d.ts`
+- [x] T023 [US1] Expose Auth.js handlers and protect pages in `src/app/api/auth/[...nextauth]/route.ts` and `src/proxy.ts`
+- [x] T024 [P] [US1] Build the accessible Spanish sign-in form in `src/components/auth/login-form.tsx`
+- [x] T025 [US1] Build the public login route and authenticated redirect in `src/app/(auth)/login/page.tsx` and `src/app/(auth)/layout.tsx`
+- [x] T026 [US1] Add protected application shell, navigation, session identity, and sign-out in `src/app/(protected)/layout.tsx` and `src/components/layout/`
 
 **Checkpoint**: US1 passes independently and every later story can rely on authenticated identity.
 

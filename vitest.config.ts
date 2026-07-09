@@ -5,6 +5,7 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@": path.resolve(import.meta.dirname, "src"),
+			"server-only": path.resolve(import.meta.dirname, "tests/fixtures/server-only.ts"),
 		},
 	},
 	test: {
@@ -13,7 +14,7 @@ export default defineConfig({
 			provider: "v8",
 			reporter: ["text", "html"],
 		},
-		exclude: ["tests/e2e/**", "tests/integration/**"],
+		include: ["tests/unit/**/*.test.ts", "tests/unit/**/*.test.tsx", "src/**/*.test.tsx"],
 		setupFiles: ["./tests/setup.ts"],
 	},
 });
