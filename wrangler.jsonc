@@ -11,31 +11,43 @@
 	"name": "expenses",
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2026-07-09",
-	"compatibility_flags": [
-		"nodejs_compat",
-		"global_fetch_strictly_public"
-	],
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {
 		"binding": "ASSETS",
-		"directory": ".open-next/assets"
+		"directory": ".open-next/assets",
 	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "expenses-db",
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"migrations_dir": "migrations",
+		},
+	],
+	"r2_buckets": [
+		{
+			"binding": "RECEIPTS",
+			"bucket_name": "expenses-receipts",
+			"preview_bucket_name": "expenses-receipts-preview",
+		},
+	],
 	"images": {
 		// Enable image optimization
 		// see https://opennext.js.org/cloudflare/howtos/image
-		"binding": "IMAGES"
+		"binding": "IMAGES",
 	},
 	"services": [
 		{
 			// Self-reference service binding, the service name must match the worker name
 			// see https://opennext.js.org/cloudflare/caching
 			"binding": "WORKER_SELF_REFERENCE",
-			"service": "expenses"
-		}
+			"service": "expenses",
+		},
 	],
 	"observability": {
-		"enabled": true
+		"enabled": true,
 	},
-	"upload_source_maps": true
+	"upload_source_maps": true,
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

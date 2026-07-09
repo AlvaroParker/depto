@@ -1,0 +1,11 @@
+.agents/
+.next/
+.open-next/
+.specify/
+.wrangler/
+cloudflare-env.d.ts
+coverage/
+node_modules/
+playwright-report/
+pnpm-lock.yaml
+test-results/
