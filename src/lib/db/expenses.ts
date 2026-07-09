@@ -243,11 +243,12 @@ export async function listExpenses(
 		const pageSize = query.pageSize ?? 25;
 		const where = ["e.deleted_at IS NULL"];
 		const bindings: unknown[] = [];
-		if (query.q) {
+		const search = query.q?.trim();
+		if (search) {
 			where.push(
 				"(lower(e.name) LIKE ? ESCAPE '\\' OR lower(COALESCE(e.description, '')) LIKE ? ESCAPE '\\')",
 			);
-			const escaped = query.q
+			const escaped = search
 				.toLocaleLowerCase("es")
 				.replaceAll("\\", "\\\\")
 				.replaceAll("%", "\\%")

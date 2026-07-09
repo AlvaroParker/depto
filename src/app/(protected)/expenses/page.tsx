@@ -1,14 +1,43 @@
 import type { Metadata } from "next";
 import { Plus } from "lucide-react";
 import Link from "next/link";
+import { ExpenseFilters } from "@/components/expenses/expense-filters";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { listExpenses } from "@/lib/db/expenses";
+import { findActiveParticipants } from "@/lib/db/participants";
+import { ExpenseQuerySchema } from "@/lib/types/expense";
 
 export const metadata: Metadata = { title: "Gastos" };
 
-export default async function ExpensesPage() {
-	const result = await listExpenses();
-	if (result.err) throw new Error("Could not load expenses.");
+interface ExpensesPageProps {
+	searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+function pageHref(
+	query: { q?: string; payer?: string; pending?: boolean; pageSize: number },
+	page: number,
+) {
+	const values = new URLSearchParams();
+	if (query.q) values.set("q", query.q);
+	if (query.payer) values.set("payer", query.payer);
+	if (query.pending !== undefined) values.set("pending", String(query.pending));
+	values.set("page", String(page));
+	values.set("pageSize", String(query.pageSize));
+	return `/expenses?${values}`;
+}
+
+export default async function ExpensesPage({ searchParams }: ExpensesPageProps) {
+	const raw = await searchParams;
+	const flat = Object.fromEntries(
+		Object.entries(raw).flatMap(([key, value]) =>
+			typeof value === "string" ? [[key, value]] : [],
+		),
+	);
+	const parsed = ExpenseQuerySchema.safeParse(flat);
+	const query = parsed.success ? parsed.data : ExpenseQuerySchema.parse({});
+	const [result, participants] = await Promise.all([listExpenses(query), findActiveParticipants()]);
+	if (result.err || participants.err) throw new Error("Could not load expenses.");
+	const totalPages = Math.max(1, Math.ceil(result.val.total / result.val.pageSize));
 	return (
 		<main className="mx-auto max-w-6xl px-4 py-7 sm:px-7 sm:py-10">
 			<header className="mb-8 flex items-end justify-between gap-4">
@@ -28,7 +57,33 @@ export default async function ExpensesPage() {
 					<Plus aria-hidden size={18} /> Agregar gasto
 				</Link>
 			</header>
+			<ExpenseFilters participants={participants.val} query={query} />
 			<ExpenseList expenses={result.val.expenses} />
+			{totalPages > 1 ? (
+				<nav aria-label="Paginación de gastos" className="mt-6 flex items-center justify-between">
+					<span className="text-ink-muted text-sm">
+						Página {result.val.page} de {totalPages}
+					</span>
+					<div className="flex gap-2">
+						{result.val.page > 1 ? (
+							<Link
+								className="border-line-strong bg-paper inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-semibold"
+								href={pageHref(query, result.val.page - 1)}
+							>
+								Anterior
+							</Link>
+						) : null}
+						{result.val.page < totalPages ? (
+							<Link
+								className="border-line-strong bg-paper inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-semibold"
+								href={pageHref(query, result.val.page + 1)}
+							>
+								Siguiente
+							</Link>
+						) : null}
+					</div>
+				</nav>
+			) : null}
 		</main>
 	);
 }

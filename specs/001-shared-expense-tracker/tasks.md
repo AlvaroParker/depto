@@ -191,16 +191,16 @@ all primary flows work at 360 px without horizontal scroll and pass keyboard/acc
 
 ### Tests for User Story 6
 
-- [ ] T063 [P] [US6] Add combined query, stable sort, pagination, and soft-delete exclusion integration tests in `tests/integration/expense-filters.test.ts`
+- [x] T063 [P] [US6] Add combined query, stable sort, pagination, and soft-delete exclusion integration tests in `tests/integration/expense-filters.test.ts`
 - [ ] T064 [P] [US6] Add mobile viewport and keyboard accessibility browser checks in `tests/e2e/mobile-accessibility.spec.ts`
 
 ### Implementation for User Story 6
 
-- [ ] T065 [US6] Add bound search/payer/pending filters and stable pagination in `src/lib/db/expenses.ts`
-- [ ] T066 [US6] Add validated query parameters and page metadata to `src/app/api/expenses/route.ts`
-- [ ] T067 [P] [US6] Build URL-backed search and filter controls in `src/components/expenses/expense-filters.tsx`
-- [ ] T068 [US6] Integrate filtering, pagination, and mobile cards in `src/app/(protected)/expenses/page.tsx` and `src/components/expenses/expense-list.tsx`
-- [ ] T069 [P] [US6] Refine responsive shell, touch targets, focus order, and reduced motion in `src/components/layout/` and `src/app/globals.css`
+- [x] T065 [US6] Add bound search/payer/pending filters and stable pagination in `src/lib/db/expenses.ts`
+- [x] T066 [US6] Add validated query parameters and page metadata to `src/app/api/expenses/route.ts`
+- [x] T067 [P] [US6] Build URL-backed search and filter controls in `src/components/expenses/expense-filters.tsx`
+- [x] T068 [US6] Integrate filtering, pagination, and mobile cards in `src/app/(protected)/expenses/page.tsx` and `src/components/expenses/expense-list.tsx`
+- [x] T069 [P] [US6] Refine responsive shell, touch targets, focus order, and reduced motion in `src/components/layout/` and `src/app/globals.css`
 
 **Checkpoint**: All six user stories are functional and independently verified.
 
