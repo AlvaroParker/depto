@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signIn } from "./helpers";
 
 test("redirects unauthenticated household pages to sign in", async ({ page }) => {
 	await page.goto("/expenses");
@@ -12,5 +13,33 @@ test("shows one generic failure for invalid credentials", async ({ page }) => {
 	await page.getByLabel("Contraseña").fill("clave-incorrecta");
 	await page.getByRole("button", { name: "Ingresar" }).click();
 
-	await expect(page.getByRole("alert")).toHaveText(/usuario o contraseña no son válidos/i);
+	await expect(
+		page.getByText("El usuario o contraseña no son válidos.", { exact: true }),
+	).toBeVisible();
+});
+
+test("signs in a seeded active household user", async ({ page }) => {
+	await signIn(page, "camila");
+	await expect(page.getByRole("heading", { name: /todo en orden/i })).toBeVisible();
+});
+
+test("returns no household data from unauthenticated APIs", async ({ request }) => {
+	for (const path of ["/api/dashboard", "/api/expenses", "/api/participants"]) {
+		const response = await request.get(path);
+		expect(response.status()).toBe(401);
+		expect(await response.text()).not.toContain("Alvaro");
+	}
+});
+
+test("keeps repeated limited failures generic", async ({ context, page }) => {
+	await context.setExtraHTTPHeaders({ "x-forwarded-for": "198.51.100.42" });
+	await page.goto("/login");
+	for (let attempt = 0; attempt < 6; attempt += 1) {
+		await page.getByLabel("Usuario").fill("limited-account");
+		await page.getByLabel("Contraseña").fill("incorrect-password");
+		await page.getByRole("button", { name: "Ingresar" }).click();
+		await expect(
+			page.getByText("El usuario o contraseña no son válidos.", { exact: true }),
+		).toBeVisible();
+	}
 });

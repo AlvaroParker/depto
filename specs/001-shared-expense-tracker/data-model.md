@@ -7,15 +7,15 @@ All identifiers are text UUIDs unless a fixed seed identifier is specified. Time
 
 Represents a person included in every equal split.
 
-| Field | Type | Rules |
-|---|---|---|
-| `id` | text | Primary key; fixed seeded identifier |
-| `name` | text | Required; display name |
-| `slug` | text | Required; unique normalized name |
+| Field        | Type    | Rules                                           |
+| ------------ | ------- | ----------------------------------------------- |
+| `id`         | text    | Primary key; fixed seeded identifier            |
+| `name`       | text    | Required; display name                          |
+| `slug`       | text    | Required; unique normalized name                |
 | `sort_order` | integer | Required; unique; controls remainder allocation |
-| `active` | integer | `0` or `1`; defaults to `1` |
-| `created_at` | text | Required UTC timestamp |
-| `updated_at` | text | Required UTC timestamp |
+| `active`     | integer | `0` or `1`; defaults to `1`                     |
+| `created_at` | text    | Required UTC timestamp                          |
+| `updated_at` | text    | Required UTC timestamp                          |
 
 Seed order is `participant_alvaro` (1), `participant_camila` (2), and
 `participant_trinidad` (3). Existing participants are not deleted in MVP flows.
@@ -24,16 +24,16 @@ Seed order is `participant_alvaro` (1), `participant_camila` (2), and
 
 Represents a private credentials login and optional participant identity.
 
-| Field | Type | Rules |
-|---|---|---|
-| `id` | text | Primary key |
-| `username` | text | Required; unique case-insensitive normalized value |
-| `password_hash` | text | Required; self-describing PBKDF2 value |
-| `display_name` | text | Required |
+| Field            | Type | Rules                                                    |
+| ---------------- | ---- | -------------------------------------------------------- |
+| `id`             | text | Primary key                                              |
+| `username`       | text | Required; unique case-insensitive normalized value       |
+| `password_hash`  | text | Required; self-describing PBKDF2 value                   |
+| `display_name`   | text | Required                                                 |
 | `participant_id` | text | Nullable foreign key to participant; unique when present |
-| `created_at` | text | Required UTC timestamp |
-| `updated_at` | text | Required UTC timestamp |
-| `disabled_at` | text | Nullable UTC timestamp |
+| `created_at`     | text | Required UTC timestamp                                   |
+| `updated_at`     | text | Required UTC timestamp                                   |
+| `disabled_at`    | text | Nullable UTC timestamp                                   |
 
 Initial users are `alvaro`, `camila`, and `trinidad`. Seed tooling accepts passwords only from
 process environment, hashes them before insertion, and never writes them to repository files.
@@ -42,14 +42,14 @@ process environment, hashes them before insertion, and never writes them to repo
 
 Tracks repeated failed credentials attempts without retaining raw attempted identity values.
 
-| Field | Type | Rules |
-|---|---|---|
-| `scope` | text | `username` or `ip`; composite primary key |
-| `key_hash` | text | SHA-256 base64url; composite primary key |
-| `attempt_count` | integer | Non-negative |
-| `window_started_at` | text | Required UTC timestamp |
-| `locked_until` | text | Nullable UTC timestamp |
-| `updated_at` | text | Required UTC timestamp |
+| Field               | Type    | Rules                                     |
+| ------------------- | ------- | ----------------------------------------- |
+| `scope`             | text    | `username` or `ip`; composite primary key |
+| `key_hash`          | text    | SHA-256 base64url; composite primary key  |
+| `attempt_count`     | integer | Non-negative                              |
+| `window_started_at` | text    | Required UTC timestamp                    |
+| `locked_until`      | text    | Nullable UTC timestamp                    |
+| `updated_at`        | text    | Required UTC timestamp                    |
 
 Expired unlocked rows may be removed opportunistically. An attempt is blocked while either matching
 row has `locked_until` after the current time.
@@ -58,23 +58,23 @@ row has `locked_until` after the current time.
 
 Represents a shared household cost.
 
-| Field | Type | Rules |
-|---|---|---|
-| `id` | text | Primary key |
-| `name` | text | Required; trimmed; 1–120 characters |
-| `description` | text | Nullable; at most 2,000 characters |
-| `amount_minor` | integer | Required; greater than zero; safe integer |
-| `currency` | text | Required ISO-style three-letter code; defaults to `CLP` |
-| `expense_date` | text | Required valid `YYYY-MM-DD` date |
-| `paid_by_participant_id` | text | Required foreign key to active participant |
-| `receipt_object_key` | text | Nullable private R2 key; never client supplied |
-| `receipt_filename` | text | Nullable sanitized original name; at most 255 characters |
-| `receipt_content_type` | text | Nullable supported MIME type |
-| `receipt_size_bytes` | integer | Nullable; 1 through 10,485,760 when receipt exists |
-| `created_by_user_id` | text | Required foreign key to application user |
-| `created_at` | text | Required UTC timestamp |
-| `updated_at` | text | Required UTC timestamp |
-| `deleted_at` | text | Nullable UTC timestamp |
+| Field                    | Type    | Rules                                                    |
+| ------------------------ | ------- | -------------------------------------------------------- |
+| `id`                     | text    | Primary key                                              |
+| `name`                   | text    | Required; trimmed; 1–120 characters                      |
+| `description`            | text    | Nullable; at most 2,000 characters                       |
+| `amount_minor`           | integer | Required; greater than zero; safe integer                |
+| `currency`               | text    | Required ISO-style three-letter code; defaults to `CLP`  |
+| `expense_date`           | text    | Required valid `YYYY-MM-DD` date                         |
+| `paid_by_participant_id` | text    | Required foreign key to active participant               |
+| `receipt_object_key`     | text    | Nullable private R2 key; never client supplied           |
+| `receipt_filename`       | text    | Nullable sanitized original name; at most 255 characters |
+| `receipt_content_type`   | text    | Nullable supported MIME type                             |
+| `receipt_size_bytes`     | integer | Nullable; 1 through 10,485,760 when receipt exists       |
+| `created_by_user_id`     | text    | Required foreign key to application user                 |
+| `created_at`             | text    | Required UTC timestamp                                   |
+| `updated_at`             | text    | Required UTC timestamp                                   |
+| `deleted_at`             | text    | Nullable UTC timestamp                                   |
 
 Receipt metadata fields are either all null or all present. Soft-deleted rows remain referentially
 intact and are excluded from all normal queries and summaries.
@@ -83,18 +83,18 @@ intact and are excluded from all normal queries and summaries.
 
 Represents one participant's exact portion and reimbursement state for one expense.
 
-| Field | Type | Rules |
-|---|---|---|
-| `id` | text | Primary key |
-| `expense_id` | text | Required foreign key to expense; cascade only at DB maintenance level |
-| `participant_id` | text | Required foreign key; unique with expense |
-| `share_amount_minor` | integer | Required; non-negative |
-| `status` | text | `settled`, `pending`, or `paid` |
-| `paid_to_participant_id` | text | Null for payer; expense payer for non-payers |
-| `paid_at` | text | Required only for `paid`; null otherwise |
-| `marked_by_user_id` | text | Required only for `paid`; null otherwise |
-| `created_at` | text | Required UTC timestamp |
-| `updated_at` | text | Required UTC timestamp |
+| Field                    | Type    | Rules                                                                 |
+| ------------------------ | ------- | --------------------------------------------------------------------- |
+| `id`                     | text    | Primary key                                                           |
+| `expense_id`             | text    | Required foreign key to expense; cascade only at DB maintenance level |
+| `participant_id`         | text    | Required foreign key; unique with expense                             |
+| `share_amount_minor`     | integer | Required; non-negative                                                |
+| `status`                 | text    | `settled`, `pending`, or `paid`                                       |
+| `paid_to_participant_id` | text    | Null for payer; expense payer for non-payers                          |
+| `paid_at`                | text    | Required only for `paid`; null otherwise                              |
+| `marked_by_user_id`      | text    | Required only for `paid`; null otherwise                              |
+| `created_at`             | text    | Required UTC timestamp                                                |
+| `updated_at`             | text    | Required UTC timestamp                                                |
 
 ### State transitions
 

@@ -33,9 +33,9 @@ pnpm db:migrate:local
 Seed the three login users without writing passwords to disk:
 
 ```bash
-SEED_PASSWORD_ALVARO='choose-a-password' \
-SEED_PASSWORD_CAMILA='choose-a-password' \
-SEED_PASSWORD_TRINIDAD='choose-a-password' \
+read -rsp 'Alvaro password: ' SEED_PASSWORD_ALVARO; export SEED_PASSWORD_ALVARO
+read -rsp 'Camila password: ' SEED_PASSWORD_CAMILA; export SEED_PASSWORD_CAMILA
+read -rsp 'Trinidad password: ' SEED_PASSWORD_TRINIDAD; export SEED_PASSWORD_TRINIDAD
 pnpm db:seed:local
 ```
 

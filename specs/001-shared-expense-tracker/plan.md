@@ -41,7 +41,7 @@ protected pages, seven application API resources, one D1 database, one R2 bucket
 
 ## Constitution Check
 
-*GATE: Passed before research and re-checked after design.*
+_GATE: Passed before research and re-checked after design._
 
 - **Traceability — PASS**: plan, data model, contracts, and tasks map to FR-001 through FR-014.
 - **Financial integrity — PASS**: integer minor units, ordered remainder allocation, and D1 batches

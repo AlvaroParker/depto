@@ -62,14 +62,14 @@ produce the same safe response; unauthenticated protected page and API requests 
 
 - [x] T017 [P] [US1] Add PBKDF2 format, verification, constant-time, and invalid-input tests in `tests/unit/password.test.ts`
 - [x] T018 [P] [US1] Add login-attempt window, dual-scope limit, expiry, and disabled-user integration tests in `tests/integration/auth.test.ts`
-- [ ] T019 [P] [US1] Add valid, invalid, rate-limited, and unauthenticated browser journeys in `tests/e2e/auth.spec.ts`
+- [x] T019 [P] [US1] Add valid, invalid, rate-limited, and unauthenticated browser journeys in `tests/e2e/auth.spec.ts`
 
 ### Implementation for User Story 1
 
 - [x] T020 [P] [US1] Implement PBKDF2-SHA-256 hashing and verification in `src/lib/util/password.ts`
 - [x] T021 [US1] Implement application-user and D1 login-attempt data access in `src/lib/db/users.ts` and `src/lib/db/login-attempts.ts`
 - [x] T022 [US1] Configure Auth.js Credentials, JWT/session callbacks, generic errors, and rate limits in `src/auth.ts` and `src/types/next-auth.d.ts`
-- [x] T023 [US1] Expose Auth.js handlers and protect pages in `src/app/api/auth/[...nextauth]/route.ts` and `src/proxy.ts`
+- [x] T023 [US1] Expose Auth.js handlers and protect pages in `src/app/api/auth/[...nextauth]/route.ts` and Edge-compatible `src/middleware.ts`
 - [x] T024 [P] [US1] Build the accessible Spanish sign-in form in `src/components/auth/login-form.tsx`
 - [x] T025 [US1] Build the public login route and authenticated redirect in `src/app/(auth)/login/page.tsx` and `src/app/(auth)/layout.tsx`
 - [x] T026 [US1] Add protected application shell, navigation, session identity, and sign-out in `src/app/(protected)/layout.tsx` and `src/components/layout/`
@@ -89,7 +89,7 @@ correctly ordered shares and visible list/detail information; invalid input writ
 
 - [x] T027 [P] [US2] Add exact split property, boundary, and ordering tests in `tests/unit/split-amount.test.ts`
 - [x] T028 [P] [US2] Add expense create/list/detail atomicity and validation integration tests in `tests/integration/expenses.test.ts`
-- [ ] T029 [P] [US2] Add authenticated create, validation, list, and detail browser journey in `tests/e2e/create-expense.spec.ts`
+- [x] T029 [P] [US2] Add authenticated create, validation, list, and detail browser journey in `tests/e2e/create-expense.spec.ts`
 
 ### Implementation for User Story 2
 
@@ -118,7 +118,7 @@ balances, and total pending while payer shares remain immutable.
 
 - [x] T039 [P] [US3] Add paid/pending transition, payer immutability, and audit integration tests in `tests/integration/reimbursements.test.ts`
 - [x] T040 [P] [US3] Add dashboard paid/share/net/matrix calculation integration tests in `tests/integration/dashboard.test.ts`
-- [ ] T041 [P] [US3] Add dashboard and reimbursement toggle browser journey in `tests/e2e/reimbursements.spec.ts`
+- [x] T041 [P] [US3] Add dashboard and reimbursement toggle browser journey in `tests/e2e/reimbursements.spec.ts`
 
 ### Implementation for User Story 3
 
@@ -144,8 +144,8 @@ fail; unauthenticated and unknown-object reads return no content.
 ### Tests for User Story 4
 
 - [x] T049 [P] [US4] Add MIME, filename, size-boundary, and key generation tests in `tests/unit/receipts.test.ts`
-- [ ] T050 [P] [US4] Add local R2 upload/read/privacy/cleanup integration tests in `tests/integration/receipts.test.ts`
-- [ ] T051 [P] [US4] Add receipt upload, retry, preview, and unauthenticated browser journey in `tests/e2e/receipts.spec.ts`
+- [x] T050 [P] [US4] Add local R2 upload/read/privacy/cleanup integration tests in `tests/integration/receipts.test.ts`
+- [x] T051 [P] [US4] Add receipt upload, retry, preview, and unauthenticated browser journey in `tests/e2e/receipts.spec.ts`
 
 ### Implementation for User Story 4
 
@@ -169,7 +169,7 @@ reset; unconfirmed paid-state resets return conflict; delete removes the expense
 ### Tests for User Story 5
 
 - [x] T057 [P] [US5] Add descriptive edit, confirmed recalculation, conflict, and soft-delete integration tests in `tests/integration/edit-expense.test.ts`
-- [ ] T058 [P] [US5] Add edit confirmation, receipt replacement, and delete browser journeys in `tests/e2e/edit-expense.spec.ts`
+- [x] T058 [P] [US5] Add edit confirmation, receipt replacement, and delete browser journeys in `tests/e2e/edit-expense.spec.ts`
 
 ### Implementation for User Story 5
 
@@ -192,7 +192,7 @@ all primary flows work at 360 px without horizontal scroll and pass keyboard/acc
 ### Tests for User Story 6
 
 - [x] T063 [P] [US6] Add combined query, stable sort, pagination, and soft-delete exclusion integration tests in `tests/integration/expense-filters.test.ts`
-- [ ] T064 [P] [US6] Add mobile viewport and keyboard accessibility browser checks in `tests/e2e/mobile-accessibility.spec.ts`
+- [x] T064 [P] [US6] Add mobile viewport and keyboard accessibility browser checks in `tests/e2e/mobile-accessibility.spec.ts`
 
 ### Implementation for User Story 6
 
@@ -210,15 +210,15 @@ all primary flows work at 360 px without horizontal scroll and pass keyboard/acc
 
 **Purpose**: Close runtime, error-state, performance, security, and documentation gates.
 
-- [ ] T070 [P] Add Spanish loading, error, empty, and not-found boundaries in `src/app/(protected)/loading.tsx`, `src/app/(protected)/error.tsx`, and `src/app/(protected)/not-found.tsx`
-- [ ] T071 [P] Add protected endpoint coverage matrix and secret/plaintext scan in `tests/integration/security.test.ts`
-- [ ] T072 Add 1,000-expense dashboard/list performance fixture and assertions in `tests/integration/performance.test.ts`
-- [ ] T073 [P] Replace scaffold documentation with complete pnpm local/remote guidance in `README.md`
-- [ ] T074 Validate `specs/001-shared-expense-tracker/contracts/openapi.yaml` and reconcile any implementation drift
-- [ ] T075 Run `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm test` and record fixes in relevant files
-- [ ] T076 Run `pnpm test:e2e` against local bindings and fix all core journey failures
-- [ ] T077 Run `pnpm build` and an authenticated `pnpm preview` Workers smoke test
-- [ ] T078 Review all requirements/checklists, mark completed tasks, and ensure `git status` is clean with Conventional Commits
+- [x] T070 [P] Add Spanish loading, error, empty, and not-found boundaries in `src/app/(protected)/loading.tsx`, `src/app/(protected)/error.tsx`, and `src/app/(protected)/not-found.tsx`
+- [x] T071 [P] Add protected endpoint coverage matrix and secret/plaintext scan in `tests/integration/security.test.ts`
+- [x] T072 Add 1,000-expense dashboard/list performance fixture and assertions in `tests/integration/performance.test.ts`
+- [x] T073 [P] Replace scaffold documentation with complete pnpm local/remote guidance in `README.md`
+- [x] T074 Validate `specs/001-shared-expense-tracker/contracts/openapi.yaml` and reconcile any implementation drift
+- [x] T075 Run `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm test` and record fixes in relevant files
+- [x] T076 Run `pnpm test:e2e` against local bindings and fix all core journey failures
+- [x] T077 Run `pnpm build` and an authenticated `pnpm preview` Workers smoke test
+- [x] T078 Review all requirements/checklists, mark completed tasks, and ensure `git status` is clean with Conventional Commits
 
 ---
 

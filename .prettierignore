@@ -3,6 +3,7 @@
 .open-next/
 .specify/
 .wrangler/
+AGENTS.md
 cloudflare-env.d.ts
 coverage/
 node_modules/

@@ -10,7 +10,7 @@
 Alvaro, Camila, and Trinidad to record shared expenses, keep receipts, split costs equally, and
 track reimbursements.
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Sign in and keep household data private (Priority: P1)
 
@@ -168,7 +168,7 @@ keyboard and touch input.
 - Search treats leading/trailing whitespace safely and does not alter stored data.
 - Very long names, descriptions, filenames, and malformed dates are rejected at documented limits.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -225,7 +225,7 @@ keyboard and touch input.
 - **Login Attempt Window**: Failed-attempt counters grouped by normalized username and client
   address with an expiry used to enforce temporary sign-in limits.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
