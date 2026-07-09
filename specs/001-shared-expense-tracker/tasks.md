@@ -168,15 +168,15 @@ reset; unconfirmed paid-state resets return conflict; delete removes the expense
 
 ### Tests for User Story 5
 
-- [ ] T057 [P] [US5] Add descriptive edit, confirmed recalculation, conflict, and soft-delete integration tests in `tests/integration/edit-expense.test.ts`
+- [x] T057 [P] [US5] Add descriptive edit, confirmed recalculation, conflict, and soft-delete integration tests in `tests/integration/edit-expense.test.ts`
 - [ ] T058 [P] [US5] Add edit confirmation, receipt replacement, and delete browser journeys in `tests/e2e/edit-expense.spec.ts`
 
 ### Implementation for User Story 5
 
-- [ ] T059 [US5] Add transactional update/recalculation and soft-delete operations in `src/lib/db/expenses.ts`
-- [ ] T060 [US5] Add PATCH and DELETE contracts with paid-state conflict handling in `src/app/api/expenses/[id]/route.ts`
-- [ ] T061 [P] [US5] Build destructive confirmation and delete controls in `src/components/expenses/delete-expense-button.tsx`
-- [ ] T062 [US5] Build edit route with explicit reimbursement reset confirmation in `src/app/(protected)/expenses/[id]/edit/page.tsx` and `src/components/expenses/expense-form.tsx`
+- [x] T059 [US5] Add transactional update/recalculation and soft-delete operations in `src/lib/db/expenses.ts`
+- [x] T060 [US5] Add PATCH and DELETE contracts with paid-state conflict handling in `src/app/api/expenses/[id]/route.ts`
+- [x] T061 [P] [US5] Build destructive confirmation and delete controls in `src/components/expenses/delete-expense-button.tsx`
+- [x] T062 [US5] Build edit route with explicit reimbursement reset confirmation in `src/app/(protected)/expenses/[id]/edit/page.tsx` and `src/components/expenses/expense-form.tsx`
 
 **Checkpoint**: US5 repairs data without silent financial-history loss and deletion is reversible in D1.
 

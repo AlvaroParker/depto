@@ -13,10 +13,11 @@ import type { Participant } from "@/lib/types/participant";
 
 interface ExpenseFormProps {
 	defaultDate: string;
+	expense?: ExpenseDetail;
 	participants: Participant[];
 }
 
-export function ExpenseForm({ defaultDate, participants }: ExpenseFormProps) {
+export function ExpenseForm({ defaultDate, expense, participants }: ExpenseFormProps) {
 	const router = useRouter();
 	const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
 	const [formError, setFormError] = useState("");
@@ -47,10 +48,18 @@ export function ExpenseForm({ defaultDate, participants }: ExpenseFormProps) {
 			paidByParticipantId: String(formData.get("paidByParticipantId") ?? ""),
 		};
 		startTransition(async () => {
-			const result = await apiRequest<ExpenseDetail>("/api/expenses", {
-				body: JSON.stringify(input),
-				method: "POST",
-			});
+			const result = await apiRequest<ExpenseDetail>(
+				expense ? `/api/expenses/${expense.id}` : "/api/expenses",
+				{
+					body: JSON.stringify({
+						...input,
+						...(expense
+							? { resetPaidReimbursements: formData.get("resetPaidReimbursements") === "on" }
+							: {}),
+					}),
+					method: expense ? "PATCH" : "POST",
+				},
+			);
 			if (result.err) {
 				setErrors(result.val.errors ?? {});
 				setFormError(result.val.message);
@@ -77,6 +86,7 @@ export function ExpenseForm({ defaultDate, participants }: ExpenseFormProps) {
 				<div className="sm:col-span-2">
 					<Field
 						autoFocus
+						defaultValue={expense?.name}
 						error={errors.name?.[0]}
 						id="name"
 						label="Nombre del gasto"
@@ -108,6 +118,7 @@ export function ExpenseForm({ defaultDate, participants }: ExpenseFormProps) {
 					</label>
 				</div>
 				<Field
+					defaultValue={expense?.amountMinor}
 					error={errors.amountMinor?.[0]}
 					hint="Monto entero en pesos chilenos"
 					id="amountMinor"
@@ -123,7 +134,7 @@ export function ExpenseForm({ defaultDate, participants }: ExpenseFormProps) {
 					<select
 						aria-invalid={Boolean(errors.paidByParticipantId)}
 						className="border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 w-full rounded-xl border px-4 text-base outline-none focus:ring-3"
-						defaultValue=""
+						defaultValue={expense?.payer.id ?? ""}
 						id="paidByParticipantId"
 						name="paidByParticipantId"
 						required
@@ -144,7 +155,7 @@ export function ExpenseForm({ defaultDate, participants }: ExpenseFormProps) {
 				<div className="relative">
 					<Field
 						className="pr-11"
-						defaultValue={defaultDate}
+						defaultValue={expense?.expenseDate ?? defaultDate}
 						error={errors.expenseDate?.[0]}
 						id="expenseDate"
 						label="Fecha"
@@ -160,6 +171,7 @@ export function ExpenseForm({ defaultDate, participants }: ExpenseFormProps) {
 				</div>
 				<div className="sm:col-span-2">
 					<TextareaField
+						defaultValue={expense?.description ?? ""}
 						error={errors.description?.[0]}
 						id="description"
 						label="Descripción (opcional)"
@@ -177,6 +189,18 @@ export function ExpenseForm({ defaultDate, participants }: ExpenseFormProps) {
 					peso.
 				</p>
 			</div>
+			{expense?.shares.some((share) => share.status === "paid") ? (
+				<label className="border-warning/25 bg-warning/8 grid grid-cols-[auto_1fr] gap-3 rounded-2xl border p-4 text-sm">
+					<input className="mt-1 size-4" name="resetPaidReimbursements" type="checkbox" />
+					<span>
+						<strong className="block">Confirmar recálculo financiero</strong>
+						<span className="text-ink-muted mt-1 block leading-6">
+							Si cambias el monto o quién pagó, se reiniciarán los reembolsos ya marcados como
+							pagados.
+						</span>
+					</span>
+				</label>
+			) : null}
 
 			{formError ? (
 				<p
@@ -200,7 +224,8 @@ export function ExpenseForm({ defaultDate, participants }: ExpenseFormProps) {
 					</a>
 				) : null}
 				<Button disabled={pending || Boolean(savedId)} type="submit">
-					<Save aria-hidden size={18} /> {pending ? "Guardando…" : "Guardar gasto"}
+					<Save aria-hidden size={18} />{" "}
+					{pending ? "Guardando…" : expense ? "Guardar cambios" : "Guardar gasto"}
 				</Button>
 				{receiptProgress !== null ? (
 					<span className="text-ink-muted self-center text-sm">

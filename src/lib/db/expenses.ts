@@ -8,6 +8,7 @@ import type {
 	ExpenseDetail,
 	ExpenseInput,
 	ExpensePage,
+	ExpensePatch,
 	ExpenseQuery,
 	ExpenseShare,
 	ExpenseSummary,
@@ -289,5 +290,111 @@ export async function listExpenses(
 			pageSize,
 			total: countRow?.total ?? 0,
 		};
+	});
+}
+
+export type ExpenseMutation =
+	| { kind: "updated"; expense: ExpenseDetail }
+	| { kind: "not_found" }
+	| { kind: "paid_reset_required" };
+
+export async function updateExpense(
+	id: string,
+	input: ExpensePatch,
+	database: D1Database = getDatabase(),
+	now: Date = new Date(),
+): Promise<Result<ExpenseMutation, DbError>> {
+	return safeDbCall(async () => {
+		const existing = await findExpense(database, id);
+		if (!existing) return { kind: "not_found" };
+		const financialChange =
+			existing.amountMinor !== input.amountMinor || existing.payer.id !== input.paidByParticipantId;
+		if (financialChange) {
+			const hasPaid = existing.shares.some((share) => share.status === "paid");
+			if (hasPaid && !input.resetPaidReimbursements) return { kind: "paid_reset_required" };
+			const participantResult = await database
+				.prepare(
+					"SELECT id, name, slug, sort_order FROM participants WHERE active = 1 ORDER BY sort_order",
+				)
+				.all<ParticipantRow>();
+			const participants = participantResult.results;
+			if (
+				participants.length !== PARTICIPANT_COUNT ||
+				!participants.some((participant) => participant.id === input.paidByParticipantId)
+			)
+				throw new Error("Invalid participant configuration.");
+			const timestamp = now.toISOString();
+			const amounts = splitAmount(input.amountMinor, participants.length);
+			const statements: D1PreparedStatement[] = [
+				database
+					.prepare(
+						"UPDATE expenses SET name = ?, description = ?, amount_minor = ?, currency = ?, expense_date = ?, paid_by_participant_id = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+					)
+					.bind(
+						input.name,
+						input.description || null,
+						input.amountMinor,
+						input.currency,
+						input.expenseDate,
+						input.paidByParticipantId,
+						timestamp,
+						id,
+					),
+				database.prepare("DELETE FROM expense_shares WHERE expense_id = ?").bind(id),
+			];
+			participants.forEach((participant, index) => {
+				const isPayer = participant.id === input.paidByParticipantId;
+				statements.push(
+					database
+						.prepare(
+							"INSERT INTO expense_shares (id, expense_id, participant_id, share_amount_minor, status, paid_to_participant_id, paid_at, marked_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)",
+						)
+						.bind(
+							createId(),
+							id,
+							participant.id,
+							amounts[index],
+							isPayer ? "settled" : "pending",
+							isPayer ? null : input.paidByParticipantId,
+							timestamp,
+							timestamp,
+						),
+				);
+			});
+			await database.batch(statements);
+		} else {
+			await database
+				.prepare(
+					"UPDATE expenses SET name = ?, description = ?, currency = ?, expense_date = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+				)
+				.bind(
+					input.name,
+					input.description || null,
+					input.currency,
+					input.expenseDate,
+					now.toISOString(),
+					id,
+				)
+				.run();
+		}
+		const updated = await findExpense(database, id);
+		if (!updated) return { kind: "not_found" };
+		return { expense: updated, kind: "updated" };
+	});
+}
+
+export async function softDeleteExpense(
+	id: string,
+	database: D1Database = getDatabase(),
+	now: Date = new Date(),
+): Promise<Result<boolean, DbError>> {
+	return safeDbCall(async () => {
+		const result = await database
+			.prepare(
+				"UPDATE expenses SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+			)
+			.bind(now.toISOString(), now.toISOString(), id)
+			.run();
+		return result.meta.changes === 1;
 	});
 }
