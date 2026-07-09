@@ -143,17 +143,17 @@ fail; unauthenticated and unknown-object reads return no content.
 
 ### Tests for User Story 4
 
-- [ ] T049 [P] [US4] Add MIME, filename, size-boundary, and key generation tests in `tests/unit/receipts.test.ts`
+- [x] T049 [P] [US4] Add MIME, filename, size-boundary, and key generation tests in `tests/unit/receipts.test.ts`
 - [ ] T050 [P] [US4] Add local R2 upload/read/privacy/cleanup integration tests in `tests/integration/receipts.test.ts`
 - [ ] T051 [P] [US4] Add receipt upload, retry, preview, and unauthenticated browser journey in `tests/e2e/receipts.spec.ts`
 
 ### Implementation for User Story 4
 
-- [ ] T052 [P] [US4] Implement receipt metadata validation and safe object keys in `src/lib/util/receipts.ts`
-- [ ] T053 [US4] Implement receipt association metadata updates in `src/lib/db/receipts.ts`
-- [ ] T054 [US4] Implement authenticated streaming upload/view and compensating cleanup in `src/app/api/expenses/[id]/receipt/route.ts`
-- [ ] T055 [P] [US4] Implement receipt API client with progress/error state in `src/lib/api/receipts.ts`
-- [ ] T056 [US4] Add receipt picker, retry feedback, and protected preview/link in `src/components/expenses/receipt-field.tsx` and `src/components/expenses/receipt-viewer.tsx`
+- [x] T052 [P] [US4] Implement receipt metadata validation and safe object keys in `src/lib/util/receipts.ts`
+- [x] T053 [US4] Implement receipt association metadata updates in `src/lib/db/receipts.ts`
+- [x] T054 [US4] Implement authenticated streaming upload/view and compensating cleanup in `src/app/api/expenses/[id]/receipt/route.ts`
+- [x] T055 [P] [US4] Implement receipt API client with progress/error state in `src/lib/api/receipts.ts`
+- [x] T056 [US4] Add receipt picker, retry feedback, and protected preview/link in `src/components/expenses/receipt-field.tsx` and `src/components/expenses/receipt-viewer.tsx`
 
 **Checkpoint**: US4 meets receipt persistence and privacy acceptance criteria with native local R2.
 

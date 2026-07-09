@@ -6,6 +6,8 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, TextareaField } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api/client";
+import { uploadReceipt } from "@/lib/api/receipts";
+import { MAX_RECEIPT_SIZE_BYTES, RECEIPT_CONTENT_TYPES } from "@/lib/const/receipts";
 import type { ExpenseDetail, ExpenseInput } from "@/lib/types/expense";
 import type { Participant } from "@/lib/types/participant";
 
@@ -18,12 +20,24 @@ export function ExpenseForm({ defaultDate, participants }: ExpenseFormProps) {
 	const router = useRouter();
 	const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
 	const [formError, setFormError] = useState("");
+	const [receiptProgress, setReceiptProgress] = useState<number | null>(null);
+	const [savedId, setSavedId] = useState<string | null>(null);
 	const [pending, startTransition] = useTransition();
 
 	function submit(formData: FormData) {
 		setErrors({});
 		setFormError("");
 		const amountValue = String(formData.get("amountMinor") ?? "").replaceAll(/[^0-9]/g, "");
+		const receipt = formData.get("receipt");
+		const file = receipt instanceof File && receipt.size > 0 ? receipt : null;
+		if (file && !RECEIPT_CONTENT_TYPES.includes(file.type as never)) {
+			setErrors({ receipt: ["Usa un archivo JPG, PNG, WebP o PDF."] });
+			return;
+		}
+		if (file && file.size > MAX_RECEIPT_SIZE_BYTES) {
+			setErrors({ receipt: ["El comprobante no puede superar 10 MB."] });
+			return;
+		}
 		const input: ExpenseInput = {
 			amountMinor: Number(amountValue),
 			currency: "CLP",
@@ -41,6 +55,16 @@ export function ExpenseForm({ defaultDate, participants }: ExpenseFormProps) {
 				setErrors(result.val.errors ?? {});
 				setFormError(result.val.message);
 				return;
+			}
+			if (file) {
+				setReceiptProgress(0);
+				const upload = await uploadReceipt(result.val.id, file, setReceiptProgress);
+				setReceiptProgress(null);
+				if (upload.err) {
+					setSavedId(result.val.id);
+					setFormError(`El gasto se guardó, pero el comprobante no: ${upload.val.message}`);
+					return;
+				}
 			}
 			router.push(`/expenses/${result.val.id}`);
 			router.refresh();
@@ -61,6 +85,27 @@ export function ExpenseForm({ defaultDate, participants }: ExpenseFormProps) {
 						placeholder="Ej. Supermercado"
 						required
 					/>
+				</div>
+				<div className="sm:col-span-2">
+					<label className="text-ink grid gap-2 text-sm font-medium" htmlFor="receipt">
+						<span>Comprobante (opcional)</span>
+						<input
+							accept={RECEIPT_CONTENT_TYPES.join(",")}
+							className="border-line-strong bg-paper file:bg-paper-strong file:text-ink min-h-12 rounded-xl border px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:font-semibold"
+							id="receipt"
+							name="receipt"
+							type="file"
+						/>
+						<span
+							className={
+								errors.receipt
+									? "text-danger text-xs font-normal"
+									: "text-ink-muted text-xs font-normal"
+							}
+						>
+							{errors.receipt?.[0] ?? "JPG, PNG, WebP o PDF · máximo 10 MB"}
+						</span>
+					</label>
 				</div>
 				<Field
 					error={errors.amountMinor?.[0]}
@@ -146,9 +191,22 @@ export function ExpenseForm({ defaultDate, participants }: ExpenseFormProps) {
 				<Button disabled={pending} onClick={() => router.back()} type="button" variant="secondary">
 					Cancelar
 				</Button>
-				<Button disabled={pending} type="submit">
+				{savedId ? (
+					<a
+						className="bg-accent text-accent-foreground inline-flex min-h-11 items-center justify-center rounded-full px-5 text-sm font-semibold"
+						href={`/expenses/${savedId}`}
+					>
+						Ver gasto y reintentar
+					</a>
+				) : null}
+				<Button disabled={pending || Boolean(savedId)} type="submit">
 					<Save aria-hidden size={18} /> {pending ? "Guardando…" : "Guardar gasto"}
 				</Button>
+				{receiptProgress !== null ? (
+					<span className="text-ink-muted self-center text-sm">
+						Subiendo comprobante {receiptProgress}%
+					</span>
+				) : null}
 			</div>
 		</form>
 	);

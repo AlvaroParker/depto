@@ -3,6 +3,8 @@ import { Pencil, Paperclip } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ReimbursementList } from "@/components/expenses/reimbursement-list";
+import { ReceiptField } from "@/components/expenses/receipt-field";
+import { ReceiptViewer } from "@/components/expenses/receipt-viewer";
 import { findExpenseById } from "@/lib/db/expenses";
 import { formatDateTime, formatExpenseDate, formatMoney } from "@/lib/util/format";
 
@@ -55,11 +57,17 @@ export default async function ExpenseDetailPage({ params }: ExpenseDetailPagePro
 
 			<section className="border-line mt-4 grid gap-3 rounded-2xl border border-dashed p-5 sm:grid-cols-[auto_1fr] sm:items-center">
 				<Paperclip aria-hidden className="text-ink-faint" size={21} />
-				<p className="text-ink-muted text-sm">
-					{expense.hasReceipt
-						? `Comprobante: ${expense.receiptFilename}`
-						: "Este gasto todavía no tiene comprobante."}
-				</p>
+				<div>
+					<p className="text-ink-muted mb-2 text-sm">
+						{expense.hasReceipt
+							? "Comprobante guardado de forma privada."
+							: "Este gasto todavía no tiene comprobante."}
+					</p>
+					{expense.hasReceipt && expense.receiptFilename ? (
+						<ReceiptViewer expenseId={expense.id} filename={expense.receiptFilename} />
+					) : null}
+					<ReceiptField expenseId={expense.id} />
+				</div>
 			</section>
 			<p className="text-ink-faint mt-6 text-xs">Creado {formatDateTime(expense.createdAt)}</p>
 		</main>
