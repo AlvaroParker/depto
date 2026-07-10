@@ -20,7 +20,7 @@
 		{
 			"binding": "DB",
 			"database_name": "expenses-db",
-			"database_id": "00000000-0000-0000-0000-000000000000",
+			"database_id": "79332d1a-2697-4dd9-93d5-7f0a59009aca",
 			"migrations_dir": "migrations",
 		},
 	],
