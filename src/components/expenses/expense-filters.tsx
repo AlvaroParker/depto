@@ -5,10 +5,12 @@ import type { ExpenseKind } from "@/lib/types/expense-kind";
 import type { Participant } from "@/lib/types/participant";
 
 export function ExpenseFilters({
+	canFilterMyPending,
 	expenseKinds,
 	participants,
 	query,
 }: {
+	canFilterMyPending: boolean;
 	expenseKinds: ExpenseKind[];
 	participants: Participant[];
 	query: ExpenseQuery;
@@ -68,6 +70,7 @@ export function ExpenseFilters({
 				>
 					<option value="">Cualquier estado</option>
 					<option value="true">Con pendientes</option>
+					{canFilterMyPending ? <option value="mine">Mis pagos pendientes</option> : null}
 					<option value="false">Todo reembolsado</option>
 				</select>
 			</label>

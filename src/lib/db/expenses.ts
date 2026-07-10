@@ -61,6 +61,11 @@ interface ParticipantRow {
 	sort_order: number;
 }
 
+export interface ExpenseListContext {
+	currentParticipantId?: string | null;
+	database?: D1Database;
+}
+
 async function findSelectedParticipants(
 	database: D1Database,
 	participantIds: string[],
@@ -266,9 +271,10 @@ export async function findExpenseById(
 
 export async function listExpenses(
 	query: Partial<ExpenseQuery> = {},
-	database: D1Database = getDatabase(),
+	context: ExpenseListContext = {},
 ): Promise<Result<ExpensePage, DbError>> {
 	return safeDbCall(async () => {
+		const database = context.database ?? getDatabase();
 		const page = query.page ?? 1;
 		const pageSize = query.pageSize ?? 25;
 		const where = ["e.deleted_at IS NULL"];
@@ -293,7 +299,21 @@ export async function listExpenses(
 			where.push("e.kind_id = ?");
 			bindings.push(query.kind);
 		}
-		if (query.pending !== undefined) {
+		if (query.pending === "mine") {
+			if (!context.currentParticipantId) {
+				throw new Error("The personal pending filter requires a participant identity.");
+			}
+			where.push(
+				`EXISTS (
+				 SELECT 1 FROM expense_shares personal_share
+				 WHERE personal_share.expense_id = e.id
+				   AND personal_share.participant_id = ?
+				   AND personal_share.status = 'pending'
+				   AND personal_share.paid_to_participant_id = e.paid_by_participant_id
+				)`,
+			);
+			bindings.push(context.currentParticipantId);
+		} else if (query.pending !== undefined) {
 			where.push(
 				`${query.pending ? "" : "NOT "}EXISTS (
 				 SELECT 1 FROM expense_shares pending_share

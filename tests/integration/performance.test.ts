@@ -60,7 +60,7 @@ describe("1,000 expense query performance", () => {
 
 	it("loads the first list page and complete dashboard under one second each", async () => {
 		const listStarted = performance.now();
-		const list = await listExpenses({ page: 1, pageSize: 25 }, bindings.database);
+		const list = await listExpenses({ page: 1, pageSize: 25 }, { database: bindings.database });
 		const listDuration = performance.now() - listStarted;
 		const dashboardStarted = performance.now();
 		const dashboard = await getDashboardSummary(bindings.database);

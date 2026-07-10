@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2, Clock3, Paperclip } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3, Paperclip, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { ExpenseKindIcon } from "@/components/expenses/expense-kind-icon";
@@ -6,8 +6,31 @@ import { EmptyState } from "@/components/ui/empty-state";
 import type { ExpenseSummary } from "@/lib/types/expense";
 import { formatExpenseDate, formatMoney } from "@/lib/util/format";
 
-export function ExpenseList({ expenses }: { expenses: ExpenseSummary[] }) {
+export function ExpenseList({
+	expenses,
+	personalParticipantId,
+}: {
+	expenses: ExpenseSummary[];
+	personalParticipantId?: string | null;
+}) {
 	if (expenses.length === 0) {
+		if (personalParticipantId) {
+			return (
+				<EmptyState
+					action={
+						<Link
+							className="border-line-strong bg-paper inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-semibold"
+							href="/expenses"
+						>
+							Ver todos los gastos
+						</Link>
+					}
+					description="Tus reembolsos están al día. Cuando tengas una parte pendiente, aparecerá aquí."
+					icon={CheckCircle2}
+					title="No tienes pagos pendientes"
+				/>
+			);
+		}
 		return (
 			<EmptyState
 				action={
@@ -28,6 +51,12 @@ export function ExpenseList({ expenses }: { expenses: ExpenseSummary[] }) {
 		<div className="grid gap-3">
 			{expenses.map((expense) => {
 				const pending = expense.shares.filter((share) => share.status === "pending").length;
+				const personalShare = personalParticipantId
+					? expense.shares.find(
+							(share) =>
+								share.participant.id === personalParticipantId && share.status === "pending",
+						)
+					: undefined;
 				return (
 					<Link
 						className="group border-line bg-paper hover:border-line-strong hover:shadow-card grid gap-4 rounded-2xl border p-4 transition sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:px-5"
@@ -52,20 +81,37 @@ export function ExpenseList({ expenses }: { expenses: ExpenseSummary[] }) {
 							</div>
 						</div>
 						<div className="flex items-center justify-between gap-3 sm:block sm:text-right">
-							<strong className="font-display text-xl">
-								{formatMoney(expense.amountMinor, expense.currency)}
-							</strong>
-							<div className="mt-1">
-								{pending ? (
-									<Badge tone="pending">
-										<Clock3 aria-hidden size={13} /> {pending} pendiente{pending === 1 ? "" : "s"}
-									</Badge>
-								) : (
-									<Badge tone="paid">
-										<CheckCircle2 aria-hidden size={13} /> Al día
-									</Badge>
-								)}
-							</div>
+							{personalShare ? (
+								<div>
+									<p className="text-pending-strong flex items-center gap-1.5 text-xs font-bold tracking-wide uppercase sm:justify-end">
+										<WalletCards aria-hidden size={14} /> Debes
+									</p>
+									<strong className="font-display mt-0.5 block text-xl">
+										{formatMoney(personalShare.shareAmountMinor, expense.currency)}
+									</strong>
+									<p className="text-ink-faint mt-1 text-xs">
+										Total {formatMoney(expense.amountMinor, expense.currency)}
+									</p>
+								</div>
+							) : (
+								<div>
+									<strong className="font-display text-xl">
+										{formatMoney(expense.amountMinor, expense.currency)}
+									</strong>
+									<div className="mt-1">
+										{pending ? (
+											<Badge tone="pending">
+												<Clock3 aria-hidden size={13} /> {pending} pendiente
+												{pending === 1 ? "" : "s"}
+											</Badge>
+										) : (
+											<Badge tone="paid">
+												<CheckCircle2 aria-hidden size={13} /> Al día
+											</Badge>
+										)}
+									</div>
+								</div>
+							)}
 						</div>
 						<ArrowRight
 							aria-hidden

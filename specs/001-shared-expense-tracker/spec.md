@@ -149,9 +149,12 @@ keyboard and touch input.
    expense date newest first with a deterministic tie breaker.
 2. **Given** a search term or payer/pending filter, **When** it is applied,
    **Then** only matching non-deleted expenses appear and the active filter is clear.
-3. **Given** a phone-width viewport, **When** core pages are used, **Then** content fits without
+3. **Given** a signed-in regular user with pending shares, **When** they select “Mis pagos
+   pendientes,” **Then** only expenses where their participant owes the payer appear and each item
+   emphasizes the amount they owe.
+4. **Given** a phone-width viewport, **When** core pages are used, **Then** content fits without
    horizontal scrolling and primary actions remain visible and touch-friendly.
-4. **Given** keyboard-only input, **When** a user navigates forms and controls,
+5. **Given** keyboard-only input, **When** a user navigates forms and controls,
    **Then** labels, focus state, activation, errors, and status changes remain perceivable.
 
 ### User Story 7 - Bootstrap and administer access (Priority: P1)
@@ -253,7 +256,9 @@ icon in list and detail views, filter history by it, and verify a regular user c
 - **FR-008**: Authenticated users MUST be able to soft-delete an expense. Deleted expenses MUST be
   hidden from normal views and excluded from calculations while their receipt is retained for audit.
 - **FR-009**: The expense list MUST sort newest expense date first and support search by name or
-  description, payer filtering, and pending-reimbursement filtering. Filters MUST be combinable.
+  description, payer filtering, household pending-reimbursement filtering, and a regular-user-only
+  filter for expenses where the current user's participant has a pending share owed to the payer.
+  Filters MUST be combinable.
 - **FR-010**: The application MUST present Spanish user-facing labels and make add expense, receipt
   upload, reimbursement update, and balance checking efficient at phone widths and by keyboard.
 - **FR-011**: Every regular user MUST map one-to-one to a participant created in the same atomic
