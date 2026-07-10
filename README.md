@@ -43,6 +43,7 @@ Abre `http://localhost:3000`. En una base nueva, la aplicación redirige a `/set
 
 | Comando                   | Propósito                                                 |
 | ------------------------- | --------------------------------------------------------- |
+| `pnpm run init`           | Borra D1/R2 local, migra y abre preview en `0.0.0.0:3000` |
 | `pnpm dev`                | Desarrollo Next.js con bindings locales                   |
 | `pnpm db:migrate:local`   | Aplica migraciones D1 locales                             |
 | `pnpm db:seed:local`      | Crea/actualiza usuarios desde variables de entorno        |
@@ -58,6 +59,9 @@ Abre `http://localhost:3000`. En una base nueva, la aplicación redirige a `/set
 | `pnpm preview`            | Build OpenNext y preview en Workers local                 |
 
 El suite E2E genera claves efímeras en memoria, reinicia `.wrangler/state` y siembra usuarios automáticamente. En Arch Linux, Chromium puede requerir las bibliotecas gráficas/accesibilidad estándar del sistema.
+
+`pnpm run init` es destructivo: elimina todo el estado local de Wrangler, incluidos D1 y R2. No
+afecta recursos remotos de Cloudflare.
 
 ## Recursos remotos y despliegue
 
