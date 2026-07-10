@@ -5,6 +5,7 @@ import {
 	unauthorizedResponse,
 	validationErrorResponse,
 } from "@/lib/api/server";
+import { findExpenseKindById } from "@/lib/db/expense-kinds";
 import { createExpense, listExpenses } from "@/lib/db/expenses";
 import { ExpenseInputSchema, ExpenseQuerySchema } from "@/lib/types/expense";
 
@@ -33,6 +34,18 @@ export async function POST(request: Request) {
 	}
 	const parsed = ExpenseInputSchema.safeParse(body);
 	if (!parsed.success) return validationErrorResponse(parsed.error);
+	const expenseKind = await findExpenseKindById(parsed.data.kindId);
+	if (expenseKind.err) return databaseErrorResponse();
+	if (!expenseKind.val) {
+		return NextResponse.json(
+			{
+				code: "VALIDATION_ERROR",
+				errors: { kindId: ["Selecciona una categoría válida."] },
+				message: "Revisa los datos ingresados.",
+			},
+			{ status: 400 },
+		);
+	}
 	const result = await createExpense(parsed.data, session.user.id);
 	if (result.err) return databaseErrorResponse();
 	return NextResponse.json(result.val, { status: 201 });

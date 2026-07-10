@@ -1,6 +1,7 @@
 import { ArrowRight, CheckCircle2, Clock3, Paperclip } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { ExpenseKindIcon } from "@/components/expenses/expense-kind-icon";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { ExpenseSummary } from "@/lib/types/expense";
 import { formatExpenseDate, formatMoney } from "@/lib/util/format";
@@ -33,16 +34,22 @@ export function ExpenseList({ expenses }: { expenses: ExpenseSummary[] }) {
 						href={`/expenses/${expense.id}`}
 						key={expense.id}
 					>
-						<div className="min-w-0">
-							<div className="flex items-center gap-2">
-								<h2 className="truncate font-semibold">{expense.name}</h2>
-								{expense.hasReceipt ? (
-									<Paperclip aria-label="Con comprobante" className="text-accent" size={15} />
-								) : null}
+						<div className="grid min-w-0 grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-3">
+							<span className="bg-accent/9 text-accent grid size-11 place-items-center rounded-xl">
+								<ExpenseKindIcon aria-hidden iconKey={expense.kind.iconKey} size={19} />
+							</span>
+							<div className="min-w-0">
+								<div className="flex items-center gap-2">
+									<h2 className="truncate font-semibold">{expense.name}</h2>
+									{expense.hasReceipt ? (
+										<Paperclip aria-label="Con comprobante" className="text-accent" size={15} />
+									) : null}
+								</div>
+								<p className="text-ink-muted mt-1 truncate text-sm">
+									{expense.kind.name} · {formatExpenseDate(expense.expenseDate)} · Pagó{" "}
+									{expense.payer.name}
+								</p>
 							</div>
-							<p className="text-ink-muted mt-1 text-sm">
-								{formatExpenseDate(expense.expenseDate)} · Pagó {expense.payer.name}
-							</p>
 						</div>
 						<div className="flex items-center justify-between gap-3 sm:block sm:text-right">
 							<strong className="font-display text-xl">

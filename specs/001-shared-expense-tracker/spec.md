@@ -180,6 +180,27 @@ remove users and another admin, and attempt to modify or remove root.
    credentials can sign in, its participant name stays synchronized, and admin and root accounts
    remain unavailable for editing.
 
+### User Story 8 - Categorize household expenses (Priority: P2)
+
+As a household user, I assign a recognizable category to each expense so that the history is easy
+to scan and filter; as an administrator, I maintain the shared category names and icons.
+
+**Independent Test**: Create and edit a category as root or admin, use it on an expense, inspect its
+icon in list and detail views, filter history by it, and verify a regular user cannot manage it.
+
+**Acceptance Scenarios**:
+
+1. **Given** a migrated household, **When** expense forms and history are opened, **Then** the seeded
+   household categories are available and existing expenses appear under “Otros.”
+2. **Given** an authenticated user, **When** an expense is created or edited, **Then** it stores one
+   required category and displays the category name and Lucide icon in summary and detail views.
+3. **Given** root or admin, **When** a unique category name and allowed icon are submitted, **Then**
+   the category becomes available to all expense forms and can later be renamed or given another icon.
+4. **Given** a regular user, **When** category administration is requested, **Then** the UI is hidden,
+   the page redirects to settings, and management APIs return forbidden.
+5. **Given** categorized expenses, **When** a category filter is combined with other history filters,
+   **Then** only matching non-deleted expenses are returned with stable pagination and ordering.
+
 ### Edge Cases
 
 - Amounts smaller than the selected participant count still produce non-negative shares whose sum is exact.
@@ -198,6 +219,8 @@ remove users and another admin, and attempt to modify or remove root.
 - Root cannot be deleted, disabled, demoted, or duplicated through application or direct D1 writes.
 - Removing an admin or user revokes access while preserving historical financial references.
 - Updating a regular user to an occupied username is rejected without changing any credentials.
+- Category names are unique case-insensitively, and arbitrary icon names are rejected.
+- Renaming a category updates its display on historical expenses without changing financial state.
 
 ## Requirements _(mandatory)_
 
@@ -252,6 +275,14 @@ remove users and another admin, and attempt to modify or remove root.
   MUST NOT be editable through the regular-user update operation.
 - **FR-018**: The system MUST enforce exactly one immutable, active, non-deletable root at the database
   and application layers. No authenticated management endpoint may accept `root` as a new account role.
+- **FR-019**: Every expense MUST reference one valid shared category. A migration MUST seed household
+  categories and assign existing expenses to “Otros.” Expense summaries and details MUST include the
+  category name and an icon selected from a typed Lucide registry.
+- **FR-020**: Root and admin MUST be able to create and edit globally shared category names and icons;
+  regular users MUST be denied those management operations. Category names MUST be unique
+  case-insensitively, and categories referenced by history MUST NOT be deleted.
+- **FR-021**: Expense history MUST support a category filter combinable with search, payer, pending
+  state, sorting, and pagination.
 
 ### Key Entities
 
@@ -259,7 +290,10 @@ remove users and another admin, and attempt to modify or remove root.
   a required participant link for regular users only, password verifier, timestamps, and optional disabled state.
 - **Participant**: A regular user's stable expense identity and ordering used for split remainder assignment.
 - **Expense**: A named shared cost with optional description, integer amount, currency, date,
-  payer, optional receipt reference and metadata, creator, timestamps, and optional deletion time.
+  required category, payer, optional receipt reference and metadata, creator, timestamps, and
+  optional deletion time.
+- **Expense Kind**: A shared category with a unique display name, stable semantic icon key, ordering,
+  and timestamps. It is editable by root/admin and retained for historical references.
 - **Expense Share**: One participant's exact portion of an expense, its settled/pending/paid state,
   payment recipient, optional payment time and marking user, and timestamps.
 - **Receipt**: A private image or PDF object plus filename, media type, size, and opaque association

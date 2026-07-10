@@ -31,16 +31,24 @@ describe("expense search and filters", () => {
 			{
 				date: "2026-07-08",
 				description: "feria del barrio",
+				kind: "kind-other",
 				name: "Verduras",
 				payer: "participant_camila",
 			},
 			{
 				date: "2026-07-09",
 				description: "compra semanal",
+				kind: "kind-groceries",
 				name: "Mercado",
 				payer: "participant_camila",
 			},
-			{ date: "2026-07-09", description: "para la once", name: "Pan", payer: "participant_alvaro" },
+			{
+				date: "2026-07-09",
+				description: "para la once",
+				kind: "kind-other",
+				name: "Pan",
+				payer: "participant_alvaro",
+			},
 		];
 		const created = [];
 		for (const [index, item] of fixtures.entries()) {
@@ -48,6 +56,7 @@ describe("expense search and filters", () => {
 				{
 					amountMinor: 3000,
 					currency: "CLP",
+					kindId: item.kind,
 					expenseDate: item.date,
 					name: item.name,
 					description: item.description,
@@ -65,7 +74,7 @@ describe("expense search and filters", () => {
 			await updateShareStatus(share.id, "paid", "user_alvaro", bindings.database, NOW);
 
 		const combined = await listExpenses(
-			{ payer: "participant_camila", pending: true, q: " compra " },
+			{ kind: "kind-groceries", payer: "participant_camila", pending: true, q: " compra " },
 			bindings.database,
 		);
 		expect(combined.ok && combined.val.expenses.map((expense) => expense.name)).toEqual([

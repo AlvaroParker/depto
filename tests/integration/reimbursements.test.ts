@@ -31,6 +31,7 @@ describe("reimbursement status", () => {
 			{
 				amountMinor: 9_000,
 				currency: "CLP",
+				kindId: "kind-other",
 				expenseDate: "2026-07-09",
 				name: "Gas",
 				paidByParticipantId: "participant_alvaro",

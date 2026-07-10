@@ -31,6 +31,7 @@ describe("private receipt persistence", () => {
 			{
 				amountMinor: 3000,
 				currency: "CLP",
+				kindId: "kind-other",
 				expenseDate: "2026-07-09",
 				name: "Boleta",
 				paidByParticipantId: "participant_alvaro",

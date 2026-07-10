@@ -34,6 +34,7 @@ describe("expense persistence", () => {
 			{
 				amountMinor: 10_000,
 				currency: "CLP",
+				kindId: "kind-other",
 				description: "Compra semanal",
 				expenseDate: "2026-07-08",
 				name: "Supermercado",
@@ -65,6 +66,7 @@ describe("expense persistence", () => {
 			{
 				amountMinor: 10_000,
 				currency: "CLP",
+				kindId: "kind-other",
 				expenseDate: "2026-07-08",
 				name: "Compra de dos",
 				paidByParticipantId: "participant_alvaro",
@@ -96,6 +98,7 @@ describe("expense persistence", () => {
 			{
 				amountMinor: 30_000,
 				currency: "CLP",
+				kindId: "kind-other",
 				expenseDate: "2026-07-01",
 				name: "Internet",
 				paidByParticipantId: "participant_camila",
@@ -109,6 +112,7 @@ describe("expense persistence", () => {
 			{
 				amountMinor: 4_500,
 				currency: "CLP",
+				kindId: "kind-other",
 				expenseDate: "2026-07-09",
 				name: "Pan",
 				paidByParticipantId: "participant_trinidad",
@@ -138,6 +142,7 @@ describe("expense persistence", () => {
 			{
 				amountMinor: 1_000,
 				currency: "CLP",
+				kindId: "kind-other",
 				expenseDate: "2026-07-09",
 				name: "Inválido",
 				paidByParticipantId: "participant_unknown",

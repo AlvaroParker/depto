@@ -37,6 +37,7 @@ describe("expense corrections", () => {
 			{
 				amountMinor: 9_000,
 				currency: "CLP",
+				kindId: "kind-other",
 				expenseDate: "2026-07-09",
 				name: "Gas",
 				paidByParticipantId: "participant_alvaro",
@@ -59,6 +60,7 @@ describe("expense corrections", () => {
 			{
 				amountMinor: 9_000,
 				currency: "CLP",
+				kindId: "kind-gas",
 				description: "Julio",
 				expenseDate: "2026-07-08",
 				name: "Gas de casa",
@@ -72,12 +74,14 @@ describe("expense corrections", () => {
 		expect(descriptive.ok && descriptive.val.kind).toBe("updated");
 		if (descriptive.err || descriptive.val.kind !== "updated") return;
 		expect(descriptive.val.expense.shares[1].status).toBe("paid");
+		expect(descriptive.val.expense.kind.name).toBe("Gas");
 
 		const conflict = await updateExpense(
 			created.val.id,
 			{
 				amountMinor: 10_000,
 				currency: "CLP",
+				kindId: "kind-other",
 				description: "Julio",
 				expenseDate: "2026-07-08",
 				name: "Gas de casa",
@@ -97,6 +101,7 @@ describe("expense corrections", () => {
 			{
 				amountMinor: 10_000,
 				currency: "CLP",
+				kindId: "kind-other",
 				description: "Julio",
 				expenseDate: "2026-07-08",
 				name: "Gas de casa",
@@ -124,6 +129,7 @@ describe("expense corrections", () => {
 			{
 				amountMinor: 3_000,
 				currency: "CLP",
+				kindId: "kind-other",
 				expenseDate: "2026-07-09",
 				name: "Pan",
 				paidByParticipantId: "participant_alvaro",

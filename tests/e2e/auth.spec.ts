@@ -24,7 +24,12 @@ test("signs in a managed active household user", async ({ page }) => {
 });
 
 test("returns no household data from unauthenticated APIs", async ({ request }) => {
-	for (const path of ["/api/dashboard", "/api/expenses", "/api/participants"]) {
+	for (const path of [
+		"/api/dashboard",
+		"/api/expenses",
+		"/api/participants",
+		"/api/admin/expense-kinds",
+	]) {
 		const response = await request.get(path);
 		expect(response.status()).toBe(401);
 		expect(await response.text()).not.toContain("Alvaro");

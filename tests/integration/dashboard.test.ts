@@ -32,6 +32,7 @@ describe("dashboard aggregates", () => {
 			{
 				amountMinor: 9_000,
 				currency: "CLP",
+				kindId: "kind-other",
 				expenseDate: "2026-07-08",
 				name: "Gas",
 				paidByParticipantId: "participant_alvaro",
@@ -45,6 +46,7 @@ describe("dashboard aggregates", () => {
 			{
 				amountMinor: 6_000,
 				currency: "CLP",
+				kindId: "kind-other",
 				expenseDate: "2026-07-09",
 				name: "Agua",
 				paidByParticipantId: "participant_camila",
@@ -96,6 +98,7 @@ describe("dashboard aggregates", () => {
 			{
 				amountMinor: 15_000,
 				currency: "CLP",
+				kindId: "kind-other",
 				expenseDate: "2026-07-09",
 				name: "Compra compartida",
 				paidByParticipantId: "participant_camila",

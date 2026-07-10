@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeleteExpenseButton } from "@/components/expenses/delete-expense-button";
 import { ExpenseForm } from "@/components/expenses/expense-form";
+import { listExpenseKinds } from "@/lib/db/expense-kinds";
 import { findExpenseById } from "@/lib/db/expenses";
 import { findParticipantsForExpense } from "@/lib/db/participants";
 
@@ -10,11 +11,13 @@ export const metadata: Metadata = { title: "Editar gasto" };
 
 export default async function EditExpensePage({ params }: { params: Promise<{ id: string }> }) {
 	const id = (await params).id;
-	const [expense, participants] = await Promise.all([
+	const [expense, participants, expenseKinds] = await Promise.all([
 		findExpenseById(id),
 		findParticipantsForExpense(id),
+		listExpenseKinds(),
 	]);
-	if (expense.err || participants.err) throw new Error("Could not load expense editor.");
+	if (expense.err || participants.err || expenseKinds.err)
+		throw new Error("Could not load expense editor.");
 	if (!expense.val) notFound();
 	return (
 		<main className="mx-auto max-w-3xl px-4 py-7 sm:px-7 sm:py-10">
@@ -36,6 +39,7 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
 				<ExpenseForm
 					defaultDate={expense.val.expenseDate}
 					expense={expense.val}
+					expenseKinds={expenseKinds.val}
 					participants={participants.val}
 				/>
 			</section>

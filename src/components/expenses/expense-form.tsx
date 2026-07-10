@@ -4,26 +4,41 @@ import { CalendarDays, Check, Save, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { ExpenseKindIcon } from "@/components/expenses/expense-kind-icon";
 import { Field, TextareaField } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api/client";
 import { uploadReceipt } from "@/lib/api/receipts";
 import { MAX_RECEIPT_SIZE_BYTES, RECEIPT_CONTENT_TYPES } from "@/lib/const/receipts";
+import { DEFAULT_EXPENSE_KIND_ID } from "@/lib/const/expense-kinds";
 import type { ExpenseDetail, ExpenseInput } from "@/lib/types/expense";
+import type { ExpenseKind } from "@/lib/types/expense-kind";
 import type { Participant } from "@/lib/types/participant";
 
 interface ExpenseFormProps {
 	defaultDate: string;
 	expense?: ExpenseDetail;
+	expenseKinds: ExpenseKind[];
 	participants: Participant[];
 }
 
-export function ExpenseForm({ defaultDate, expense, participants }: ExpenseFormProps) {
+export function ExpenseForm({
+	defaultDate,
+	expense,
+	expenseKinds,
+	participants,
+}: ExpenseFormProps) {
 	const router = useRouter();
 	const initialParticipantIds = expense
 		? expense.shares.map((share) => share.participant.id)
 		: participants.map((participant) => participant.id);
 	const [participantIds, setParticipantIds] = useState(initialParticipantIds);
 	const [payerId, setPayerId] = useState(expense?.payer.id ?? "");
+	const [kindId, setKindId] = useState(
+		expense?.kind.id ??
+			expenseKinds.find((kind) => kind.id === DEFAULT_EXPENSE_KIND_ID)?.id ??
+			expenseKinds[0]?.id ??
+			"",
+	);
 	const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
 	const [formError, setFormError] = useState("");
 	const [receiptProgress, setReceiptProgress] = useState<number | null>(null);
@@ -49,6 +64,7 @@ export function ExpenseForm({ defaultDate, expense, participants }: ExpenseFormP
 			currency: "CLP",
 			description: String(formData.get("description") ?? "").trim() || null,
 			expenseDate: String(formData.get("expenseDate") ?? ""),
+			kindId,
 			name: String(formData.get("name") ?? ""),
 			paidByParticipantId: payerId,
 			participantIds,
@@ -107,6 +123,38 @@ export function ExpenseForm({ defaultDate, expense, participants }: ExpenseFormP
 						placeholder="Ej. Supermercado"
 						required
 					/>
+				</div>
+				<div className="sm:col-span-2">
+					<label className="text-ink grid gap-2 text-sm font-medium" htmlFor="kindId">
+						<span>Categoría</span>
+						<span className="grid grid-cols-[3rem_minmax(0,1fr)] gap-3">
+							<span className="border-accent/20 bg-accent/10 text-accent grid size-12 place-items-center rounded-xl border">
+								<ExpenseKindIcon
+									aria-hidden
+									iconKey={expenseKinds.find((kind) => kind.id === kindId)?.iconKey ?? "other"}
+									size={21}
+								/>
+							</span>
+							<select
+								aria-invalid={Boolean(errors.kindId)}
+								className="border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 w-full rounded-xl border px-4 text-base outline-none focus:ring-3"
+								id="kindId"
+								name="kindId"
+								onChange={(event) => setKindId(event.target.value)}
+								required
+								value={kindId}
+							>
+								{expenseKinds.map((kind) => (
+									<option key={kind.id} value={kind.id}>
+										{kind.name}
+									</option>
+								))}
+							</select>
+						</span>
+						{errors.kindId?.[0] ? (
+							<span className="text-danger text-xs font-normal">{errors.kindId[0]}</span>
+						) : null}
+					</label>
 				</div>
 				<div className="sm:col-span-2">
 					<label className="text-ink grid gap-2 text-sm font-medium" htmlFor="receipt">

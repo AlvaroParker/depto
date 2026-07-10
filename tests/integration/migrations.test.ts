@@ -85,5 +85,22 @@ describe("production user-participant migration", () => {
 				.bind(timestamp, timestamp)
 				.run(),
 		).rejects.toThrow(/privileged users cannot have one/i);
+
+		await applyMigrations(bindings.database, ["0005_add_expense_kinds.sql"]);
+		const kinds = await bindings.database
+			.prepare("SELECT name, icon_key FROM expense_kinds ORDER BY sort_order")
+			.all<{ icon_key: string; name: string }>();
+		expect(kinds.results).toHaveLength(17);
+		expect(kinds.results[0]).toEqual({ icon_key: "house", name: "Arriendo" });
+		expect(kinds.results.at(-1)).toEqual({ icon_key: "other", name: "Otros" });
+		const categorizedExpense = await bindings.database
+			.prepare("SELECT kind_id FROM expenses WHERE id = 'legacy-expense'")
+			.first<{ kind_id: string }>();
+		expect(categorizedExpense?.kind_id).toBe("kind-other");
+		await expect(
+			bindings.database
+				.prepare("UPDATE expenses SET kind_id = NULL WHERE id = 'legacy-expense'")
+				.run(),
+		).rejects.toThrow(/expenses require a kind/i);
 	});
 });

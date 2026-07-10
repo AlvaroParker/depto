@@ -12,6 +12,9 @@ typed D1 access stores users, expenses, exact integer shares, rate-limit state, 
 private receipt binaries stream through authenticated routes to R2. Wrangler/Miniflare supplies the
 local D1 and R2 implementations, so Docker Compose is intentionally unnecessary.
 
+Expenses reference admin-managed household categories. D1 seeds the core taxonomy, while a typed
+semantic icon registry maps stored keys to explicit Lucide components in forms, history, and detail.
+
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9 in strict mode, React 19.2, Next.js 16.2, Node.js 20+ for tools
@@ -99,6 +102,8 @@ _GATE: Passed before research and re-checked after design._
 - Protected layouts and read-heavy pages are Server Components that fetch D1 directly.
 - Forms, filters, confirmation dialogs, reimbursement toggles, and receipt uploads are leaf Client
   Components calling shared fetch clients under `src/lib/api/`.
+- Expense category lists are read server-side for forms and filters; root/admin category mutations
+  use authenticated route handlers and a leaf icon-picker client component.
 - Async route segments include `loading.tsx` and `error.tsx`; root metadata and Spanish locale are
   declared through Next.js metadata and layout APIs.
 
@@ -124,7 +129,8 @@ specs/001-shared-expense-tracker/
 migrations/
 ├── 0001_initial.sql
 ├── 0003_add_user_roles.sql
-└── 0004_link_users_and_participants.sql
+├── 0004_link_users_and_participants.sql
+└── 0005_add_expense_kinds.sql
 
 src/
 ├── app/

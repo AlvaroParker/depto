@@ -5,6 +5,7 @@ import {
 	unauthorizedResponse,
 	validationErrorResponse,
 } from "@/lib/api/server";
+import { findExpenseKindById } from "@/lib/db/expense-kinds";
 import { findExpenseById, softDeleteExpense, updateExpense } from "@/lib/db/expenses";
 import { ExpensePatchSchema } from "@/lib/types/expense";
 
@@ -26,6 +27,18 @@ export async function PATCH(request: Request, { params }: ExpenseRouteContext) {
 	}
 	const parsed = ExpensePatchSchema.safeParse(body);
 	if (!parsed.success) return validationErrorResponse(parsed.error);
+	const expenseKind = await findExpenseKindById(parsed.data.kindId);
+	if (expenseKind.err) return databaseErrorResponse();
+	if (!expenseKind.val) {
+		return NextResponse.json(
+			{
+				code: "VALIDATION_ERROR",
+				errors: { kindId: ["Selecciona una categoría válida."] },
+				message: "Revisa los datos ingresados.",
+			},
+			{ status: 400 },
+		);
+	}
 	const result = await updateExpense((await params).id, parsed.data);
 	if (result.err) return databaseErrorResponse();
 	if (result.val.kind === "not_found")

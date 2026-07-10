@@ -14,7 +14,7 @@ describe("1,000 expense query performance", () => {
 			statements.push(
 				bindings.database
 					.prepare(
-						"INSERT INTO expenses (id, name, amount_minor, currency, expense_date, paid_by_participant_id, created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, 'CLP', ?, ?, 'performance-user', ?, ?)",
+						"INSERT INTO expenses (id, name, amount_minor, currency, expense_date, kind_id, paid_by_participant_id, created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, 'CLP', ?, 'kind-other', ?, 'performance-user', ?, ?)",
 					)
 					.bind(
 						expenseId,

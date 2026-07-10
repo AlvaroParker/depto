@@ -75,6 +75,48 @@ components:
         name: { type: string }
         slug: { type: string }
         sortOrder: { type: integer }
+    ExpenseKind:
+      type: object
+      required: [id, name, iconKey, sortOrder]
+      properties:
+        id: { type: string }
+        name: { type: string, minLength: 1, maxLength: 60 }
+        iconKey:
+          type: string
+          enum:
+            [
+              house,
+              building,
+              water,
+              electricity,
+              gas,
+              internet,
+              groceries,
+              food,
+              cleaning,
+              appliances,
+              furniture,
+              repairs,
+              transport,
+              health,
+              pets,
+              education,
+              other,
+              children,
+              car,
+              gift,
+              travel,
+              clothing,
+              fitness,
+              entertainment,
+            ]
+        sortOrder: { type: integer, minimum: 1 }
+    ExpenseKindInput:
+      type: object
+      required: [name, iconKey]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 60 }
+        iconKey: { $ref: "#/components/schemas/ExpenseKind/properties/iconKey" }
     Share:
       type: object
       required: [id, participant, shareAmountMinor, status]
@@ -87,7 +129,7 @@ components:
         markedByUserId: { type: [string, "null"] }
     ExpenseSummary:
       type: object
-      required: [id, name, amountMinor, currency, expenseDate, payer, hasReceipt, shares]
+      required: [id, name, amountMinor, currency, expenseDate, kind, payer, hasReceipt, shares]
       properties:
         id: { type: string }
         name: { type: string }
@@ -95,6 +137,7 @@ components:
         amountMinor: { type: integer, minimum: 1 }
         currency: { type: string, minLength: 3, maxLength: 3 }
         expenseDate: { type: string, format: date }
+        kind: { $ref: "#/components/schemas/ExpenseKind" }
         payer: { $ref: "#/components/schemas/Participant" }
         hasReceipt: { type: boolean }
         shares:
@@ -115,13 +158,15 @@ components:
             updatedAt: { type: string, format: date-time }
     ExpenseInput:
       type: object
-      required: [name, amountMinor, currency, expenseDate, paidByParticipantId, participantIds]
+      required:
+        [name, amountMinor, currency, expenseDate, kindId, paidByParticipantId, participantIds]
       properties:
         name: { type: string, minLength: 1, maxLength: 120 }
         description: { type: [string, "null"], maxLength: 2000 }
         amountMinor: { type: integer, minimum: 1 }
         currency: { type: string, pattern: "^[A-Z]{3}$" }
         expenseDate: { type: string, format: date }
+        kindId: { type: string }
         paidByParticipantId: { type: string }
         participantIds:
           type: array
@@ -256,6 +301,56 @@ paths:
         "403": { description: Insufficient role }
         "404": { description: User not found }
         "409": { description: Root or current account is protected }
+  /admin/expense-kinds:
+    get:
+      operationId: listExpenseKinds
+      summary: List expense categories for root and admin
+      responses:
+        "200":
+          description: Expense categories
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [kinds]
+                properties:
+                  kinds:
+                    type: array
+                    items: { $ref: "#/components/schemas/ExpenseKind" }
+        "401": { description: Unauthenticated }
+        "403": { description: Insufficient role }
+    post:
+      operationId: createExpenseKind
+      summary: Create an expense category and select its icon
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExpenseKindInput" }
+      responses:
+        "201": { description: Expense category created }
+        "400": { description: Validation failed }
+        "401": { description: Unauthenticated }
+        "403": { description: Insufficient role }
+        "409": { description: Category name already exists }
+  /admin/expense-kinds/{kindId}:
+    parameters:
+      - { in: path, name: kindId, required: true, schema: { type: string } }
+    patch:
+      operationId: updateExpenseKind
+      summary: Update an expense category name and icon
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExpenseKindInput" }
+      responses:
+        "200": { description: Expense category updated }
+        "400": { description: Validation failed }
+        "401": { description: Unauthenticated }
+        "403": { description: Insufficient role }
+        "404": { description: Expense category not found }
+        "409": { description: Category name already exists }
   /participants:
     get:
       operationId: listParticipants
@@ -289,6 +384,7 @@ paths:
       summary: Search, filter, sort, and paginate non-deleted expenses
       parameters:
         - { in: query, name: q, schema: { type: string, maxLength: 120 } }
+        - { in: query, name: kind, schema: { type: string } }
         - { in: query, name: payer, schema: { type: string } }
         - { in: query, name: pending, schema: { type: boolean } }
         - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }

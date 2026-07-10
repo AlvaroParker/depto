@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExpenseForm } from "@/components/expenses/expense-form";
+import { listExpenseKinds } from "@/lib/db/expense-kinds";
 import { findActiveParticipants } from "@/lib/db/participants";
 
 export const metadata: Metadata = { title: "Agregar gasto" };
 
 export default async function NewExpensePage() {
-	const participants = await findActiveParticipants();
-	if (participants.err) notFound();
+	const [participants, expenseKinds] = await Promise.all([
+		findActiveParticipants(),
+		listExpenseKinds(),
+	]);
+	if (participants.err || expenseKinds.err || expenseKinds.val.length === 0) notFound();
 	const defaultDate = new Intl.DateTimeFormat("en-CA", {
 		timeZone: "America/Santiago",
 	}).format(new Date());
@@ -27,7 +31,11 @@ export default async function NewExpensePage() {
 				</p>
 			</header>
 			<section className="border-line bg-paper rounded-[1.75rem] border p-5 shadow-[0_24px_60px_-46px_rgba(40,40,34,0.55)] sm:p-8">
-				<ExpenseForm defaultDate={defaultDate} participants={participants.val} />
+				<ExpenseForm
+					defaultDate={defaultDate}
+					expenseKinds={expenseKinds.val}
+					participants={participants.val}
+				/>
 			</section>
 		</main>
 	);

@@ -1,4 +1,4 @@
-import { KeyRound } from "lucide-react";
+import { KeyRound, Tags } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { canManageUsers } from "@/lib/const/roles";
@@ -15,20 +15,36 @@ export default async function SettingsPage() {
 					Cada gasto se divide entre las personas que participan en él.
 				</p>
 				{canManage ? (
-					<Link
-						className="border-line bg-paper hover:border-accent/35 mt-8 flex items-center gap-4 rounded-2xl border p-5 transition"
-						href="/settings/users"
-					>
-						<span className="bg-accent/10 text-accent grid size-11 place-items-center rounded-2xl">
-							<KeyRound aria-hidden size={21} />
-						</span>
-						<span>
-							<strong className="block text-sm">Administrar usuarios</strong>
-							<span className="text-ink-muted mt-1 block text-xs">
-								Crea administradores y usuarios, o retira sus accesos.
+					<div className="mt-8 grid gap-4 sm:grid-cols-2">
+						<Link
+							className="border-line bg-paper hover:border-accent/35 flex items-center gap-4 rounded-2xl border p-5 transition"
+							href="/settings/users"
+						>
+							<span className="bg-accent/10 text-accent grid size-11 place-items-center rounded-2xl">
+								<KeyRound aria-hidden size={21} />
 							</span>
-						</span>
-					</Link>
+							<span>
+								<strong className="block text-sm">Administrar usuarios</strong>
+								<span className="text-ink-muted mt-1 block text-xs">
+									Crea administradores y usuarios, o retira sus accesos.
+								</span>
+							</span>
+						</Link>
+						<Link
+							className="border-line bg-paper hover:border-accent/35 flex items-center gap-4 rounded-2xl border p-5 transition"
+							href="/settings/categories"
+						>
+							<span className="bg-positive/10 text-positive-strong grid size-11 place-items-center rounded-2xl">
+								<Tags aria-hidden size={21} />
+							</span>
+							<span>
+								<strong className="block text-sm">Administrar categorías</strong>
+								<span className="text-ink-muted mt-1 block text-xs">
+									Crea categorías y elige sus iconos.
+								</span>
+							</span>
+						</Link>
+					</div>
 				) : null}
 			</div>
 		</main>

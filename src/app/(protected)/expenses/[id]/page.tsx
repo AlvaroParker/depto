@@ -3,6 +3,7 @@ import { Pencil, Paperclip } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ReimbursementList } from "@/components/expenses/reimbursement-list";
+import { ExpenseKindIcon } from "@/components/expenses/expense-kind-icon";
 import { ReceiptField } from "@/components/expenses/receipt-field";
 import { ReceiptViewer } from "@/components/expenses/receipt-viewer";
 import { findExpenseById } from "@/lib/db/expenses";
@@ -36,17 +37,22 @@ export default async function ExpenseDetailPage({ params }: ExpenseDetailPagePro
 				</Link>
 			</div>
 			<header className="mt-8 grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-				<div>
-					<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">
-						{formatExpenseDate(expense.expenseDate)}
-					</p>
-					<h1 className="font-display mt-2 text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">
-						{expense.name}
-					</h1>
-					<p className="text-ink-muted mt-3">
-						Pagó <strong className="text-ink">{expense.payer.name}</strong>
-						{expense.description ? ` · ${expense.description}` : ""}
-					</p>
+				<div className="grid grid-cols-[3rem_minmax(0,1fr)] gap-4">
+					<span className="bg-accent/10 text-accent mt-1 grid size-12 place-items-center rounded-2xl">
+						<ExpenseKindIcon aria-hidden iconKey={expense.kind.iconKey} size={22} />
+					</span>
+					<div>
+						<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">
+							{expense.kind.name} · {formatExpenseDate(expense.expenseDate)}
+						</p>
+						<h1 className="font-display mt-2 text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">
+							{expense.name}
+						</h1>
+						<p className="text-ink-muted mt-3">
+							Pagó <strong className="text-ink">{expense.payer.name}</strong>
+							{expense.description ? ` · ${expense.description}` : ""}
+						</p>
+					</div>
 				</div>
 				<strong className="font-display text-4xl text-nowrap">
 					{formatMoney(expense.amountMinor, expense.currency)}

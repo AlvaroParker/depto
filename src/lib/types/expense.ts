@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from "@/lib/const/currencies";
+import type { ExpenseKind } from "@/lib/types/expense-kind";
 import type { Participant } from "@/lib/types/participant";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -19,6 +20,7 @@ export const ExpenseInputSchema = z
 		currency: z.enum(SUPPORTED_CURRENCIES).default(DEFAULT_CURRENCY),
 		description: z.string().trim().max(2000).nullable().optional(),
 		expenseDate: z.string().refine(isCalendarDate, "La fecha no es válida."),
+		kindId: z.string().trim().min(1, "Selecciona una categoría."),
 		name: z.string().trim().min(1, "El nombre es obligatorio.").max(120),
 		paidByParticipantId: z.string().trim().min(1, "Selecciona quién pagó."),
 		participantIds: z
@@ -36,6 +38,7 @@ export const ExpensePatchSchema = ExpenseInputSchema.extend({
 });
 
 export const ExpenseQuerySchema = z.object({
+	kind: z.string().trim().optional(),
 	page: z.coerce.number().int().positive().default(1),
 	pageSize: z.coerce.number().int().min(1).max(100).default(25),
 	payer: z.string().trim().optional(),
@@ -75,6 +78,7 @@ export interface ExpenseSummary {
 	expenseDate: string;
 	payer: Participant;
 	hasReceipt: boolean;
+	kind: ExpenseKind;
 	shares: ExpenseShare[];
 }
 

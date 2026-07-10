@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 import { ExpenseFilters } from "@/components/expenses/expense-filters";
 import { ExpenseList } from "@/components/expenses/expense-list";
+import { listExpenseKinds } from "@/lib/db/expense-kinds";
 import { listExpenses } from "@/lib/db/expenses";
 import { findActiveParticipants } from "@/lib/db/participants";
 import { ExpenseQuerySchema } from "@/lib/types/expense";
@@ -14,11 +15,12 @@ interface ExpensesPageProps {
 }
 
 function pageHref(
-	query: { q?: string; payer?: string; pending?: boolean; pageSize: number },
+	query: { kind?: string; q?: string; payer?: string; pending?: boolean; pageSize: number },
 	page: number,
 ) {
 	const values = new URLSearchParams();
 	if (query.q) values.set("q", query.q);
+	if (query.kind) values.set("kind", query.kind);
 	if (query.payer) values.set("payer", query.payer);
 	if (query.pending !== undefined) values.set("pending", String(query.pending));
 	values.set("page", String(page));
@@ -35,8 +37,13 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
 	);
 	const parsed = ExpenseQuerySchema.safeParse(flat);
 	const query = parsed.success ? parsed.data : ExpenseQuerySchema.parse({});
-	const [result, participants] = await Promise.all([listExpenses(query), findActiveParticipants()]);
-	if (result.err || participants.err) throw new Error("Could not load expenses.");
+	const [result, participants, expenseKinds] = await Promise.all([
+		listExpenses(query),
+		findActiveParticipants(),
+		listExpenseKinds(),
+	]);
+	if (result.err || participants.err || expenseKinds.err)
+		throw new Error("Could not load expenses.");
 	const totalPages = Math.max(1, Math.ceil(result.val.total / result.val.pageSize));
 	return (
 		<main className="mx-auto max-w-6xl px-4 py-7 sm:px-7 sm:py-10">
@@ -57,7 +64,11 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
 					<Plus aria-hidden size={18} /> Agregar gasto
 				</Link>
 			</header>
-			<ExpenseFilters participants={participants.val} query={query} />
+			<ExpenseFilters
+				expenseKinds={expenseKinds.val}
+				participants={participants.val}
+				query={query}
+			/>
 			<ExpenseList expenses={result.val.expenses} />
 			{totalPages > 1 ? (
 				<nav aria-label="Paginación de gastos" className="mt-6 flex items-center justify-between">

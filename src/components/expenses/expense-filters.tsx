@@ -1,19 +1,22 @@
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import Link from "next/link";
 import type { ExpenseQuery } from "@/lib/types/expense";
+import type { ExpenseKind } from "@/lib/types/expense-kind";
 import type { Participant } from "@/lib/types/participant";
 
 export function ExpenseFilters({
+	expenseKinds,
 	participants,
 	query,
 }: {
+	expenseKinds: ExpenseKind[];
 	participants: Participant[];
 	query: ExpenseQuery;
 }) {
-	const active = Boolean(query.q || query.payer || query.pending !== undefined);
+	const active = Boolean(query.q || query.kind || query.payer || query.pending !== undefined);
 	return (
 		<form
-			className="border-line bg-paper mb-6 grid gap-3 rounded-2xl border p-3 sm:grid-cols-[minmax(12rem,1fr)_auto_auto_auto]"
+			className="border-line bg-paper mb-6 grid gap-3 rounded-2xl border p-3 sm:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_auto_auto_auto_auto]"
 			method="get"
 		>
 			<label className="relative">
@@ -25,6 +28,21 @@ export function ExpenseFilters({
 					name="q"
 					placeholder="Buscar nombre o descripción"
 				/>
+			</label>
+			<label>
+				<span className="sr-only">Filtrar por categoría</span>
+				<select
+					className="border-line-strong bg-paper min-h-11 w-full rounded-xl border px-3 text-sm"
+					defaultValue={query.kind ?? ""}
+					name="kind"
+				>
+					<option value="">Cualquier categoría</option>
+					{expenseKinds.map((kind) => (
+						<option key={kind.id} value={kind.id}>
+							{kind.name}
+						</option>
+					))}
+				</select>
 			</label>
 			<label>
 				<span className="sr-only">Filtrar por quién pagó</span>

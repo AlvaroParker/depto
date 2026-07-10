@@ -1,4 +1,4 @@
-import { CircleDollarSign, House, Plus, ReceiptText, Settings, Users } from "lucide-react";
+import { CircleDollarSign, House, Plus, ReceiptText, Settings, Tags, Users } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SessionUser } from "@/lib/types/user";
@@ -19,7 +19,11 @@ interface AppShellProps {
 
 export function AppShell({ children, user }: AppShellProps) {
 	const navigation = canManageUsers(user.role)
-		? [...baseNavigation, { href: "/settings/users", icon: Users, label: "Usuarios" }]
+		? [
+				...baseNavigation,
+				{ href: "/settings/categories", icon: Tags, label: "Categorías" },
+				{ href: "/settings/users", icon: Users, label: "Usuarios" },
+			]
 		: baseNavigation;
 	const navigationHrefs = navigation.map(({ href }) => href);
 	const mobileNavigationHrefs = baseNavigation.map(({ href }) => href);

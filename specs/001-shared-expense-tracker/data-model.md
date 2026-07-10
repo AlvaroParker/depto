@@ -75,6 +75,7 @@ Represents a shared household cost.
 | `amount_minor`           | integer | Required; greater than zero; safe integer                |
 | `currency`               | text    | Required ISO-style three-letter code; defaults to `CLP`  |
 | `expense_date`           | text    | Required valid `YYYY-MM-DD` date                         |
+| `kind_id`                | text    | Required foreign key to an expense kind                  |
 | `paid_by_participant_id` | text    | Required foreign key to active participant               |
 | `receipt_object_key`     | text    | Nullable private R2 key; never client supplied           |
 | `receipt_filename`       | text    | Nullable sanitized original name; at most 255 characters |
@@ -87,6 +88,25 @@ Represents a shared household cost.
 
 Receipt metadata fields are either all null or all present. Soft-deleted rows remain referentially
 intact and are excluded from all normal queries and summaries.
+
+## Expense Kind
+
+Represents a globally shared household category. Expenses reference the category, so editing its
+name or icon updates historical display without changing any financial data.
+
+| Field        | Type    | Rules                                                     |
+| ------------ | ------- | --------------------------------------------------------- |
+| `id`         | text    | Primary key                                               |
+| `name`       | text    | Required; 1–60 characters; unique case-insensitively      |
+| `icon_key`   | text    | Required key from the application-owned Lucide registry   |
+| `sort_order` | integer | Required; unique; seeded kinds first, custom kinds append |
+| `created_at` | text    | Required UTC timestamp                                    |
+| `updated_at` | text    | Required UTC timestamp                                    |
+
+The migration seeds Arriendo, Gastos comunes, Agua, Luz, Gas, Internet, Supermercado, Comida,
+Limpieza, Electrodomésticos, Muebles, Reparaciones, Transporte, Salud, Mascotas, Educación, and
+Otros. Existing expenses are backfilled to Otros. Root and admin may create or edit kinds; deletion
+and archival are intentionally unsupported so every historical reference remains valid.
 
 ## Expense Share
 
@@ -140,7 +160,7 @@ Given positive integer `amount` and participants sorted ascending:
 
 ## Indexes
 
-- Expenses: `(deleted_at, expense_date DESC, created_at DESC)`, payer, lowercase name.
+- Expenses: `(deleted_at, expense_date DESC, created_at DESC)`, payer, kind, lowercase name.
 - Shares: expense, participant, status, payment recipient.
 - Login attempts: `locked_until`, `updated_at` for cleanup.
 

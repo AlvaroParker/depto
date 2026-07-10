@@ -9,6 +9,8 @@ const protectedRoutes = [
 	"src/app/api/expenses/[id]/route.ts",
 	"src/app/api/expenses/[id]/receipt/route.ts",
 	"src/app/api/expense-shares/[id]/status/route.ts",
+	"src/app/api/admin/expense-kinds/route.ts",
+	"src/app/api/admin/expense-kinds/[id]/route.ts",
 ];
 
 describe("security gates", () => {

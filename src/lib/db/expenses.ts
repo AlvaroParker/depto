@@ -24,6 +24,10 @@ interface ExpenseRow {
 	description: string | null;
 	expense_date: string;
 	id: string;
+	kind_icon_key: ExpenseSummary["kind"]["iconKey"];
+	kind_id: string;
+	kind_name: string;
+	kind_sort_order: number;
 	name: string;
 	payer_id: string;
 	payer_name: string;
@@ -89,9 +93,12 @@ const EXPENSE_SELECT = `
 	SELECT e.id, e.name, e.description, e.amount_minor, e.currency, e.expense_date,
 	       e.receipt_object_key, e.receipt_filename, e.receipt_content_type,
 	       e.receipt_size_bytes, e.created_by_user_id, e.created_at, e.updated_at,
+	       k.id AS kind_id, k.name AS kind_name, k.icon_key AS kind_icon_key,
+	       k.sort_order AS kind_sort_order,
 	       p.id AS payer_id, p.name AS payer_name, p.slug AS payer_slug,
 	       p.sort_order AS payer_sort_order
 	FROM expenses e
+	JOIN expense_kinds k ON k.id = e.kind_id
 	JOIN participants p ON p.id = e.paid_by_participant_id`;
 
 function mapParticipant(id: string, name: string, slug: string, sortOrder: number): Participant {
@@ -123,6 +130,12 @@ function mapSummary(row: ExpenseRow, shares: ExpenseShare[]): ExpenseSummary {
 		expenseDate: row.expense_date,
 		hasReceipt: Boolean(row.receipt_object_key),
 		id: row.id,
+		kind: {
+			iconKey: row.kind_icon_key,
+			id: row.kind_id,
+			name: row.kind_name,
+			sortOrder: row.kind_sort_order,
+		},
 		name: row.name,
 		payer: mapParticipant(row.payer_id, row.payer_name, row.payer_slug, row.payer_sort_order),
 		shares,
@@ -197,9 +210,9 @@ export async function createExpense(
 			database
 				.prepare(
 					`INSERT INTO expenses
-					 (id, name, description, amount_minor, currency, expense_date,
+					 (id, name, description, amount_minor, currency, expense_date, kind_id,
 					  paid_by_participant_id, created_by_user_id, created_at, updated_at)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				)
 				.bind(
 					id,
@@ -208,6 +221,7 @@ export async function createExpense(
 					input.amountMinor,
 					input.currency,
 					input.expenseDate,
+					input.kindId,
 					input.paidByParticipantId,
 					createdByUserId,
 					timestamp,
@@ -274,6 +288,10 @@ export async function listExpenses(
 		if (query.payer) {
 			where.push("e.paid_by_participant_id = ?");
 			bindings.push(query.payer);
+		}
+		if (query.kind) {
+			where.push("e.kind_id = ?");
+			bindings.push(query.kind);
 		}
 		if (query.pending !== undefined) {
 			where.push(
@@ -345,7 +363,7 @@ export async function updateExpense(
 			const statements: D1PreparedStatement[] = [
 				database
 					.prepare(
-						"UPDATE expenses SET name = ?, description = ?, amount_minor = ?, currency = ?, expense_date = ?, paid_by_participant_id = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+						"UPDATE expenses SET name = ?, description = ?, amount_minor = ?, currency = ?, expense_date = ?, kind_id = ?, paid_by_participant_id = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
 					)
 					.bind(
 						input.name,
@@ -353,6 +371,7 @@ export async function updateExpense(
 						input.amountMinor,
 						input.currency,
 						input.expenseDate,
+						input.kindId,
 						input.paidByParticipantId,
 						timestamp,
 						id,
@@ -382,13 +401,14 @@ export async function updateExpense(
 		} else {
 			await database
 				.prepare(
-					"UPDATE expenses SET name = ?, description = ?, currency = ?, expense_date = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+					"UPDATE expenses SET name = ?, description = ?, currency = ?, expense_date = ?, kind_id = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
 				)
 				.bind(
 					input.name,
 					input.description || null,
 					input.currency,
 					input.expenseDate,
+					input.kindId,
 					now.toISOString(),
 					id,
 				)
