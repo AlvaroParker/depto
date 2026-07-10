@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signIn, uniqueName } from "./helpers";
+import { selectExpenseParticipants, signIn, uniqueName } from "./helpers";
 
 test("creates an exact expense and shows it in detail and history", async ({ page }) => {
 	await signIn(page);
@@ -7,7 +7,7 @@ test("creates an exact expense and shows it in detail and history", async ({ pag
 	await page.locator('a[href="/expenses/new"]:visible').first().click();
 	await page.getByLabel("Nombre del gasto").fill(name);
 	await page.getByLabel("Monto (CLP)").fill("10000");
-	await page.getByRole("checkbox", { name: "Trinidad" }).uncheck();
+	await selectExpenseParticipants(page, ["Alvaro", "Camila"]);
 	await page.getByLabel("¿Quién pagó?").selectOption({ label: "Alvaro" });
 	await page.getByRole("button", { name: "Guardar gasto" }).click();
 	await expect(page).toHaveURL(/\/expenses\/[0-9a-f-]+$/);
