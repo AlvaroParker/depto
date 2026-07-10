@@ -1,0 +1,250 @@
+"use client";
+
+import { LockKeyhole, ShieldCheck, Trash2, UserPlus, UserRound } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
+import { Field, SelectField } from "@/components/ui/field";
+import { createUser, deleteUser } from "@/lib/api/users";
+import { ROLE_LABELS } from "@/lib/const/roles";
+import type { ManagedUser } from "@/lib/types/user";
+
+interface UserManagementProps {
+	currentUserId: string;
+	initialUsers: ManagedUser[];
+}
+
+const roleOrder = { admin: 1, root: 0, user: 2 } as const;
+
+function sortUsers(users: ManagedUser[]): ManagedUser[] {
+	return [...users].sort(
+		(first, second) =>
+			roleOrder[first.role] - roleOrder[second.role] ||
+			first.displayName.localeCompare(second.displayName, "es-CL"),
+	);
+}
+
+export function UserManagement({ currentUserId, initialUsers }: UserManagementProps) {
+	const [users, setUsers] = useState(initialUsers);
+	const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null);
+	const [formError, setFormError] = useState("");
+	const [fieldErrors, setFieldErrors] = useState<Record<string, string[] | undefined>>({});
+	const [notice, setNotice] = useState("");
+	const [pending, startTransition] = useTransition();
+	const counts = useMemo(
+		() => ({
+			admins: users.filter((user) => user.role === "admin" || user.role === "root").length,
+			users: users.filter((user) => user.role === "user").length,
+		}),
+		[users],
+	);
+
+	function submit(formData: FormData) {
+		setFormError("");
+		setFieldErrors({});
+		setNotice("");
+		startTransition(async () => {
+			const result = await createUser({
+				displayName: String(formData.get("displayName") ?? ""),
+				password: String(formData.get("password") ?? ""),
+				role: formData.get("role") === "admin" ? "admin" : "user",
+				username: String(formData.get("username") ?? ""),
+			});
+			if (result.err) {
+				setFormError(result.val.message);
+				setFieldErrors(result.val.errors ?? {});
+				return;
+			}
+			setUsers((current) => sortUsers([...current, result.val.user]));
+			setNotice(`Acceso creado para ${result.val.user.displayName}.`);
+			const form = document.getElementById("create-user-form");
+			if (form instanceof HTMLFormElement) form.reset();
+		});
+	}
+
+	function confirmDelete() {
+		if (!selectedUser) return;
+		setFormError("");
+		setNotice("");
+		startTransition(async () => {
+			const result = await deleteUser(selectedUser.id);
+			if (result.err) {
+				setFormError(result.val.message);
+				setSelectedUser(null);
+				return;
+			}
+			setUsers((current) => current.filter((user) => user.id !== selectedUser.id));
+			setNotice(`El acceso de ${selectedUser.displayName} fue eliminado.`);
+			setSelectedUser(null);
+		});
+	}
+
+	return (
+		<div className="mt-8 grid gap-6 xl:grid-cols-[minmax(20rem,0.72fr)_minmax(0,1.28fr)]">
+			<section className="border-line bg-paper/85 rounded-3xl border p-6 shadow-[0_22px_60px_-48px_rgba(40,40,34,0.75)] sm:p-7">
+				<div className="flex items-start gap-4">
+					<span className="bg-accent/10 text-accent grid size-11 shrink-0 place-items-center rounded-2xl">
+						<UserPlus aria-hidden size={21} />
+					</span>
+					<div>
+						<h2 className="font-display text-2xl font-semibold">Nuevo acceso</h2>
+						<p className="text-ink-muted mt-1 text-sm leading-6">
+							Los administradores gestionan accesos; los usuarios usan la cuenta de la casa.
+						</p>
+					</div>
+				</div>
+				<form action={submit} className="mt-7 grid gap-5" id="create-user-form">
+					<Field
+						error={fieldErrors.displayName?.[0]}
+						id="displayName"
+						label="Nombre"
+						name="displayName"
+						required
+					/>
+					<Field
+						autoCapitalize="none"
+						autoComplete="off"
+						error={fieldErrors.username?.[0]}
+						id="username"
+						label="Usuario"
+						name="username"
+						required
+					/>
+					<SelectField error={fieldErrors.role?.[0]} id="role" label="Rol" name="role" required>
+						<option value="user">Usuario</option>
+						<option value="admin">Administrador</option>
+					</SelectField>
+					<Field
+						autoComplete="new-password"
+						error={fieldErrors.password?.[0]}
+						hint="Mínimo 12 caracteres."
+						id="password"
+						label="Contraseña inicial"
+						minLength={12}
+						name="password"
+						required
+						type="password"
+					/>
+					<Button className="w-full" disabled={pending} type="submit">
+						<UserPlus aria-hidden size={18} /> {pending ? "Guardando…" : "Crear acceso"}
+					</Button>
+				</form>
+			</section>
+
+			<section>
+				<div className="border-line bg-paper-strong/55 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-5 py-4">
+					<div>
+						<p className="font-display text-xl font-semibold">Accesos activos</p>
+						<p className="text-ink-muted mt-0.5 text-xs">
+							{counts.admins} con administración · {counts.users} usuarios
+						</p>
+					</div>
+					<Badge>{users.length} en total</Badge>
+				</div>
+				{formError ? (
+					<p
+						className="border-danger/20 bg-danger/8 text-danger mb-4 rounded-xl border px-4 py-3 text-sm"
+						role="alert"
+					>
+						{formError}
+					</p>
+				) : null}
+				{notice ? (
+					<p
+						className="border-positive/20 bg-positive/8 text-positive-strong mb-4 rounded-xl border px-4 py-3 text-sm"
+						role="status"
+					>
+						{notice}
+					</p>
+				) : null}
+				<div className="grid gap-3">
+					{users.map((user) => {
+						const isCurrent = user.id === currentUserId;
+						const isRoot = user.role === "root";
+						return (
+							<article
+								className="border-line bg-paper/90 flex items-center gap-4 rounded-2xl border p-4 sm:p-5"
+								key={user.id}
+							>
+								<span
+									className={
+										user.role === "root"
+											? "bg-accent/12 text-accent grid size-11 shrink-0 place-items-center rounded-full"
+											: user.role === "admin"
+												? "bg-positive/12 text-positive-strong grid size-11 shrink-0 place-items-center rounded-full"
+												: "bg-ink/7 text-ink-muted grid size-11 shrink-0 place-items-center rounded-full"
+									}
+								>
+									{user.role === "root" ? (
+										<ShieldCheck aria-hidden size={20} />
+									) : (
+										<UserRound aria-hidden size={20} />
+									)}
+								</span>
+								<div className="min-w-0 flex-1">
+									<div className="flex flex-wrap items-center gap-2">
+										<h3 className="truncate text-sm font-semibold sm:text-base">
+											{user.displayName}
+										</h3>
+										<Badge
+											className={
+												user.role === "root"
+													? "border-accent/20 bg-accent/10 text-accent"
+													: user.role === "admin"
+														? "border-positive/20 bg-positive/10 text-positive-strong"
+														: undefined
+											}
+										>
+											{ROLE_LABELS[user.role]}
+										</Badge>
+										{isCurrent ? <span className="text-ink-faint text-xs">Tú</span> : null}
+									</div>
+									<p className="text-ink-muted mt-1 truncate text-xs">@{user.username}</p>
+								</div>
+								{isRoot ? (
+									<span
+										className="text-ink-faint flex items-center gap-1.5 text-xs"
+										title="El usuario root no se puede eliminar"
+									>
+										<LockKeyhole aria-hidden size={15} /> Protegido
+									</span>
+								) : !isCurrent ? (
+									<Button
+										aria-label={`Eliminar a ${user.displayName}`}
+										className="size-11 shrink-0 p-0"
+										disabled={pending}
+										onClick={() => setSelectedUser(user)}
+										variant="ghost"
+									>
+										<Trash2 aria-hidden size={18} />
+									</Button>
+								) : null}
+							</article>
+						);
+					})}
+				</div>
+			</section>
+
+			<Dialog
+				description={
+					selectedUser
+						? `Se cerrará el acceso de @${selectedUser.username}. Su actividad histórica se conservará.`
+						: undefined
+				}
+				onClose={() => setSelectedUser(null)}
+				open={Boolean(selectedUser)}
+				title="Eliminar acceso"
+			>
+				<div className="flex justify-end gap-3">
+					<Button disabled={pending} onClick={() => setSelectedUser(null)} variant="secondary">
+						Cancelar
+					</Button>
+					<Button disabled={pending} onClick={confirmDelete} variant="danger">
+						<Trash2 aria-hidden size={17} /> {pending ? "Eliminando…" : "Eliminar"}
+					</Button>
+				</div>
+			</Dialog>
+		</div>
+	);
+}

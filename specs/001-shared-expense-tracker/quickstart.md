@@ -16,7 +16,7 @@ pnpm install
 cp .dev.vars.example .dev.vars
 ```
 
-Generate a random Auth.js secret and place it in `.dev.vars`:
+Generate a random Auth.js secret and place it in `.env` or `.dev.vars`:
 
 ```bash
 pnpm auth:secret
@@ -30,23 +30,16 @@ Apply the schema and participant migrations to the local D1 simulation:
 pnpm db:migrate:local
 ```
 
-Seed the three login users without writing passwords to disk:
-
-```bash
-read -rsp 'Alvaro password: ' SEED_PASSWORD_ALVARO; export SEED_PASSWORD_ALVARO
-read -rsp 'Camila password: ' SEED_PASSWORD_CAMILA; export SEED_PASSWORD_CAMILA
-read -rsp 'Trinidad password: ' SEED_PASSWORD_TRINIDAD; export SEED_PASSWORD_TRINIDAD
-pnpm db:seed:local
-```
-
-## Develop
+Start development and open `http://localhost:3000`:
 
 ```bash
 pnpm dev
 ```
 
-Open `http://localhost:3000` and sign in as `alvaro`, `camila`, or `trinidad` using the passwords
-provided to the seed command. OpenNext exposes the local D1 and R2 bindings in the Next.js server.
+The first request redirects to `/setup`. Create the single root account there; it signs in
+automatically. Root can then create admins and regular users under `/settings/users`. The optional
+`pnpm db:seed:local` development helper creates the three participant-linked household accounts as
+regular users when all three `SEED_PASSWORD_*` variables are present. Root always comes from setup.
 
 ## Reset local data
 
@@ -56,7 +49,7 @@ Local binding state is disposable:
 pnpm db:reset:local
 ```
 
-This removes `.wrangler/state`, reapplies migrations, and requires running the user seed again.
+This removes `.wrangler/state`, reapplies migrations, and returns the app to first-run setup.
 
 ## Quality gates
 
@@ -65,7 +58,9 @@ pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm test:integration
 pnpm test:e2e
+pnpm test:e2e:bootstrap
 pnpm build
 pnpm preview
 ```
@@ -86,6 +81,7 @@ pnpm wrangler secret put AUTH_SECRET
 pnpm deploy
 ```
 
-Seed production users from a trusted workstation by rerunning the seed command with `--remote` and
-strong unique passwords. Never commit `.dev.vars`, seed password variables, uploaded receipts, or
-the local `.wrangler` directory.
+Open the deployed application immediately and complete `/setup` to create root. The endpoint closes
+after that account exists. Create all remaining admins and users from the authenticated management
+screen. Never commit `.env`, `.dev.vars`, seed password variables, uploaded receipts, or the local
+`.wrangler` directory.

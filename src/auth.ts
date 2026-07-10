@@ -2,7 +2,9 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 import { SESSION_MAX_AGE_SECONDS } from "@/lib/const/auth";
+import { isUserRole } from "@/lib/const/roles";
 import { authenticateCredentials } from "@/lib/auth/authenticate";
+import { findAppUserById } from "@/lib/db/users";
 import { getClientAddress } from "@/lib/util/request";
 
 const signInSchema = z.object({
@@ -12,12 +14,22 @@ const signInSchema = z.object({
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
 	callbacks: {
-		jwt({ token, user }) {
+		async jwt({ token, user }) {
 			if (user) {
 				token.displayName = user.displayName;
 				token.participantId = user.participantId;
+				token.role = user.role;
 				token.username = user.username;
+				return token;
 			}
+
+			if (!token.sub) return null;
+			const currentUser = await findAppUserById(token.sub);
+			if (currentUser.err || !currentUser.val || currentUser.val.disabledAt) return null;
+			token.displayName = currentUser.val.displayName;
+			token.participantId = currentUser.val.participantId;
+			token.role = currentUser.val.role;
+			token.username = currentUser.val.username;
 			return token;
 		},
 		session({ session, token }) {
@@ -26,6 +38,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 				typeof token.displayName === "string" ? token.displayName : (session.user.name ?? "");
 			session.user.participantId =
 				typeof token.participantId === "string" ? token.participantId : null;
+			session.user.role = isUserRole(token.role) ? token.role : "user";
 			session.user.username = typeof token.username === "string" ? token.username : "";
 			return session;
 		},
@@ -55,6 +68,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 					id: result.val.id,
 					name: result.val.displayName,
 					participantId: result.val.participantId,
+					role: result.val.role,
 					username: result.val.username,
 				};
 			},

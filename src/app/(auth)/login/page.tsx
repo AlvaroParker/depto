@@ -2,14 +2,19 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { LoginForm } from "@/components/auth/login-form";
+import { hasRootUser } from "@/lib/db/users";
 
 export const metadata: Metadata = { title: "Ingresar" };
+export const dynamic = "force-dynamic";
 
 interface LoginPageProps {
 	searchParams: Promise<{ callbackUrl?: string | string[] }>;
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
+	const root = await hasRootUser();
+	if (root.err) throw new Error("Could not check bootstrap status.");
+	if (!root.val) redirect("/setup");
 	const session = await auth();
 	if (session?.user) redirect("/");
 	const requestedCallback = (await searchParams).callbackUrl;

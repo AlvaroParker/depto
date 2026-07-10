@@ -1,5 +1,14 @@
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { loadEnvFile } from "node:process";
 import { hashPassword } from "../src/lib/util/password";
+
+if (existsSync(".env")) loadEnvFile(".env");
+
+const alvaroRole = process.env.SEED_ROLE_ALVARO ?? "user";
+if (alvaroRole !== "root" && alvaroRole !== "user") {
+	throw new Error("SEED_ROLE_ALVARO must be either root or user when provided.");
+}
 
 const users = [
 	{
@@ -7,6 +16,7 @@ const users = [
 		id: "user_alvaro",
 		participantId: "participant_alvaro",
 		passwordVariable: "SEED_PASSWORD_ALVARO",
+		role: alvaroRole,
 		username: "alvaro",
 	},
 	{
@@ -14,6 +24,7 @@ const users = [
 		id: "user_camila",
 		participantId: "participant_camila",
 		passwordVariable: "SEED_PASSWORD_CAMILA",
+		role: "user",
 		username: "camila",
 	},
 	{
@@ -21,6 +32,7 @@ const users = [
 		id: "user_trinidad",
 		participantId: "participant_trinidad",
 		passwordVariable: "SEED_PASSWORD_TRINIDAD",
+		role: "user",
 		username: "trinidad",
 	},
 ] as const;
@@ -42,7 +54,16 @@ async function main(): Promise<void> {
 	const hashes = await Promise.all(passwordEntries.map(({ password }) => hashPassword(password)));
 	const values = passwordEntries
 		.map(({ user }, index) =>
-			[user.id, user.username, hashes[index], user.displayName, user.participantId, now, now]
+			[
+				user.id,
+				user.username,
+				hashes[index],
+				user.displayName,
+				user.participantId,
+				user.role,
+				now,
+				now,
+			]
 				.map(sqlValue)
 				.join(", "),
 		)
@@ -50,13 +71,14 @@ async function main(): Promise<void> {
 		.join(",\n");
 	const sql = `
 INSERT INTO app_users
-  (id, username, password_hash, display_name, participant_id, created_at, updated_at, disabled_at)
+  (id, username, password_hash, display_name, participant_id, role, created_at, updated_at, disabled_at)
 VALUES
   ${values}
 ON CONFLICT(username) DO UPDATE SET
   password_hash = excluded.password_hash,
   display_name = excluded.display_name,
   participant_id = excluded.participant_id,
+  role = excluded.role,
   updated_at = excluded.updated_at,
   disabled_at = NULL;
 `;

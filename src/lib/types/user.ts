@@ -1,9 +1,13 @@
+import { z } from "zod";
+import { MANAGEABLE_USER_ROLES, type ManageableUserRole, type UserRole } from "@/lib/const/roles";
+
 export interface AppUser {
 	id: string;
 	username: string;
 	passwordHash: string;
 	displayName: string;
 	participantId: string | null;
+	role: UserRole;
 	disabledAt: string | null;
 }
 
@@ -12,6 +16,74 @@ export interface SessionUser {
 	username: string;
 	displayName: string;
 	participantId: string | null;
+	role: UserRole;
+}
+
+export interface ManagedUser {
+	createdAt: string;
+	disabledAt: string | null;
+	displayName: string;
+	id: string;
+	role: UserRole;
+	username: string;
+}
+
+const usernameSchema = z
+	.string()
+	.trim()
+	.min(3, "El usuario debe tener al menos 3 caracteres.")
+	.max(32, "El usuario no puede superar los 32 caracteres.")
+	.regex(/^[a-zA-Z0-9._-]+$/, "Usa solamente letras, números, puntos, guiones y guiones bajos.");
+
+const passwordSchema = z
+	.string()
+	.min(12, "La contraseña debe tener al menos 12 caracteres.")
+	.max(128, "La contraseña no puede superar los 128 caracteres.");
+
+export const BootstrapRootInputSchema = z
+	.object({
+		displayName: z
+			.string()
+			.trim()
+			.min(1, "Ingresa un nombre.")
+			.max(80, "El nombre no puede superar los 80 caracteres."),
+		password: passwordSchema,
+		passwordConfirmation: z.string(),
+		username: usernameSchema,
+	})
+	.refine((input) => input.password === input.passwordConfirmation, {
+		message: "Las contraseñas no coinciden.",
+		path: ["passwordConfirmation"],
+	});
+
+export interface BootstrapRootInput {
+	displayName: string;
+	password: string;
+	passwordConfirmation: string;
+	username: string;
+}
+
+export const CreateManagedUserInputSchema = z.object({
+	displayName: z
+		.string()
+		.trim()
+		.min(1, "Ingresa un nombre.")
+		.max(80, "El nombre no puede superar los 80 caracteres."),
+	password: passwordSchema,
+	role: z.enum(MANAGEABLE_USER_ROLES),
+	username: usernameSchema,
+});
+
+export interface CreateManagedUserInput extends z.infer<typeof CreateManagedUserInputSchema> {
+	role: ManageableUserRole;
+}
+
+export interface BootstrapStatus {
+	needsBootstrap: boolean;
+}
+
+export interface UserListResponse {
+	users: ManagedUser[];
 }
 
 export type LoginAttemptScope = "username" | "ip";

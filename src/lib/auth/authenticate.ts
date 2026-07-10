@@ -61,6 +61,7 @@ export async function authenticateCredentials({
 		displayName: user.displayName,
 		id: user.id,
 		participantId: user.participantId,
+		role: user.role,
 		username: user.username,
 	});
 }

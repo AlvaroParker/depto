@@ -5,6 +5,13 @@ export function unauthorizedResponse() {
 	return NextResponse.json({ message: "Debes iniciar sesión." }, { status: 401 });
 }
 
+export function forbiddenResponse() {
+	return NextResponse.json(
+		{ message: "No tienes permisos para realizar esta acción." },
+		{ status: 403 },
+	);
+}
+
 export function databaseErrorResponse() {
 	return NextResponse.json(
 		{ message: "No pudimos acceder a los datos. Inténtalo nuevamente." },

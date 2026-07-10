@@ -27,13 +27,16 @@ export default defineConfig({
 		trace: "retain-on-failure",
 	},
 	webServer: {
-		command: "pnpm db:reset:local && pnpm db:seed:local && pnpm dev",
+		command: process.env.E2E_BOOTSTRAP
+			? "pnpm db:reset:local && pnpm dev"
+			: "pnpm db:reset:local && pnpm db:seed:local && pnpm dev",
 		env: {
 			AUTH_SECRET: randomBytes(32).toString("base64url"),
 			E2E_PASSWORD: e2ePassword,
 			SEED_PASSWORD_ALVARO: e2ePassword,
 			SEED_PASSWORD_CAMILA: e2ePassword,
 			SEED_PASSWORD_TRINIDAD: e2ePassword,
+			SEED_ROLE_ALVARO: "root",
 		},
 		reuseExistingServer: false,
 		url: "http://127.0.0.1:3000/login",

@@ -1,10 +1,11 @@
-import { CircleDollarSign, House, Plus, ReceiptText, Settings } from "lucide-react";
+import { CircleDollarSign, House, Plus, ReceiptText, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SessionUser } from "@/lib/types/user";
 import { SignOutButton } from "@/components/layout/sign-out-button";
+import { canManageUsers, ROLE_LABELS } from "@/lib/const/roles";
 
-const navigation = [
+const baseNavigation = [
 	{ href: "/", icon: House, label: "Resumen" },
 	{ href: "/expenses", icon: ReceiptText, label: "Gastos" },
 	{ href: "/settings", icon: Settings, label: "Ajustes" },
@@ -16,6 +17,9 @@ interface AppShellProps {
 }
 
 export function AppShell({ children, user }: AppShellProps) {
+	const navigation = canManageUsers(user.role)
+		? [...baseNavigation, { href: "/settings/users", icon: Users, label: "Usuarios" }]
+		: baseNavigation;
 	return (
 		<div className="mx-auto min-h-screen max-w-[92rem] lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
 			<aside className="border-line bg-paper/72 sticky top-0 hidden h-screen border-r px-5 py-7 backdrop-blur lg:flex lg:flex-col">
@@ -54,7 +58,9 @@ export function AppShell({ children, user }: AppShellProps) {
 					</span>
 					<div className="min-w-0 flex-1">
 						<p className="truncate text-sm font-semibold">{user.displayName}</p>
-						<p className="text-ink-muted truncate text-xs">@{user.username}</p>
+						<p className="text-ink-muted truncate text-xs">
+							@{user.username} · {ROLE_LABELS[user.role]}
+						</p>
 					</div>
 					<SignOutButton />
 				</div>
@@ -64,7 +70,7 @@ export function AppShell({ children, user }: AppShellProps) {
 				aria-label="Principal"
 				className="border-line bg-paper/94 fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-2xl border p-1.5 shadow-[0_18px_50px_-22px_rgba(40,40,34,0.65)] backdrop-blur lg:hidden"
 			>
-				{navigation.slice(0, 2).map(({ href, icon: Icon, label }) => (
+				{baseNavigation.slice(0, 2).map(({ href, icon: Icon, label }) => (
 					<Link
 						className="text-ink-muted grid min-h-12 place-items-center gap-0.5 rounded-xl text-[0.65rem] font-semibold"
 						href={href}

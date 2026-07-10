@@ -202,7 +202,7 @@ all primary flows work at 360 px without horizontal scroll and pass keyboard/acc
 - [x] T068 [US6] Integrate filtering, pagination, and mobile cards in `src/app/(protected)/expenses/page.tsx` and `src/components/expenses/expense-list.tsx`
 - [x] T069 [P] [US6] Refine responsive shell, touch targets, focus order, and reduced motion in `src/components/layout/` and `src/app/globals.css`
 
-**Checkpoint**: All six user stories are functional and independently verified.
+**Checkpoint**: All six original expense-tracker stories are functional and independently verified.
 
 ---
 
@@ -240,7 +240,8 @@ Setup → Foundational → US1 authentication
 - US1 blocks all data-bearing stories because authentication is mandatory.
 - US2 supplies expense/share records required by US3, US4, US5, and US6.
 - US3, US4, and US5 can proceed independently after US2; US6 integrates the completed list.
-- Polish depends on all stories selected for delivery; full MVP definition requires all six.
+- Polish depends on all stories selected for delivery; full definition requires the six original
+  stories plus the RBAC and bootstrap extension.
 
 ### User Story Independence
 
@@ -311,9 +312,20 @@ Commit coherent units after their relevant checks, using the specification's Con
 examples: configuration, migrations/seeds, authentication, expense/split logic, reimbursements,
 receipts, edit/delete, dashboard/UI, tests, and documentation.
 
+## RBAC and bootstrap extension
+
+- [x] T079 Add role migration, partial root uniqueness, and root-protection triggers in `migrations/0003_add_user_roles.sql`
+- [x] T080 Add typed role policy, role-aware Auth.js sessions, and revocation refresh in `src/lib/const/roles.ts`, `src/lib/types/user.ts`, and `src/auth.ts`
+- [x] T081 Add one-time root bootstrap persistence, API, and setup screen in `src/lib/db/users.ts`, `src/app/api/bootstrap/route.ts`, and `src/app/(auth)/setup/`
+- [x] T082 Add privileged account-management APIs and audit-safe disabling in `src/app/api/admin/users/`
+- [x] T083 Add responsive account administration UI and role-aware navigation in `src/components/settings/user-management.tsx` and `src/components/layout/app-shell.tsx`
+- [x] T084 Add RBAC unit and D1 integration coverage in `tests/unit/roles.test.ts` and `tests/integration/users.test.ts`
+- [x] T085 Add dedicated first-run and desktop/mobile admin browser journeys in `tests/e2e/bootstrap.spec.ts` and `tests/e2e/users.spec.ts`
+- [x] T086 Update operations, data model, API contract, specification, and plan documentation for bootstrap and RBAC
+
 ## Validation
 
-- 78 tasks use the required checkbox and sequential `T###` identifier format.
+- 86 tasks use the required checkbox and sequential `T###` identifier format.
 - Every user-story task includes its `[US#]` label and exact file path.
 - Setup, Foundational, and Polish tasks intentionally have no story label.
 - Test tasks precede implementation tasks within every story.

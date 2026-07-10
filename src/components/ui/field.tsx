@@ -1,4 +1,9 @@
-import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
+import type {
+	InputHTMLAttributes,
+	ReactNode,
+	SelectHTMLAttributes,
+	TextareaHTMLAttributes,
+} from "react";
 import { cn } from "@/lib/util/cn";
 
 interface FieldShellProps {
@@ -12,8 +17,8 @@ interface FieldShellProps {
 function FieldShell({ children, error, hint, id, label }: FieldShellProps) {
 	const message = error ?? hint;
 	return (
-		<label className="text-ink grid gap-2 text-sm font-medium" htmlFor={id}>
-			<span>{label}</span>
+		<div className="text-ink grid gap-2 text-sm font-medium">
+			<label htmlFor={id}>{label}</label>
 			{children}
 			{message ? (
 				<span
@@ -23,7 +28,7 @@ function FieldShell({ children, error, hint, id, label }: FieldShellProps) {
 					{message}
 				</span>
 			) : null}
-		</label>
+		</div>
 	);
 }
 
@@ -42,6 +47,32 @@ export function Field({ className, error, hint, id, label, ...props }: FieldProp
 				aria-invalid={Boolean(error)}
 				className={cn(
 					"border-line-strong bg-paper text-ink placeholder:text-ink-faint focus:border-accent focus:ring-accent/15 min-h-12 w-full rounded-xl border px-4 text-base transition outline-none focus:ring-3",
+					error && "border-danger focus:border-danger focus:ring-danger/15",
+					className,
+				)}
+				id={id}
+				{...props}
+			/>
+		</FieldShell>
+	);
+}
+
+interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
+	error?: string;
+	hint?: string;
+	label: string;
+}
+
+export function SelectField({ className, error, hint, id, label, ...props }: SelectFieldProps) {
+	if (!id) throw new Error("SelectField requires an id.");
+	return (
+		<FieldShell error={error} hint={hint} id={id} label={label}>
+			<select
+				aria-describedby={error || hint ? `${id}-message` : undefined}
+				aria-invalid={Boolean(error)}
+				aria-label={label}
+				className={cn(
+					"border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 w-full rounded-xl border px-4 text-base transition outline-none focus:ring-3",
 					error && "border-danger focus:border-danger focus:ring-danger/15",
 					className,
 				)}

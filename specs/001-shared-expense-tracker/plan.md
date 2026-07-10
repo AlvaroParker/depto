@@ -36,14 +36,14 @@ expenses under normal conditions; common mutations provide feedback within two s
 **Constraints**: Integer-only money, exactly three participants, 10 MB receipt limit, private R2,
 128 MB Worker memory, Spanish-default UI, no public registration, native local bindings
 
-**Scale/Scope**: Three users and participants, one household, up to 1,000 active expenses, six
-protected pages, seven application API resources, one D1 database, one R2 bucket
+**Scale/Scope**: Three fixed expense participants, multiple application users, one household, up to
+1,000 active expenses, seven protected pages, ten application API resources, one D1 database, one R2 bucket
 
 ## Constitution Check
 
 _GATE: Passed before research and re-checked after design._
 
-- **Traceability — PASS**: plan, data model, contracts, and tasks map to FR-001 through FR-014.
+- **Traceability — PASS**: plan, data model, contracts, and tasks map to FR-001 through FR-018.
 - **Financial integrity — PASS**: integer minor units, ordered remainder allocation, and D1 batches
   cover create and recalculation atomically.
 - **Security/privacy — PASS**: Auth.js session checks exist at page and API boundaries; PBKDF2,
@@ -60,6 +60,13 @@ _GATE: Passed before research and re-checked after design._
 
 ### Authentication and authorization
 
+- A fresh deployment redirects sign-in to one-time `/setup` until a root account exists.
+- Each account has one role in the hierarchy `root > admin > user`; role sets are deliberately
+  avoided because higher roles already contain lower-role capabilities.
+- D1 enforces one root with a partial unique index and prevents root deletion, disabling, or role
+  mutation with triggers. Admin and root can create or soft-delete admins and regular users.
+- JWT access refreshes current role and disabled state from D1 so removal revokes an existing
+  session on its next access.
 - `auth.ts` configures Auth.js v5 Credentials and JWT sessions; no Auth.js adapter tables are needed.
 - `authorize` validates input, checks dual D1 login-attempt windows, verifies the encoded PBKDF2
   hash with Web Crypto, rejects disabled users, and returns only the application user identity.
@@ -116,7 +123,8 @@ specs/001-shared-expense-tracker/
 ```text
 migrations/
 ├── 0001_initial.sql
-└── 0002_seed_participants.sql
+├── 0002_seed_participants.sql
+└── 0003_add_user_roles.sql
 
 scripts/
 └── seed-users.ts
@@ -167,12 +175,13 @@ and Next.js skill conventions. Tests are separated by boundary rather than dupli
 
 ## Delivery Sequence
 
-1. Bind and migrate native D1/R2 resources; generate binding types and seed participants/users.
-2. Add PBKDF2 and Auth.js Credentials with rate limiting and complete route protection.
-3. Implement exact splitting, database result wrappers, expense CRUD, and reimbursement updates.
-4. Implement private receipt upload/view and compensating cleanup.
-5. Build the Spanish dashboard, responsive expense flows, filters, and accessibility states.
-6. Complete unit, binding integration, and browser flows; verify Next build and Workers preview.
+1. Bind and migrate native D1/R2 resources; generate binding types and seed participants.
+2. Bootstrap the one-time root account and manage subsequent accounts through role-gated UI/API.
+3. Add PBKDF2 and Auth.js Credentials with rate limiting and complete route protection.
+4. Implement exact splitting, database result wrappers, expense CRUD, and reimbursement updates.
+5. Implement private receipt upload/view and compensating cleanup.
+6. Build the Spanish dashboard, responsive expense flows, filters, and accessibility states.
+7. Complete unit, binding integration, and browser flows; verify Next build and Workers preview.
 
 ## Complexity Tracking
 

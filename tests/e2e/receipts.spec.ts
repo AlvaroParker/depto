@@ -23,8 +23,10 @@ test("uploads and privately opens a PDF receipt", async ({ page }) => {
 	await expect(page.getByRole("link", { name: /ver boleta\.pdf/i })).toBeVisible();
 	const href = await page.getByRole("link", { name: /ver boleta\.pdf/i }).getAttribute("href");
 	expect(href).toMatch(/\/receipt$/);
-	const privateResponse = await page.request.get(href!);
-	expect(privateResponse.status()).toBe(200);
+	const privateStatus = await page.evaluate(async (receiptHref) => {
+		return (await fetch(receiptHref)).status;
+	}, href!);
+	expect(privateStatus).toBe(200);
 	const unauthenticated = await page.context().browser()!.newContext();
 	expect((await unauthenticated.request.get(new URL(href!, page.url()).toString())).status()).toBe(
 		401,

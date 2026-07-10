@@ -1,0 +1,64 @@
+import { expect, test } from "@playwright/test";
+import { signIn } from "./helpers";
+
+test("blocks regular users from account administration", async ({ page }) => {
+	await signIn(page, "camila");
+	const status = await page.evaluate(async () => (await fetch("/api/admin/users")).status);
+	expect(status).toBe(403);
+	await page.goto("/settings/users");
+	await expect(page).toHaveURL(/\/settings$/);
+});
+
+test("lets an admin create users and other admins while protecting root", async ({ page }) => {
+	const suffix = `${Date.now()}-${Math.round(Math.random() * 10_000)}`;
+	const adminUsername = `admin-${suffix}`;
+	const userUsername = `user-${suffix}`;
+	const secondAdminUsername = `other-${suffix}`;
+	const password = process.env.E2E_PASSWORD;
+	if (!password) throw new Error("E2E_PASSWORD was not configured.");
+
+	await signIn(page, "alvaro");
+	await page.goto("/settings/users");
+	await expect(page.getByText("Root", { exact: true })).toBeVisible();
+	await expect(page.getByText("Protegido", { exact: true })).toBeVisible();
+
+	await page.getByLabel("Nombre").fill("Administradora temporal");
+	await page.getByLabel("Usuario", { exact: true }).fill(adminUsername);
+	await page.getByLabel("Rol", { exact: true }).selectOption("admin");
+	await page.getByLabel("Contraseña inicial").fill(password);
+	await page.getByRole("button", { name: "Crear acceso" }).click();
+	await expect(page.getByText(`@${adminUsername}`, { exact: true })).toBeVisible();
+
+	await page.context().clearCookies();
+	await signIn(page, adminUsername);
+	await page.goto("/settings/users");
+	for (const [name, username, role] of [
+		["Usuario temporal", userUsername, "user"],
+		["Otra administradora", secondAdminUsername, "admin"],
+	] as const) {
+		await page.getByLabel("Nombre").fill(name);
+		await page.getByLabel("Usuario", { exact: true }).fill(username);
+		await page.getByLabel("Rol", { exact: true }).selectOption(role);
+		await page.getByLabel("Contraseña inicial").fill(password);
+		await page.getByRole("button", { name: "Crear acceso" }).click();
+		await expect(page.getByText(`@${username}`, { exact: true })).toBeVisible();
+	}
+
+	for (const name of ["Usuario temporal", "Otra administradora"]) {
+		await page.getByRole("button", { name: `Eliminar a ${name}` }).click();
+		await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+		await expect(page.getByText(name, { exact: true })).not.toBeVisible();
+	}
+
+	const payload = await page.evaluate(async () => {
+		return (await (await fetch("/api/admin/users")).json()) as {
+			users: Array<{ id: string; role: string }>;
+		};
+	});
+	const root = payload.users.find((user) => user.role === "root");
+	if (!root) throw new Error("Root fixture was not found.");
+	const deleteRootStatus = await page.evaluate(async (rootId) => {
+		return (await fetch(`/api/admin/users/${rootId}`, { method: "DELETE" })).status;
+	}, root.id);
+	expect(deleteRootStatus).toBe(409);
+});

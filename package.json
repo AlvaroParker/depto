@@ -16,6 +16,7 @@
 		"test:coverage": "vitest run --coverage",
 		"test:integration": "vitest run --config vitest.integration.config.ts",
 		"test:e2e": "playwright test",
+		"test:e2e:bootstrap": "E2E_BOOTSTRAP=true playwright test tests/e2e/bootstrap.spec.ts --project=chromium",
 		"auth:secret": "node scripts/generate-auth-secret.mjs",
 		"db:migrate:local": "wrangler d1 migrations apply expenses-db --local",
 		"db:migrate:remote": "wrangler d1 migrations apply expenses-db --remote",

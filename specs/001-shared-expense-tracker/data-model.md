@@ -31,12 +31,21 @@ Represents a private credentials login and optional participant identity.
 | `password_hash`  | text | Required; self-describing PBKDF2 value                   |
 | `display_name`   | text | Required                                                 |
 | `participant_id` | text | Nullable foreign key to participant; unique when present |
+| `role`           | text | Required; exactly `root`, `admin`, or `user`             |
 | `created_at`     | text | Required UTC timestamp                                   |
 | `updated_at`     | text | Required UTC timestamp                                   |
 | `disabled_at`    | text | Nullable UTC timestamp                                   |
 
-Initial users are `alvaro`, `camila`, and `trinidad`. Seed tooling accepts passwords only from
-process environment, hashes them before insertion, and never writes them to repository files.
+Every account has one hierarchical role. Multiple simultaneous roles are intentionally unsupported:
+`root` and `admin` already include user-management privileges, so role sets would add ambiguity
+without granting useful capabilities. A partial unique index permits at most one `root`. Database
+triggers prevent deleting, disabling, or changing the role of that root account. Other account
+deletions set `disabled_at` so financial audit foreign keys remain intact.
+
+On a fresh database, `/setup` creates root once. The optional local seed creates `alvaro`, `camila`,
+and `trinidad` as regular users; passwords are accepted only from process environment, hashed before
+insertion, and never written to repository files. The E2E harness can explicitly promote its
+disposable Alvaro fixture to root.
 
 ## Login Attempt Window
 

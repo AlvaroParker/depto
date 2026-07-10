@@ -155,6 +155,27 @@ keyboard and touch input.
 4. **Given** keyboard-only input, **When** a user navigates forms and controls,
    **Then** labels, focus state, activation, errors, and status changes remain perceivable.
 
+### User Story 7 - Bootstrap and administer access (Priority: P1)
+
+As the person deploying the tracker, I create the permanent root account once and then manage
+administrator and regular-user access without changing household participants or losing audit data.
+
+**Independent Test**: Start with a migrated empty database, create root through setup, sign in,
+create an admin, use that admin to create and remove users and another admin, and attempt to remove root.
+
+**Acceptance Scenarios**:
+
+1. **Given** no root exists, **When** the first-run form is completed, **Then** exactly one root is
+   created, signed in, and the setup endpoint closes.
+2. **Given** a root or admin session, **When** an admin or regular user is created, **Then** the new
+   account can sign in with exactly that role.
+3. **Given** an admin or regular user, **When** root or another admin removes the account, **Then**
+   access is revoked while historical financial references remain.
+4. **Given** the root account, **When** any application or direct database action tries to delete,
+   disable, demote, or duplicate it, **Then** the operation is rejected.
+5. **Given** a regular user, **When** user administration is requested, **Then** the UI is hidden and
+   the API returns a forbidden response.
+
 ### Edge Cases
 
 - Amounts of 1 or 2 minor units still produce three non-negative shares whose sum is exact.
@@ -167,15 +188,18 @@ keyboard and touch input.
 - No expenses and no pending reimbursements produce useful Spanish empty states and zero totals.
 - Search treats leading/trailing whitespace safely and does not alter stored data.
 - Very long names, descriptions, filenames, and malformed dates are rejected at documented limits.
+- Concurrent first-run requests can create at most one root account.
+- Root cannot be deleted, disabled, demoted, or duplicated through application or direct D1 writes.
+- Removing an admin or user revokes access while preserving historical financial references.
 
 ## Requirements _(mandatory)_
 
 ### Functional Requirements
 
 - **FR-001**: The system MUST require username/password sign-in before any household expense,
-  participant, reimbursement, or receipt data can be viewed or changed. It MUST seed the three
-  initial users through a non-public setup process, store only password hashes, return generic
-  failures, reject disabled users, and rate-limit repeated failures by username and client address.
+  participant, reimbursement, or receipt data can be viewed or changed. It MUST initialize root
+  through one-time setup, store only password hashes, return generic failures, reject disabled
+  users, and rate-limit repeated failures by username and client address.
 - **FR-002**: The dashboard MUST show expense count, total amount spent, total paid by each
   participant, total share attributed to each participant, net balance by participant, total
   pending reimbursements, an aggregated from/to pending matrix, and recent expenses.
@@ -209,11 +233,19 @@ keyboard and touch input.
   failure MUST leave neither a partial expense nor a partial set of shares.
 - **FR-014**: The system MUST provide Spanish empty, loading, validation, authorization, not-found,
   and unexpected-error states without exposing internal details.
+- **FR-015**: A migrated database without a root user MUST redirect sign-in to a one-time setup flow
+  that creates and signs in the first root account. Once root exists, setup MUST reject further root creation.
+- **FR-016**: Every application user MUST have exactly one role: `root`, `admin`, or `user`. Root and
+  admin MUST be authorized to manage accounts; regular users MUST be denied those operations.
+- **FR-017**: Root and admin MUST be able to create regular users and admins and remove other non-root
+  accounts. Account removal MUST preserve financial audit references and revoke future session access.
+- **FR-018**: The system MUST enforce exactly one immutable, active, non-deletable root at the database
+  and application layers. No authenticated management endpoint may accept `root` as a new account role.
 
 ### Key Entities
 
-- **Application User**: A private household login with username, display name, participant link,
-  password verifier, timestamps, and optional disabled state.
+- **Application User**: A private household login with username, display name, one hierarchical role,
+  optional participant link, password verifier, timestamps, and optional disabled state.
 - **Participant**: One of Alvaro, Camila, or Trinidad, with stable identity and ordering used for
   split remainder assignment.
 - **Expense**: A named shared cost with optional description, integer amount, currency, date,
@@ -247,6 +279,8 @@ keyboard and touch input.
   always ordered newest first.
 - **SC-009**: The delivered repository passes all automated tests and production readiness checks,
   and contains no plaintext password, secret, uploaded receipt, or production resource identifier.
+- **SC-010**: Automated tests prove one-time root bootstrap, database-enforced root immutability,
+  regular-user denial, and admin creation/removal of both users and other admins.
 
 ## Assumptions
 
@@ -254,7 +288,8 @@ keyboard and touch input.
   unequal splits are not required.
 - CLP is the default and primary currency, amounts are entered as whole minor units, and no currency
   conversion is performed.
-- All authenticated users have equal permissions; there is no administrator role or public signup.
+- Accounts use one hierarchical `root`, `admin`, or `user` role. There is no public signup; the only
+  unauthenticated account creation path is the one-time root bootstrap before root exists.
 - Expense dates are calendar dates selected by the user and displayed using Chilean Spanish locale.
 - Soft-deleted expenses and their receipts are retained for audit until a future retention policy is
   specified; they are not exposed through normal user flows.
