@@ -9,6 +9,14 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "expenses",
+	"workers_dev": false,
+	"preview_urls": false,
+	"routes": [
+		{
+			"pattern": "depto.parker.ci",
+			"custom_domain": true,
+		},
+	],
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2026-07-09",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
