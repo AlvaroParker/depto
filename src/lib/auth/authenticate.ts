@@ -13,7 +13,7 @@ import type { SessionUser } from "@/lib/types/user";
 import { verifyPassword } from "@/lib/util/password";
 
 const DUMMY_PASSWORD_HASH =
-	"pbkdf2-sha256$600000$AAECAwQFBgcICQoLDA0ODw$cQ79QFKxiqdwUtn6p_9MSdcEoA_WmyD-QXpFvftujWo";
+	"pbkdf2-sha256$100000$AAECAwQFBgcICQoLDA0ODw$cQ79QFKxiqdwUtn6p_9MSdcEoA_WmyD-QXpFvftujWo";
 
 interface AuthenticateCredentialsInput {
 	clientAddress: string;

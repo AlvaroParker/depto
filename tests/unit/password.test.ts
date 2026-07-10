@@ -29,6 +29,13 @@ describe("password hashing", () => {
 		await expect(verifyPassword("clave-incorrecta", hash)).resolves.toBe(false);
 	});
 
+	it("rejects hashes above the runtime-supported work factor without deriving them", async () => {
+		const unsupportedHash =
+			"pbkdf2-sha256$600000$AAECAwQFBgcICQoLDA0ODw$cQ79QFKxiqdwUtn6p_9MSdcEoA_WmyD-QXpFvftujWo";
+
+		await expect(verifyPassword("cualquier-clave", unsupportedHash)).resolves.toBe(false);
+	});
+
 	it.each(["", "sha256$600000$salt$digest", "pbkdf2-sha256$1$c2FsdA$ZGlnZXN0"])(
 		"rejects malformed or downgraded hash %j",
 		async (hash) => {

@@ -40,12 +40,14 @@ new sign-ins; short session lifetime limits stale access.
 
 ## Password hashing
 
-**Decision**: PBKDF2-HMAC-SHA-256 through Web Crypto with 600,000 iterations, a random 16-byte salt,
+**Decision**: PBKDF2-HMAC-SHA-256 through Web Crypto with 100,000 iterations, a random 16-byte salt,
 a 32-byte derived key, constant-time comparison, and encoded format
-`pbkdf2-sha256$600000$<base64url-salt>$<base64url-hash>`.
+`pbkdf2-sha256$100000$<base64url-salt>$<base64url-hash>`.
 
-**Rationale**: Web Crypto is available in both Node tooling and Cloudflare Workers. The selected work
-factor matches current OWASP guidance and the self-describing format permits future rehashing.
+**Rationale**: Web Crypto is available in both Node tooling and Cloudflare Workers. Cloudflare's
+runtime rejects PBKDF2 iteration counts above 100,000, so the maximum supported work factor is
+combined with login rate limiting. The self-describing format permits future rehashing if the
+runtime limit changes.
 
 **Alternatives considered**:
 
