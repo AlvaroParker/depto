@@ -322,10 +322,12 @@ receipts, edit/delete, dashboard/UI, tests, and documentation.
 - [x] T084 Add RBAC unit and D1 integration coverage in `tests/unit/roles.test.ts` and `tests/integration/users.test.ts`
 - [x] T085 Add dedicated first-run and desktop/mobile admin browser journeys in `tests/e2e/bootstrap.spec.ts` and `tests/e2e/users.spec.ts`
 - [x] T086 Update operations, data model, API contract, specification, and plan documentation for bootstrap and RBAC
+- [x] T087 Add root/admin editing of regular-user username, display name, and optional password in `src/lib/db/users.ts`, `src/app/api/admin/users/[id]/route.ts`, and `src/components/settings/user-management.tsx`
+- [x] T088 Add schema, D1 integration, and desktop/mobile browser coverage for protected regular-user edits in `tests/unit/roles.test.ts`, `tests/integration/users.test.ts`, and `tests/e2e/users.spec.ts`
 
 ## Validation
 
-- 86 tasks use the required checkbox and sequential `T###` identifier format.
+- 88 tasks use the required checkbox and sequential `T###` identifier format.
 - Every user-story task includes its `[US#]` label and exact file path.
 - Setup, Foundational, and Polish tasks intentionally have no story label.
 - Test tasks precede implementation tasks within every story.

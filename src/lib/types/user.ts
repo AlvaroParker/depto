@@ -40,13 +40,15 @@ const passwordSchema = z
 	.min(12, "La contraseña debe tener al menos 12 caracteres.")
 	.max(128, "La contraseña no puede superar los 128 caracteres.");
 
+const displayNameSchema = z
+	.string()
+	.trim()
+	.min(1, "Ingresa un nombre.")
+	.max(80, "El nombre no puede superar los 80 caracteres.");
+
 export const BootstrapRootInputSchema = z
 	.object({
-		displayName: z
-			.string()
-			.trim()
-			.min(1, "Ingresa un nombre.")
-			.max(80, "El nombre no puede superar los 80 caracteres."),
+		displayName: displayNameSchema,
 		password: passwordSchema,
 		passwordConfirmation: z.string(),
 		username: usernameSchema,
@@ -64,11 +66,7 @@ export interface BootstrapRootInput {
 }
 
 export const CreateManagedUserInputSchema = z.object({
-	displayName: z
-		.string()
-		.trim()
-		.min(1, "Ingresa un nombre.")
-		.max(80, "El nombre no puede superar los 80 caracteres."),
+	displayName: displayNameSchema,
 	password: passwordSchema,
 	role: z.enum(MANAGEABLE_USER_ROLES),
 	username: usernameSchema,
@@ -76,6 +74,20 @@ export const CreateManagedUserInputSchema = z.object({
 
 export interface CreateManagedUserInput extends z.infer<typeof CreateManagedUserInputSchema> {
 	role: ManageableUserRole;
+}
+
+export const UpdateManagedUserInputSchema = z.object({
+	displayName: displayNameSchema,
+	password: passwordSchema.optional(),
+	username: usernameSchema,
+});
+
+export interface UpdateManagedUserInput extends z.infer<typeof UpdateManagedUserInputSchema> {
+	password?: string;
+}
+
+export interface ManagedUserResponse {
+	user: ManagedUser;
 }
 
 export interface BootstrapStatus {

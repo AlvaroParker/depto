@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { canManageUsers, isUserRole } from "@/lib/const/roles";
-import { CreateManagedUserInputSchema } from "@/lib/types/user";
+import { CreateManagedUserInputSchema, UpdateManagedUserInputSchema } from "@/lib/types/user";
 
 describe("role-based access control", () => {
 	it("allows root and admins to manage users but not regular users", () => {
@@ -23,5 +23,21 @@ describe("role-based access control", () => {
 			username: "segundo-root",
 		});
 		expect(result.success).toBe(false);
+	});
+
+	it("allows password-preserving edits but validates a supplied replacement password", () => {
+		expect(
+			UpdateManagedUserInputSchema.safeParse({
+				displayName: "Nombre actualizado",
+				username: "usuario-actualizado",
+			}).success,
+		).toBe(true);
+		expect(
+			UpdateManagedUserInputSchema.safeParse({
+				displayName: "Nombre actualizado",
+				password: "muy-corta",
+				username: "usuario-actualizado",
+			}).success,
+		).toBe(false);
 	});
 });

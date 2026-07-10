@@ -24,8 +24,8 @@ export default async function UsersPage() {
 					Las llaves de la casa.
 				</h1>
 				<p className="text-ink-muted mt-3 max-w-2xl text-sm leading-6">
-					Crea administradores y usuarios. Al eliminar un acceso, sus registros financieros
-					permanecen intactos.
+					Crea administradores y usuarios, y actualiza los datos de acceso de las cuentas de
+					usuario. Al eliminar un acceso, sus registros financieros permanecen intactos.
 				</p>
 				<UserManagement currentUserId={session.user.id} initialUsers={users.val} />
 			</div>

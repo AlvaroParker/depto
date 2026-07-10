@@ -161,7 +161,8 @@ As the person deploying the tracker, I create the permanent root account once an
 administrator and regular-user access without changing household participants or losing audit data.
 
 **Independent Test**: Start with a migrated empty database, create root through setup, sign in,
-create an admin, use that admin to create and remove users and another admin, and attempt to remove root.
+create an admin, use root and that admin to update a regular user's names and password, create and
+remove users and another admin, and attempt to modify or remove root.
 
 **Acceptance Scenarios**:
 
@@ -175,6 +176,9 @@ create an admin, use that admin to create and remove users and another admin, an
    disable, demote, or duplicate it, **Then** the operation is rejected.
 5. **Given** a regular user, **When** user administration is requested, **Then** the UI is hidden and
    the API returns a forbidden response.
+6. **Given** a regular-user account, **When** root or an admin changes its display name, username,
+   and optionally its password, **Then** the updated identity appears immediately and the new
+   credentials can sign in, while admin and root accounts remain unavailable for editing.
 
 ### Edge Cases
 
@@ -191,6 +195,7 @@ create an admin, use that admin to create and remove users and another admin, an
 - Concurrent first-run requests can create at most one root account.
 - Root cannot be deleted, disabled, demoted, or duplicated through application or direct D1 writes.
 - Removing an admin or user revokes access while preserving historical financial references.
+- Updating a regular user to an occupied username is rejected without changing any credentials.
 
 ## Requirements _(mandatory)_
 
@@ -237,8 +242,10 @@ create an admin, use that admin to create and remove users and another admin, an
   that creates and signs in the first root account. Once root exists, setup MUST reject further root creation.
 - **FR-016**: Every application user MUST have exactly one role: `root`, `admin`, or `user`. Root and
   admin MUST be authorized to manage accounts; regular users MUST be denied those operations.
-- **FR-017**: Root and admin MUST be able to create regular users and admins and remove other non-root
-  accounts. Account removal MUST preserve financial audit references and revoke future session access.
+- **FR-017**: Root and admin MUST be able to create regular users and admins, update regular users'
+  usernames, display names, and passwords, and remove other non-root accounts. Account removal MUST
+  preserve financial audit references and revoke future session access. Admin and root identities
+  MUST NOT be editable through the regular-user update operation.
 - **FR-018**: The system MUST enforce exactly one immutable, active, non-deletable root at the database
   and application layers. No authenticated management endpoint may accept `root` as a new account role.
 
@@ -280,7 +287,8 @@ create an admin, use that admin to create and remove users and another admin, an
 - **SC-009**: The delivered repository passes all automated tests and production readiness checks,
   and contains no plaintext password, secret, uploaded receipt, or production resource identifier.
 - **SC-010**: Automated tests prove one-time root bootstrap, database-enforced root immutability,
-  regular-user denial, and admin creation/removal of both users and other admins.
+  regular-user denial, root/admin updates of regular-user identity and credentials, and admin
+  creation/removal of both users and other admins.
 
 ## Assumptions
 

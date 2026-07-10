@@ -5,8 +5,95 @@ test("blocks regular users from account administration", async ({ page }) => {
 	await signIn(page, "camila");
 	const status = await page.evaluate(async () => (await fetch("/api/admin/users")).status);
 	expect(status).toBe(403);
+	const patchStatus = await page.evaluate(async () => {
+		return (
+			await fetch("/api/admin/users/user_trinidad", {
+				body: JSON.stringify({ displayName: "Sin permiso", username: "sin-permiso" }),
+				headers: { "content-type": "application/json" },
+				method: "PATCH",
+			})
+		).status;
+	});
+	expect(patchStatus).toBe(403);
 	await page.goto("/settings/users");
 	await expect(page).toHaveURL(/\/settings$/);
+});
+
+test("lets root and admin update regular-user names, usernames, and passwords", async ({
+	page,
+}) => {
+	const suffix = `${Date.now()}-${Math.round(Math.random() * 10_000)}`;
+	const adminUsername = `editor-${suffix}`;
+	const userUsername = `editable-${suffix}`;
+	const rootEditedUsername = `root-edit-${suffix}`;
+	const adminEditedUsername = `admin-edit-${suffix}`;
+	const rootEditedDisplayName = `Usuario renovado por root ${suffix}`;
+	const adminEditedDisplayName = `Usuario renovado por admin ${suffix}`;
+	const password = process.env.E2E_PASSWORD;
+	if (!password) throw new Error("E2E_PASSWORD was not configured.");
+	const rootEditedPassword = `${password}-root`;
+	const adminEditedPassword = `${password}-admin`;
+
+	await signIn(page, "alvaro");
+	await page.goto("/settings/users");
+	for (const [name, username, role] of [
+		["Administradora editora", adminUsername, "admin"],
+		["Usuario editable", userUsername, "user"],
+	] as const) {
+		await page.getByLabel("Nombre").fill(name);
+		await page.getByLabel("Usuario", { exact: true }).fill(username);
+		await page.getByLabel("Rol", { exact: true }).selectOption(role);
+		await page.getByLabel("Contraseña inicial").fill(password);
+		await page.getByRole("button", { name: "Crear acceso" }).click();
+		await expect(page.getByText(`@${username}`, { exact: true })).toBeVisible();
+	}
+
+	await expect(page.getByRole("button", { name: "Editar a Administradora editora" })).toHaveCount(
+		0,
+	);
+	await page.getByRole("button", { name: "Editar a Usuario editable" }).click();
+	const rootEditDialog = page.getByRole("dialog", { name: "Editar acceso" });
+	await rootEditDialog.getByLabel("Nombre visible").fill(rootEditedDisplayName);
+	await rootEditDialog.getByLabel("Usuario", { exact: true }).fill(rootEditedUsername);
+	await rootEditDialog.getByLabel("Nueva contraseña").fill(rootEditedPassword);
+	await rootEditDialog.getByRole("button", { name: "Guardar cambios" }).click();
+	await expect(rootEditDialog).not.toBeVisible();
+	await expect(page.getByText(rootEditedDisplayName, { exact: true })).toBeVisible();
+	await expect(page.getByText(`@${rootEditedUsername}`, { exact: true })).toBeVisible();
+
+	const protectedStatus = await page.evaluate(async () => {
+		const payload = (await (await fetch("/api/admin/users")).json()) as {
+			users: Array<{ id: string; role: string }>;
+		};
+		const root = payload.users.find((user) => user.role === "root");
+		if (!root) throw new Error("Root fixture was not found.");
+		return (
+			await fetch(`/api/admin/users/${root.id}`, {
+				body: JSON.stringify({ displayName: "Root editado", username: "root-editado" }),
+				headers: { "content-type": "application/json" },
+				method: "PATCH",
+			})
+		).status;
+	});
+	expect(protectedStatus).toBe(409);
+
+	await page.context().clearCookies();
+	await signIn(page, rootEditedUsername, rootEditedPassword);
+	await page.context().clearCookies();
+	await signIn(page, adminUsername);
+	await page.goto("/settings/users");
+	await page.getByRole("button", { name: `Editar a ${rootEditedDisplayName}` }).click();
+	const adminEditDialog = page.getByRole("dialog", { name: "Editar acceso" });
+	await adminEditDialog.getByLabel("Nombre visible").fill(adminEditedDisplayName);
+	await adminEditDialog.getByLabel("Usuario", { exact: true }).fill(adminEditedUsername);
+	await adminEditDialog.getByLabel("Nueva contraseña").fill(adminEditedPassword);
+	await adminEditDialog.getByRole("button", { name: "Guardar cambios" }).click();
+	await expect(adminEditDialog).not.toBeVisible();
+	await expect(page.getByText(adminEditedDisplayName, { exact: true })).toBeVisible();
+	await expect(page.getByText(`@${adminEditedUsername}`, { exact: true })).toBeVisible();
+
+	await page.context().clearCookies();
+	await signIn(page, adminEditedUsername, adminEditedPassword);
 });
 
 test("lets an admin create users and other admins while protecting root", async ({ page }) => {

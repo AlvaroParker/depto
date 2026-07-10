@@ -70,7 +70,8 @@ El suite E2E genera claves efímeras en memoria, reinicia `.wrangler/state` y si
 ## Roles y administración
 
 - `root`: existe exactamente uno, no se puede eliminar, desactivar ni degradar.
-- `admin`: puede crear y eliminar otros administradores y usuarios regulares.
+- `admin`: puede crear y eliminar otros administradores y usuarios regulares, y actualizar el
+  nombre visible, usuario y contraseña de las cuentas con rol `user`.
 - `user`: usa los flujos de gastos, comprobantes y reembolsos, sin administrar accesos.
 
 Cada cuenta tiene un solo rol jerárquico. Combinar roles no agrega permisos y haría ambiguas las garantías del único root. “Eliminar” una cuenta desactiva su acceso y conserva sus referencias históricas para auditoría.

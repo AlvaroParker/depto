@@ -1,12 +1,12 @@
 "use client";
 
-import { LockKeyhole, ShieldCheck, Trash2, UserPlus, UserRound } from "lucide-react";
+import { LockKeyhole, Pencil, Save, ShieldCheck, Trash2, UserPlus, UserRound } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, SelectField } from "@/components/ui/field";
-import { createUser, deleteUser } from "@/lib/api/users";
+import { createUser, deleteUser, updateUser } from "@/lib/api/users";
 import { ROLE_LABELS } from "@/lib/const/roles";
 import type { ManagedUser } from "@/lib/types/user";
 
@@ -27,9 +27,12 @@ function sortUsers(users: ManagedUser[]): ManagedUser[] {
 
 export function UserManagement({ currentUserId, initialUsers }: UserManagementProps) {
 	const [users, setUsers] = useState(initialUsers);
-	const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null);
+	const [deletingUser, setDeletingUser] = useState<ManagedUser | null>(null);
+	const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
 	const [formError, setFormError] = useState("");
 	const [fieldErrors, setFieldErrors] = useState<Record<string, string[] | undefined>>({});
+	const [editError, setEditError] = useState("");
+	const [editFieldErrors, setEditFieldErrors] = useState<Record<string, string[] | undefined>>({});
 	const [notice, setNotice] = useState("");
 	const [pending, startTransition] = useTransition();
 	const counts = useMemo(
@@ -64,19 +67,57 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 	}
 
 	function confirmDelete() {
-		if (!selectedUser) return;
+		if (!deletingUser) return;
 		setFormError("");
 		setNotice("");
 		startTransition(async () => {
-			const result = await deleteUser(selectedUser.id);
+			const result = await deleteUser(deletingUser.id);
 			if (result.err) {
 				setFormError(result.val.message);
-				setSelectedUser(null);
+				setDeletingUser(null);
 				return;
 			}
-			setUsers((current) => current.filter((user) => user.id !== selectedUser.id));
-			setNotice(`El acceso de ${selectedUser.displayName} fue eliminado.`);
-			setSelectedUser(null);
+			setUsers((current) => current.filter((user) => user.id !== deletingUser.id));
+			setNotice(`El acceso de ${deletingUser.displayName} fue eliminado.`);
+			setDeletingUser(null);
+		});
+	}
+
+	function openEditor(user: ManagedUser) {
+		setEditError("");
+		setEditFieldErrors({});
+		setNotice("");
+		setEditingUser(user);
+	}
+
+	function closeEditor() {
+		setEditingUser(null);
+		setEditError("");
+		setEditFieldErrors({});
+	}
+
+	function submitEdit(formData: FormData) {
+		if (!editingUser) return;
+		setEditError("");
+		setEditFieldErrors({});
+		setNotice("");
+		const password = String(formData.get("password") ?? "");
+		startTransition(async () => {
+			const result = await updateUser(editingUser.id, {
+				displayName: String(formData.get("displayName") ?? ""),
+				...(password ? { password } : {}),
+				username: String(formData.get("username") ?? ""),
+			});
+			if (result.err) {
+				setEditError(result.val.message);
+				setEditFieldErrors(result.val.errors ?? {});
+				return;
+			}
+			setUsers((current) =>
+				sortUsers(current.map((user) => (user.id === result.val.user.id ? result.val.user : user))),
+			);
+			setNotice(`El acceso de ${result.val.user.displayName} fue actualizado.`);
+			closeEditor();
 		});
 	}
 
@@ -90,7 +131,7 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 					<div>
 						<h2 className="font-display text-2xl font-semibold">Nuevo acceso</h2>
 						<p className="text-ink-muted mt-1 text-sm leading-6">
-							Los administradores gestionan accesos; los usuarios usan la cuenta de la casa.
+							Los administradores crean accesos y mantienen al día las cuentas de usuario.
 						</p>
 					</div>
 				</div>
@@ -158,13 +199,13 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 						{notice}
 					</p>
 				) : null}
-				<div className="grid gap-3">
+				<div className="grid min-w-0 gap-3">
 					{users.map((user) => {
 						const isCurrent = user.id === currentUserId;
 						const isRoot = user.role === "root";
 						return (
 							<article
-								className="border-line bg-paper/90 flex items-center gap-4 rounded-2xl border p-4 sm:p-5"
+								className="border-line bg-paper/90 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3 rounded-2xl border p-4 sm:flex sm:gap-4 sm:p-5"
 								key={user.id}
 							>
 								<span
@@ -182,7 +223,7 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 										<UserRound aria-hidden size={20} />
 									)}
 								</span>
-								<div className="min-w-0 flex-1">
+								<div className="min-w-0 flex-1 overflow-hidden">
 									<div className="flex flex-wrap items-center gap-2">
 										<h3 className="truncate text-sm font-semibold sm:text-base">
 											{user.displayName}
@@ -202,24 +243,37 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 									</div>
 									<p className="text-ink-muted mt-1 truncate text-xs">@{user.username}</p>
 								</div>
-								{isRoot ? (
-									<span
-										className="text-ink-faint flex items-center gap-1.5 text-xs"
-										title="El usuario root no se puede eliminar"
-									>
-										<LockKeyhole aria-hidden size={15} /> Protegido
-									</span>
-								) : !isCurrent ? (
-									<Button
-										aria-label={`Eliminar a ${user.displayName}`}
-										className="size-11 shrink-0 p-0"
-										disabled={pending}
-										onClick={() => setSelectedUser(user)}
-										variant="ghost"
-									>
-										<Trash2 aria-hidden size={18} />
-									</Button>
-								) : null}
+								<div className="border-line col-span-2 flex w-full shrink-0 items-center justify-end gap-1 border-t pt-2 sm:w-auto sm:border-0 sm:pt-0">
+									{user.role === "user" ? (
+										<Button
+											aria-label={`Editar a ${user.displayName}`}
+											className="size-11 shrink-0 p-0"
+											disabled={pending}
+											onClick={() => openEditor(user)}
+											variant="ghost"
+										>
+											<Pencil aria-hidden size={17} />
+										</Button>
+									) : null}
+									{isRoot ? (
+										<span
+											className="text-ink-faint flex items-center gap-1.5 text-xs"
+											title="El usuario root no se puede eliminar"
+										>
+											<LockKeyhole aria-hidden size={15} /> Protegido
+										</span>
+									) : !isCurrent ? (
+										<Button
+											aria-label={`Eliminar a ${user.displayName}`}
+											className="size-11 shrink-0 p-0"
+											disabled={pending}
+											onClick={() => setDeletingUser(user)}
+											variant="ghost"
+										>
+											<Trash2 aria-hidden size={18} />
+										</Button>
+									) : null}
+								</div>
 							</article>
 						);
 					})}
@@ -228,22 +282,82 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 
 			<Dialog
 				description={
-					selectedUser
-						? `Se cerrará el acceso de @${selectedUser.username}. Su actividad histórica se conservará.`
+					deletingUser
+						? `Se cerrará el acceso de @${deletingUser.username}. Su actividad histórica se conservará.`
 						: undefined
 				}
-				onClose={() => setSelectedUser(null)}
-				open={Boolean(selectedUser)}
+				onClose={() => setDeletingUser(null)}
+				open={Boolean(deletingUser)}
 				title="Eliminar acceso"
 			>
 				<div className="flex justify-end gap-3">
-					<Button disabled={pending} onClick={() => setSelectedUser(null)} variant="secondary">
+					<Button disabled={pending} onClick={() => setDeletingUser(null)} variant="secondary">
 						Cancelar
 					</Button>
 					<Button disabled={pending} onClick={confirmDelete} variant="danger">
 						<Trash2 aria-hidden size={17} /> {pending ? "Eliminando…" : "Eliminar"}
 					</Button>
 				</div>
+			</Dialog>
+
+			<Dialog
+				description={
+					editingUser
+						? `Actualiza los datos con los que @${editingUser.username} entra a la plataforma.`
+						: undefined
+				}
+				onClose={closeEditor}
+				open={Boolean(editingUser)}
+				title="Editar acceso"
+			>
+				{editingUser ? (
+					<form action={submitEdit} className="grid gap-5">
+						<Field
+							defaultValue={editingUser.displayName}
+							error={editFieldErrors.displayName?.[0]}
+							id="edit-displayName"
+							label="Nombre visible"
+							name="displayName"
+							required
+						/>
+						<Field
+							autoCapitalize="none"
+							autoComplete="off"
+							defaultValue={editingUser.username}
+							error={editFieldErrors.username?.[0]}
+							id="edit-username"
+							label="Usuario"
+							name="username"
+							required
+						/>
+						<Field
+							autoComplete="new-password"
+							error={editFieldErrors.password?.[0]}
+							hint="Déjala en blanco para conservar la contraseña actual."
+							id="edit-password"
+							label="Nueva contraseña"
+							minLength={12}
+							name="password"
+							type="password"
+						/>
+						{editError ? (
+							<p
+								className="border-danger/20 bg-danger/8 text-danger rounded-xl border px-4 py-3 text-sm"
+								role="alert"
+							>
+								{editError}
+							</p>
+						) : null}
+						<div className="flex justify-end gap-3 pt-1">
+							<Button disabled={pending} onClick={closeEditor} variant="secondary">
+								Cancelar
+							</Button>
+							<Button disabled={pending} type="submit">
+								<Save aria-hidden size={17} /> {pending ? "Guardando…" : "Guardar cambios"}
+							</Button>
+						</div>
+					</form>
+				) : null}
 			</Dialog>
 		</div>
 	);

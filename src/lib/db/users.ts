@@ -9,6 +9,7 @@ import type {
 	BootstrapRootInput,
 	CreateManagedUserInput,
 	ManagedUser,
+	UpdateManagedUserInput,
 } from "@/lib/types/user";
 import { createId } from "@/lib/util/ids";
 import { hashPassword } from "@/lib/util/password";
@@ -29,6 +30,12 @@ export type DisableUserOutcome =
 	| { kind: "not_found" }
 	| { kind: "root_protected" }
 	| { kind: "self_protected" };
+
+export type UpdateManagedUserOutcome =
+	| { kind: "not_found" }
+	| { kind: "role_protected" }
+	| { kind: "updated"; user: ManagedUser }
+	| { kind: "username_taken" };
 
 const APP_USER_COLUMNS = `
 	id,
@@ -171,6 +178,47 @@ export async function createManagedUser(
 	database: D1Database = getDatabase(),
 ): Promise<Result<ManagedUser, DbError>> {
 	return safeDbCall(() => insertUser(input, input.role, database));
+}
+
+export async function updateManagedUser(
+	id: string,
+	input: UpdateManagedUserInput,
+	database: D1Database = getDatabase(),
+): Promise<Result<UpdateManagedUserOutcome, DbError>> {
+	return safeDbCall(async () => {
+		const target = await database
+			.prepare(`SELECT ${APP_USER_COLUMNS} FROM app_users WHERE id = ?`)
+			.bind(id)
+			.first<AppUserRow>();
+		if (!target || target.disabled_at) return { kind: "not_found" };
+		if (target.role !== "user") return { kind: "role_protected" };
+
+		const displayName = input.displayName.trim();
+		const passwordHash = input.password ? await hashPassword(input.password) : target.password_hash;
+		const username = normalizeUsername(input.username);
+		const now = new Date().toISOString();
+		const updated = await database
+			.prepare(
+				`UPDATE OR IGNORE app_users
+				 SET username = ?, display_name = ?, password_hash = ?, updated_at = ?
+				 WHERE id = ? AND role = 'user' AND disabled_at IS NULL`,
+			)
+			.bind(username, displayName, passwordHash, now, id)
+			.run();
+		if (updated.meta.changes !== 1) return { kind: "username_taken" };
+
+		return {
+			kind: "updated",
+			user: {
+				createdAt: target.created_at,
+				disabledAt: null,
+				displayName,
+				id,
+				role: "user",
+				username,
+			},
+		};
+	});
 }
 
 export async function disableManagedUser(
