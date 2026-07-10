@@ -4,6 +4,7 @@ import { z } from "zod";
 import { SESSION_MAX_AGE_SECONDS } from "@/lib/const/auth";
 import { isUserRole } from "@/lib/const/roles";
 import { authenticateCredentials } from "@/lib/auth/authenticate";
+import { getSecureCookieOverride } from "@/lib/auth/cookies";
 import { findAppUserById } from "@/lib/db/users";
 import { getClientAddress } from "@/lib/util/request";
 
@@ -77,4 +78,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 	secret: process.env.AUTH_SECRET,
 	session: { maxAge: SESSION_MAX_AGE_SECONDS, strategy: "jwt" },
 	trustHost: true,
+	useSecureCookies: getSecureCookieOverride({
+		nextjsEnv: process.env.NEXTJS_ENV,
+		nodeEnv: process.env.NODE_ENV,
+	}),
 });

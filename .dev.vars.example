@@ -1,3 +1,4 @@
+NEXTJS_ENV=development
 # Generate a value with `pnpm auth:secret`.
 AUTH_SECRET=
 AUTH_TRUST_HOST=true
