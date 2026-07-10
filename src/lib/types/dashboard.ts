@@ -5,6 +5,7 @@ export interface ParticipantBalance {
 	participant: Participant;
 	totalPaidMinor: number;
 	totalShareMinor: number;
+	/** Outstanding amount owed to this person (positive) or by this person (negative). */
 	netBalanceMinor: number;
 }
 

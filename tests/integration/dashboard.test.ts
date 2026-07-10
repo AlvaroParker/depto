@@ -71,8 +71,8 @@ describe("dashboard aggregates", () => {
 				balance.netBalanceMinor,
 			]),
 		).toEqual([
-			["Alvaro", 9_000, 5_000, 4_000],
-			["Camila", 6_000, 5_000, 1_000],
+			["Alvaro", 9_000, 5_000, 1_000],
+			["Camila", 6_000, 5_000, 4_000],
 			["Trinidad", 0, 5_000, -5_000],
 		]);
 		expect(
@@ -87,5 +87,40 @@ describe("dashboard aggregates", () => {
 			["Trinidad", "Camila", 2_000],
 		]);
 		expect(result.val.recentExpenses.map((expense) => expense.name)).toEqual(["Agua", "Gas"]);
+	});
+
+	it("removes completed reimbursements from each participant's net balance", async () => {
+		const expense = await createExpense(
+			{
+				amountMinor: 15_000,
+				currency: "CLP",
+				expenseDate: "2026-07-09",
+				name: "Compra compartida",
+				paidByParticipantId: "participant_camila",
+			},
+			"user_alvaro",
+			bindings.database,
+			NOW,
+		);
+		if (expense.err) throw new Error("fixture failed");
+
+		await updateShareStatus(
+			expense.val.shares[0].id,
+			"paid",
+			"user_alvaro",
+			bindings.database,
+			NOW,
+		);
+
+		const result = await getDashboardSummary(bindings.database);
+		expect(result.ok).toBe(true);
+		if (result.err) return;
+		expect(
+			result.val.balances.map((balance) => [balance.participant.name, balance.netBalanceMinor]),
+		).toEqual([
+			["Alvaro", 0],
+			["Camila", 5_000],
+			["Trinidad", -5_000],
+		]);
 	});
 });

@@ -138,7 +138,9 @@ components:
               participant: { $ref: "#/components/schemas/Participant" }
               totalPaidMinor: { type: integer }
               totalShareMinor: { type: integer }
-              netBalanceMinor: { type: integer }
+              netBalanceMinor:
+                type: integer
+                description: Outstanding net position; positive is owed to the participant and negative is owed by them.
         pendingMatrix:
           type: array
           items:

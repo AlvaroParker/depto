@@ -73,6 +73,12 @@ export async function getDashboardSummary(
 		const shares = new Map(
 			shareResult.results.map((row) => [row.participant_id, row.amount_minor]),
 		);
+		const pendingIncoming = new Map<string, number>();
+		const pendingOutgoing = new Map<string, number>();
+		for (const row of matrixResult.results) {
+			pendingIncoming.set(row.to_id, (pendingIncoming.get(row.to_id) ?? 0) + row.amount_minor);
+			pendingOutgoing.set(row.from_id, (pendingOutgoing.get(row.from_id) ?? 0) + row.amount_minor);
+		}
 		const balances: ParticipantBalance[] = participants.map((participant) => {
 			const totalPaidMinor = paid.get(participant.id) ?? 0;
 			const totalShareMinor = shares.get(participant.id) ?? 0;
@@ -80,7 +86,8 @@ export async function getDashboardSummary(
 				participant,
 				totalPaidMinor,
 				totalShareMinor,
-				netBalanceMinor: totalPaidMinor - totalShareMinor,
+				netBalanceMinor:
+					(pendingIncoming.get(participant.id) ?? 0) - (pendingOutgoing.get(participant.id) ?? 0),
 			};
 		});
 		const pendingMatrix: PendingTransfer[] = matrixResult.results.flatMap((row) => {

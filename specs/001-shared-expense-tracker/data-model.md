@@ -132,7 +132,9 @@ Given positive integer `amount` and participants sorted ascending:
 - `total_amount_minor`: sum of their `amount_minor`.
 - `total_paid`: sum expense amounts grouped by payer.
 - `total_share`: sum all shares joined to non-deleted expenses grouped by participant.
-- `net_balance`: `total_paid - total_share` per participant.
+- `net_balance`: pending incoming reimbursements minus pending outgoing reimbursements per
+  participant. Positive values are still owed to the participant, negative values are still owed
+  by the participant, and completed reimbursements no longer contribute to either side.
 - `pending_total`: sum pending non-payer shares.
 - `pending_matrix`: sum pending shares grouped by debtor participant and payer participant.
 
