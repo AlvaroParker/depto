@@ -13,11 +13,26 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+	applicationName: "La cuenta de la casa",
 	description: "Gastos compartidos, comprobantes y reembolsos del hogar.",
 	icons: { icon: "/favicon.svg" },
+	metadataBase: new URL("https://depto.parker.ci"),
+	openGraph: {
+		description: "Gastos compartidos, comprobantes y reembolsos del hogar.",
+		locale: "es_CL",
+		siteName: "La cuenta de la casa",
+		title: "La cuenta de la casa",
+		type: "website",
+		url: "/",
+	},
 	title: {
-		default: "Gastos compartidos",
-		template: "%s · Gastos compartidos",
+		default: "La cuenta de la casa",
+		template: "%s · La cuenta de la casa",
+	},
+	twitter: {
+		card: "summary_large_image",
+		description: "Gastos compartidos, comprobantes y reembolsos del hogar.",
+		title: "La cuenta de la casa",
 	},
 };
 
