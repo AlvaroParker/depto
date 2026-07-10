@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { BalanceList } from "@/components/dashboard/balance-list";
 import { PendingMatrix } from "@/components/dashboard/pending-matrix";
 import { SummaryCards } from "@/components/dashboard/summary-cards";
 import { ExpenseList } from "@/components/expenses/expense-list";
@@ -26,8 +25,7 @@ export default async function DashboardPage() {
 					pendingTotalMinor={dashboard.pendingTotalMinor}
 					totalAmountMinor={dashboard.totalAmountMinor}
 				/>
-				<div className="mt-5 grid gap-5 lg:grid-cols-2">
-					<BalanceList balances={dashboard.balances} />
+				<div className="mt-5">
 					<PendingMatrix transfers={dashboard.pendingMatrix} />
 				</div>
 				<section className="mt-10">
