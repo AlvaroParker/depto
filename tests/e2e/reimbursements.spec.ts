@@ -6,7 +6,7 @@ test("marks a reimbursement paid and updates the dashboard", async ({ page }) =>
 	await page.goto("/expenses/new");
 	await page.getByLabel("Nombre del gasto").fill(uniqueName("Reembolso"));
 	await page.getByLabel("Monto (CLP)").fill("9000");
-	await page.getByLabel("¿Quién pagó?").selectOption("participant_alvaro");
+	await page.getByLabel("¿Quién pagó?").selectOption({ label: "Alvaro" });
 	await page.getByRole("button", { name: "Guardar gasto" }).click();
 	const paidButtons = page.getByRole("button", { name: "Marcar pagado" });
 	await expect(paidButtons).toHaveCount(2);

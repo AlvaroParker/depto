@@ -33,11 +33,14 @@ components:
       enum: [root, admin, user]
     ManagedUser:
       type: object
-      required: [id, username, displayName, role, createdAt]
+      required: [id, username, displayName, participantId, role, createdAt]
       properties:
         id: { type: string }
         username: { type: string }
         displayName: { type: string }
+        participantId:
+          type: [string, "null"]
+          description: Required for regular users and null for root or admin.
         role: { $ref: "#/components/schemas/UserRole" }
         createdAt: { type: string, format: date-time }
         disabledAt: { type: [string, "null"], format: date-time }
@@ -96,8 +99,7 @@ components:
         hasReceipt: { type: boolean }
         shares:
           type: array
-          minItems: 3
-          maxItems: 3
+          minItems: 1
           items: { $ref: "#/components/schemas/Share" }
     ExpenseDetail:
       allOf:
@@ -113,7 +115,7 @@ components:
             updatedAt: { type: string, format: date-time }
     ExpenseInput:
       type: object
-      required: [name, amountMinor, currency, expenseDate, paidByParticipantId]
+      required: [name, amountMinor, currency, expenseDate, paidByParticipantId, participantIds]
       properties:
         name: { type: string, minLength: 1, maxLength: 120 }
         description: { type: [string, "null"], maxLength: 2000 }
@@ -121,6 +123,11 @@ components:
         currency: { type: string, pattern: "^[A-Z]{3}$" }
         expenseDate: { type: string, format: date }
         paidByParticipantId: { type: string }
+        participantIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string }
     Dashboard:
       type: object
       required:
@@ -309,7 +316,7 @@ paths:
         "401": { description: Unauthenticated }
     post:
       operationId: createExpense
-      summary: Atomically create an expense and three shares
+      summary: Atomically create an expense and one share per selected participant
       requestBody:
         required: true
         content:

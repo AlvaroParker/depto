@@ -34,6 +34,7 @@ describe("private receipt persistence", () => {
 				expenseDate: "2026-07-09",
 				name: "Boleta",
 				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_alvaro", "participant_camila", "participant_trinidad"],
 			},
 			"user_alvaro",
 			bindings.database,

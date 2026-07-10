@@ -12,7 +12,7 @@ export default async function SettingsPage() {
 				<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">Ajustes</p>
 				<h1 className="font-display mt-2 text-4xl font-semibold">La casa</h1>
 				<p className="text-ink-muted mt-3">
-					Alvaro, Camila y Trinidad comparten cada gasto en partes iguales.
+					Cada gasto se divide entre las personas que participan en él.
 				</p>
 				{canManage ? (
 					<Link

@@ -75,6 +75,7 @@ function mapManagedUser(row: AppUserRow): ManagedUser {
 		disabledAt: row.disabled_at,
 		displayName: row.display_name,
 		id: row.id,
+		participantId: row.participant_id,
 		role: parseRole(row.role),
 		username: row.username,
 	};
@@ -148,19 +149,36 @@ async function insertUser(
 	const now = new Date().toISOString();
 	const passwordHash = await hashPassword(input.password);
 	const username = normalizeUsername(input.username);
-	await database
-		.prepare(
-			`INSERT INTO app_users
+	const participantId = role === "user" ? createId() : null;
+	const statements: D1PreparedStatement[] = [];
+	if (participantId) {
+		statements.push(
+			database
+				.prepare(
+					`INSERT INTO participants
+					 (id, name, slug, sort_order, active, created_at, updated_at)
+					 SELECT ?, ?, ?, COALESCE(MAX(sort_order), 0) + 1, 0, ?, ?
+					 FROM participants`,
+				)
+				.bind(participantId, input.displayName.trim(), `user-${participantId}`, now, now),
+		);
+	}
+	statements.push(
+		database
+			.prepare(
+				`INSERT INTO app_users
 			 (id, username, password_hash, display_name, participant_id, role, created_at, updated_at, disabled_at)
-			 VALUES (?, ?, ?, ?, NULL, ?, ?, ?, NULL)`,
-		)
-		.bind(id, username, passwordHash, input.displayName.trim(), role, now, now)
-		.run();
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+			)
+			.bind(id, username, passwordHash, input.displayName.trim(), participantId, role, now, now),
+	);
+	await database.batch(statements);
 	return {
 		createdAt: now,
 		disabledAt: null,
 		displayName: input.displayName.trim(),
 		id,
+		participantId,
 		role,
 		username,
 	};
@@ -205,7 +223,7 @@ export async function updateManagedUser(
 			)
 			.bind(username, displayName, passwordHash, now, id)
 			.run();
-		if (updated.meta.changes !== 1) return { kind: "username_taken" };
+		if (updated.meta.changes === 0) return { kind: "username_taken" };
 
 		return {
 			kind: "updated",
@@ -214,6 +232,7 @@ export async function updateManagedUser(
 				disabledAt: null,
 				displayName,
 				id,
+				participantId: target.participant_id,
 				role: "user",
 				username,
 			},

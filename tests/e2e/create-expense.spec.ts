@@ -7,11 +7,12 @@ test("creates an exact expense and shows it in detail and history", async ({ pag
 	await page.locator('a[href="/expenses/new"]:visible').first().click();
 	await page.getByLabel("Nombre del gasto").fill(name);
 	await page.getByLabel("Monto (CLP)").fill("10000");
-	await page.getByLabel("¿Quién pagó?").selectOption("participant_alvaro");
+	await page.getByRole("checkbox", { name: "Trinidad" }).uncheck();
+	await page.getByLabel("¿Quién pagó?").selectOption({ label: "Alvaro" });
 	await page.getByRole("button", { name: "Guardar gasto" }).click();
 	await expect(page).toHaveURL(/\/expenses\/[0-9a-f-]+$/);
 	await expect(page.getByRole("heading", { name })).toBeVisible();
-	await expect(page.getByText("$3.334")).toBeVisible();
+	await expect(page.getByText("$5.000")).toHaveCount(2);
 	await page.goto("/expenses");
 	await expect(page.getByText(name)).toBeVisible();
 });

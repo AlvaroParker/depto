@@ -24,6 +24,7 @@ export interface ManagedUser {
 	disabledAt: string | null;
 	displayName: string;
 	id: string;
+	participantId: string | null;
 	role: UserRole;
 	username: string;
 }

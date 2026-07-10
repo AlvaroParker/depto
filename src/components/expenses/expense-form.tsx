@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Save } from "lucide-react";
+import { CalendarDays, Check, Save, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,11 @@ interface ExpenseFormProps {
 
 export function ExpenseForm({ defaultDate, expense, participants }: ExpenseFormProps) {
 	const router = useRouter();
+	const initialParticipantIds = expense
+		? expense.shares.map((share) => share.participant.id)
+		: participants.map((participant) => participant.id);
+	const [participantIds, setParticipantIds] = useState(initialParticipantIds);
+	const [payerId, setPayerId] = useState(expense?.payer.id ?? "");
 	const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
 	const [formError, setFormError] = useState("");
 	const [receiptProgress, setReceiptProgress] = useState<number | null>(null);
@@ -45,7 +50,8 @@ export function ExpenseForm({ defaultDate, expense, participants }: ExpenseFormP
 			description: String(formData.get("description") ?? "").trim() || null,
 			expenseDate: String(formData.get("expenseDate") ?? ""),
 			name: String(formData.get("name") ?? ""),
-			paidByParticipantId: String(formData.get("paidByParticipantId") ?? ""),
+			paidByParticipantId: payerId,
+			participantIds,
 		};
 		startTransition(async () => {
 			const result = await apiRequest<ExpenseDetail>(
@@ -140,24 +146,78 @@ export function ExpenseForm({ defaultDate, expense, participants }: ExpenseFormP
 					<select
 						aria-invalid={Boolean(errors.paidByParticipantId)}
 						className="border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 w-full rounded-xl border px-4 text-base outline-none focus:ring-3"
-						defaultValue={expense?.payer.id ?? ""}
+						value={payerId}
 						id="paidByParticipantId"
 						name="paidByParticipantId"
+						onChange={(event) => setPayerId(event.target.value)}
 						required
 					>
 						<option disabled value="">
 							Selecciona una persona
 						</option>
-						{participants.map((participant) => (
-							<option key={participant.id} value={participant.id}>
-								{participant.name}
-							</option>
-						))}
+						{participants
+							.filter((participant) => participantIds.includes(participant.id))
+							.map((participant) => (
+								<option key={participant.id} value={participant.id}>
+									{participant.name}
+								</option>
+							))}
 					</select>
 					{errors.paidByParticipantId?.[0] ? (
 						<span className="text-danger text-xs font-normal">{errors.paidByParticipantId[0]}</span>
 					) : null}
 				</div>
+				<fieldset className="border-line bg-paper-strong/45 grid gap-3 rounded-2xl border p-4 sm:col-span-2">
+					<legend className="px-1 text-sm font-semibold">¿Quiénes participan?</legend>
+					<p className="text-ink-muted flex items-center gap-2 text-xs leading-5">
+						<UsersRound aria-hidden size={16} /> El monto se divide solo entre las personas que
+						selecciones.
+					</p>
+					<div className="grid gap-2 sm:grid-cols-2">
+						{participants.map((participant) => {
+							const selected = participantIds.includes(participant.id);
+							return (
+								<label
+									className={`focus-within:ring-accent/20 relative flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors focus-within:ring-3 ${
+										selected
+											? "border-accent/45 bg-accent/8 text-ink"
+											: "border-line bg-paper text-ink-muted hover:border-line-strong"
+									}`}
+									key={participant.id}
+								>
+									<input
+										checked={selected}
+										className="absolute inset-0 z-10 cursor-pointer opacity-0"
+										onChange={(event) => {
+											const next = event.target.checked
+												? [...participantIds, participant.id]
+												: participantIds.filter((id) => id !== participant.id);
+											setParticipantIds(next);
+											if (!next.includes(payerId)) setPayerId("");
+										}}
+										type="checkbox"
+										value={participant.id}
+									/>
+									<span
+										className={`grid size-6 shrink-0 place-items-center rounded-full border ${
+											selected
+												? "border-accent bg-accent text-accent-foreground"
+												: "border-line-strong bg-paper"
+										}`}
+									>
+										{selected ? <Check aria-hidden size={14} strokeWidth={3} /> : null}
+									</span>
+									<span className="font-medium">{participant.name}</span>
+								</label>
+							);
+						})}
+					</div>
+					{errors.participantIds?.[0] || participantIds.length === 0 ? (
+						<span className="text-danger text-xs font-normal">
+							{errors.participantIds?.[0] ?? "Selecciona al menos una persona."}
+						</span>
+					) : null}
+				</fieldset>
 				<div className="relative">
 					<Field
 						className="pr-11"
@@ -191,8 +251,9 @@ export function ExpenseForm({ defaultDate, expense, participants }: ExpenseFormP
 			<div className="border-line bg-paper-strong/55 rounded-2xl border p-4 text-sm">
 				<p className="font-semibold">La división se calcula automáticamente</p>
 				<p className="text-ink-muted mt-1 leading-6">
-					El monto se reparte en partes iguales entre Alvaro, Camila y Trinidad, sin perder ningún
-					peso.
+					El monto se reparte en partes iguales entre {participantIds.length || "las"}{" "}
+					{participantIds.length === 1 ? "persona seleccionada" : "personas seleccionadas"}, sin
+					perder ningún peso.
 				</p>
 			</div>
 			{expense?.shares.some((share) => share.status === "paid") ? (

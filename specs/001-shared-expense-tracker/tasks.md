@@ -34,28 +34,28 @@ and `quickstart.md`
 **⚠️ CRITICAL**: No user story can complete before this phase.
 
 - [x] T006 Add participant, user, login-attempt, expense, and share tables plus indexes in `migrations/0001_initial.sql`
-- [x] T007 Seed ordered Alvaro, Camila, and Trinidad participants in `migrations/0002_seed_participants.sql`
-- [x] T008 [P] Define constants for currencies, participants, receipts, and login limits in `src/lib/const/`
+- [x] T007 Create the participant schema without production seed identities in `migrations/0001_initial.sql`
+- [x] T008 [P] Define constants for currencies, receipts, roles, and login limits in `src/lib/const/`
 - [x] T009 [P] Define shared API, participant, user, expense, share, receipt, and dashboard schemas/types in `src/lib/types/`
 - [x] T010 Implement Cloudflare binding access and typed database result handling in `src/lib/db/bindings.ts` and `src/lib/db/safe-db-call.ts`
 - [x] T011 [P] Implement normalized API fetch/error handling in `src/lib/api/client.ts`
 - [x] T012 [P] Implement ID, Chilean currency/date, filename, and client-address utilities in `src/lib/util/`
-- [x] T013 Implement participant lookup and seed assertions in `src/lib/db/participants.ts`
-- [x] T014 Implement environment-only PBKDF2 user seeding in `scripts/seed-users.ts`
+- [x] T013 Implement active and historical participant lookup in `src/lib/db/participants.ts`
+- [x] T014 Create users through setup and role-gated administration; no production user seed exists
 - [x] T015 Add base semantic tokens, typography, focus styles, and motion preferences in `src/app/globals.css`
 - [x] T016 [P] Add reusable button, field, badge, dialog, empty-state, and skeleton primitives in `src/components/ui/`
 
-**Checkpoint**: Migrations apply locally, three participants are ordered, bindings resolve, and shared
+**Checkpoint**: Migrations apply locally, user-linked participants are ordered, bindings resolve, and shared
 contracts compile.
 
 ---
 
 ## Phase 3: User Story 1 — Sign in and keep household data private (Priority: P1) 🎯
 
-**Goal**: Seed credentials users, authenticate safely, rate-limit generic failures, and block every
+**Goal**: Manage credential users, authenticate safely, rate-limit generic failures, and block every
 unauthenticated household page and API.
 
-**Independent Test**: Valid seeded credentials reach the dashboard; invalid/disabled/limited attempts
+**Independent Test**: Valid managed credentials reach the dashboard; invalid/disabled/limited attempts
 produce the same safe response; unauthenticated protected page and API requests expose no data.
 
 ### Tests for User Story 1
@@ -80,10 +80,10 @@ produce the same safe response; unauthenticated protected page and API requests 
 
 ## Phase 4: User Story 2 — Record and inspect a shared expense (Priority: P1)
 
-**Goal**: Create exact three-way expenses and show complete list/detail views.
+**Goal**: Create exact expenses for selected participant groups and show complete list/detail views.
 
-**Independent Test**: Creating divisible and remainder expenses atomically produces exactly three
-correctly ordered shares and visible list/detail information; invalid input writes nothing.
+**Independent Test**: Creating divisible and remainder expenses atomically produces one correctly
+ordered share per selected participant and visible list/detail information; invalid input writes nothing.
 
 ### Tests for User Story 2
 
@@ -245,7 +245,7 @@ Setup → Foundational → US1 authentication
 
 ### User Story Independence
 
-- **US1**: Verified with seeded users and access probes; no expense data required.
+- **US1**: Verified with managed users and access probes; no expense data required.
 - **US2**: Verified with authenticated create/list/detail fixtures; dashboard and receipts not required.
 - **US3**: Verified using US2 fixtures; receipts, edit/delete, and filters not required.
 - **US4**: Verified using one existing expense and local R2; dashboard and edits not required.

@@ -1,7 +1,6 @@
 import "server-only";
 
 import type { Result } from "ts-results";
-import { PARTICIPANT_COUNT, SEEDED_PARTICIPANTS } from "@/lib/const/participants";
 import { getDatabase } from "@/lib/db/bindings";
 import { type DbError, safeDbCall } from "@/lib/db/safe-db-call";
 import type { Participant } from "@/lib/types/participant";
@@ -17,9 +16,11 @@ function mapParticipant(row: ParticipantRow): Participant {
 	return { id: row.id, name: row.name, slug: row.slug, sortOrder: row.sort_order };
 }
 
-export async function findActiveParticipants(): Promise<Result<Participant[], DbError>> {
+export async function findActiveParticipants(
+	database: D1Database = getDatabase(),
+): Promise<Result<Participant[], DbError>> {
 	return safeDbCall(async () => {
-		const result = await getDatabase()
+		const result = await database
 			.prepare(
 				`SELECT id, name, slug, sort_order
 				 FROM participants
@@ -33,9 +34,10 @@ export async function findActiveParticipants(): Promise<Result<Participant[], Db
 
 export async function findParticipantById(
 	id: string,
+	database: D1Database = getDatabase(),
 ): Promise<Result<Participant | null, DbError>> {
 	return safeDbCall(async () => {
-		const row = await getDatabase()
+		const row = await database
 			.prepare(
 				`SELECT id, name, slug, sort_order
 				 FROM participants
@@ -47,21 +49,23 @@ export async function findParticipantById(
 	});
 }
 
-export async function assertSeededParticipants(): Promise<Result<Participant[], DbError>> {
+export async function findParticipantsForExpense(
+	expenseId: string,
+	database: D1Database = getDatabase(),
+): Promise<Result<Participant[], DbError>> {
 	return safeDbCall(async () => {
-		const result = await getDatabase()
+		const result = await database
 			.prepare(
 				`SELECT id, name, slug, sort_order
 				 FROM participants
-				 WHERE active = 1
+				 WHERE active = 1 OR EXISTS (
+				   SELECT 1 FROM expense_shares
+				   WHERE expense_id = ? AND participant_id = participants.id
+				 )
 				 ORDER BY sort_order ASC`,
 			)
+			.bind(expenseId)
 			.all<ParticipantRow>();
-		const participants = result.results.map(mapParticipant);
-		const valid =
-			participants.length === PARTICIPANT_COUNT &&
-			participants.every((participant, index) => participant.id === SEEDED_PARTICIPANTS[index].id);
-		if (!valid) throw new Error("The three seeded participants are not configured correctly.");
-		return participants;
+		return result.results.map(mapParticipant);
 	});
 }

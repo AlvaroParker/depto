@@ -52,6 +52,7 @@ describe("expense search and filters", () => {
 					name: item.name,
 					description: item.description,
 					paidByParticipantId: item.payer,
+					participantIds: ["participant_alvaro", "participant_camila", "participant_trinidad"],
 				},
 				"user_alvaro",
 				bindings.database,

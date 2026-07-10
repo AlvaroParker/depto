@@ -34,7 +34,7 @@ test("lets root and admin update regular-user names, usernames, and passwords", 
 	const rootEditedPassword = `${password}-root`;
 	const adminEditedPassword = `${password}-admin`;
 
-	await signIn(page, "alvaro");
+	await signIn(page, "root-e2e");
 	await page.goto("/settings/users");
 	for (const [name, username, role] of [
 		["Administradora editora", adminUsername, "admin"],
@@ -104,7 +104,7 @@ test("lets an admin create users and other admins while protecting root", async 
 	const password = process.env.E2E_PASSWORD;
 	if (!password) throw new Error("E2E_PASSWORD was not configured.");
 
-	await signIn(page, "alvaro");
+	await signIn(page, "root-e2e");
 	await page.goto("/settings/users");
 	await expect(page.getByText("Root", { exact: true })).toBeVisible();
 	await expect(page.getByText("Protegido", { exact: true })).toBeVisible();

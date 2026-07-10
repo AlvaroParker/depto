@@ -50,7 +50,7 @@ describe("1,000 expense query performance", () => {
 		}
 		await bindings.database
 			.prepare(
-				"INSERT INTO app_users (id, username, password_hash, display_name, participant_id, created_at, updated_at) VALUES ('performance-user', 'performance', 'hash', 'Performance', NULL, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+				"INSERT INTO app_users (id, username, password_hash, display_name, participant_id, created_at, updated_at) VALUES ('performance-user', 'performance', 'hash', 'Performance', 'participant_alvaro', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
 			)
 			.run();
 		for (let index = 0; index < statements.length; index += 100)
