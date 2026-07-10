@@ -70,7 +70,7 @@ _GATE: Passed before research and re-checked after design._
 - `auth.ts` configures Auth.js v5 Credentials and JWT sessions; no Auth.js adapter tables are needed.
 - `authorize` validates input, checks dual D1 login-attempt windows, verifies the encoded PBKDF2
   hash with Web Crypto, rejects disabled users, and returns only the application user identity.
-- `proxy.ts` redirects protected page requests to `/login`; every route handler independently calls
+- Edge `middleware.ts` redirects protected page requests to `/login`; every route handler independently calls
   `auth()` before reading request data or touching a binding.
 - JWT/session callbacks carry `user.id`, `username`, `displayName`, and `participantId`.
 
@@ -161,7 +161,7 @@ src/
 │   ├── types/
 │   └── util/
 ├── auth.ts
-└── proxy.ts
+└── middleware.ts
 
 tests/
 ├── e2e/

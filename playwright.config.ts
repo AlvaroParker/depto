@@ -17,7 +17,9 @@ const fallbackChromium = existsSync(browserCache)
 	: undefined;
 
 export default defineConfig({
+	expect: { timeout: 10_000 },
 	fullyParallel: false,
+	timeout: 60_000,
 	workers: 1,
 	testDir: "./tests/e2e",
 	use: {

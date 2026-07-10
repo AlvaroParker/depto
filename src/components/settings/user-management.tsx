@@ -2,6 +2,7 @@
 
 import { LockKeyhole, Pencil, Save, ShieldCheck, Trash2, UserPlus, UserRound } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
+import type { FormEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -64,6 +65,11 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 			const form = document.getElementById("create-user-form");
 			if (form instanceof HTMLFormElement) form.reset();
 		});
+	}
+
+	function submitCreateForm(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		submit(new FormData(event.currentTarget));
 	}
 
 	function confirmDelete() {
@@ -135,7 +141,7 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 						</p>
 					</div>
 				</div>
-				<form action={submit} className="mt-7 grid gap-5" id="create-user-form">
+				<form className="mt-7 grid gap-5" id="create-user-form" onSubmit={submitCreateForm}>
 					<Field
 						error={fieldErrors.displayName?.[0]}
 						id="displayName"

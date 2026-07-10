@@ -54,6 +54,7 @@ Abre `http://localhost:3000`. En una base nueva, la aplicación redirige a `/set
 | `pnpm lint`               | Ejecuta ESLint                                            |
 | `pnpm typecheck`          | Verifica TypeScript estricto                              |
 | `pnpm build`              | Build de producción Next.js                               |
+| `pnpm cf:build`           | Build OpenNext para Cloudflare Workers                    |
 | `pnpm preview`            | Build OpenNext y preview en Workers local                 |
 
 El suite E2E genera claves efímeras en memoria, reinicia `.wrangler/state` y siembra usuarios automáticamente. En Arch Linux, Chromium puede requerir las bibliotecas gráficas/accesibilidad estándar del sistema.

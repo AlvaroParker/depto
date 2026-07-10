@@ -62,6 +62,7 @@ pnpm test:integration
 pnpm test:e2e
 pnpm test:e2e:bootstrap
 pnpm build
+pnpm cf:build
 pnpm preview
 ```
 
