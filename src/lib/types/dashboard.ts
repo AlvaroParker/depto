@@ -15,7 +15,8 @@ export interface PendingTransfer {
 	amountMinor: number;
 }
 
-export interface DashboardSummary {
+export interface HouseholdDashboardSummary {
+	view: "household";
 	expenseCount: number;
 	totalAmountMinor: number;
 	pendingTotalMinor: number;
@@ -23,3 +24,17 @@ export interface DashboardSummary {
 	pendingMatrix: PendingTransfer[];
 	recentExpenses: ExpenseSummary[];
 }
+
+export interface PersonalDashboardSummary {
+	view: "personal";
+	participantId: string;
+	amountOwedMinor: number;
+	owedExpenseCount: number;
+	amountDueToMeMinor: number;
+	dueToMeExpenseCount: number;
+	spentSoFarMinor: number;
+	expectedSpendMinor: number;
+	recentExpenses: ExpenseSummary[];
+}
+
+export type DashboardSummary = HouseholdDashboardSummary | PersonalDashboardSummary;

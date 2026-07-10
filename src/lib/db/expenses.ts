@@ -64,6 +64,7 @@ interface ParticipantRow {
 export interface ExpenseListContext {
 	currentParticipantId?: string | null;
 	database?: D1Database;
+	participantScopeId?: string | null;
 }
 
 async function findSelectedParticipants(
@@ -298,6 +299,16 @@ export async function listExpenses(
 		if (query.kind) {
 			where.push("e.kind_id = ?");
 			bindings.push(query.kind);
+		}
+		if (context.participantScopeId) {
+			where.push(
+				`EXISTS (
+				 SELECT 1 FROM expense_shares scoped_share
+				 WHERE scoped_share.expense_id = e.id
+				   AND scoped_share.participant_id = ?
+				)`,
+			);
+			bindings.push(context.participantScopeId);
 		}
 		if (query.pending === "mine") {
 			if (!context.currentParticipantId) {
