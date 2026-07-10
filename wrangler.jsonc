@@ -56,6 +56,9 @@
 		"enabled": true,
 	},
 	"upload_source_maps": true,
+	"secrets": {
+		"required": ["AUTH_SECRET"],
+	},
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
