@@ -32,7 +32,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 				<div className="border-accent/60 absolute top-52 -right-2 size-36 rounded-full border" />
 				<p className="text-paper/60 text-xs font-semibold tracking-[0.24em]">CUENTAS DE CASA</p>
 				<div className="relative max-w-xl">
-					<p className="font-display text-accent mb-6 text-lg italic">Alvaro · Camila · Trinidad</p>
+					<p className="font-display text-accent mb-6 text-lg italic">
+						Gastos compartidos, cuentas claras
+					</p>
 					<h1 className="font-display text-6xl leading-[0.98] font-semibold tracking-[-0.04em]">
 						Lo compartido, claro para todos.
 					</h1>

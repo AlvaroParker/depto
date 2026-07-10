@@ -6,7 +6,7 @@ test("uploads and privately opens a PDF receipt", async ({ page }) => {
 	await page.goto("/expenses/new");
 	await page.getByLabel("Nombre del gasto").fill(uniqueName("Con boleta"));
 	await page.getByLabel("Monto (CLP)").fill("4500");
-	await page.getByLabel("¿Quién pagó?").selectOption("participant_camila");
+	await page.getByLabel("¿Quién pagó?").selectOption({ label: "Camila" });
 	await page.getByLabel("Comprobante (opcional)").setInputFiles({
 		buffer: Buffer.from("unsupported"),
 		mimeType: "text/plain",

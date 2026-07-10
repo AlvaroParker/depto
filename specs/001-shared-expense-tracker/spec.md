@@ -6,21 +6,21 @@
 
 **Status**: Approved for planning
 
-**Input**: Replace the household Excel tracker with a private, mobile-friendly application for
-Alvaro, Camila, and Trinidad to record shared expenses, keep receipts, split costs equally, and
-track reimbursements.
+**Input**: Replace the household Excel tracker with a private, mobile-friendly application where
+regular users are household participants, can choose who joins each expense, keep receipts, split
+costs equally, and track reimbursements.
 
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Sign in and keep household data private (Priority: P1)
 
-As one of the three household users, I sign in with my username and password so that only the
+As a household user, I sign in with my username and password so that only the
 household can view or change shared financial data.
 
 **Why this priority**: Every other journey handles private financial or receipt data and cannot
 be released safely without access control.
 
-**Independent Test**: Sign in with a valid seeded account, attempt an invalid sign-in, and request
+**Independent Test**: Sign in with a valid managed account, attempt an invalid sign-in, and request
 each protected page and data operation without a session.
 
 **Acceptance Scenarios**:
@@ -38,22 +38,21 @@ each protected page and data operation without a session.
 
 ### User Story 2 - Record and inspect a shared expense (Priority: P1)
 
-As an authenticated household user, I record an expense and its payer so that the application
-creates an exact equal split for all three participants and everyone can inspect the result.
+As an authenticated household user, I record an expense, its payer, and its participants so that
+the application creates an exact equal split for that group and everyone can inspect the result.
 
 **Why this priority**: Recording correctly split expenses is the core replacement for the current
 spreadsheet.
 
-**Independent Test**: Create expenses whose totals divide evenly and unevenly by three, then view
-the list and detail to verify the stored expense and all three shares.
+**Independent Test**: Create expenses with different selected groups and totals, then view the list
+and detail to verify the stored expense and exactly one share per selected participant.
 
 **Acceptance Scenarios**:
 
-1. **Given** all three active participants, **When** a 30,000 CLP expense paid by Alvaro is saved,
-   **Then** three 10,000 CLP shares are created, Alvaro is settled, and Camila and Trinidad are
-   pending.
-2. **Given** a 10,000 CLP expense, **When** it is split, **Then** shares are 3,334, 3,333, and
-   3,333 CLP in participant order and sum exactly to 10,000 CLP.
+1. **Given** three active participants, **When** only two are selected for a 30,000 CLP expense,
+   **Then** two 15,000 CLP shares are created, the payer is settled, and the other is pending.
+2. **Given** a 10,000 CLP expense with three selected participants, **When** it is split, **Then**
+   shares are 3,334, 3,333, and 3,333 CLP in participant order and sum exactly to 10,000 CLP.
 3. **Given** invalid or missing required form values, **When** the expense is submitted,
    **Then** nothing is created and visible field-specific errors explain what must be corrected.
 4. **Given** recorded expenses, **When** the expense list is opened, **Then** each item shows date,
@@ -77,7 +76,7 @@ the detail plus all dashboard totals after each transition.
    time, and marking user are recorded and its amount leaves the pending reimbursement summary.
 2. **Given** a paid non-payer share, **When** it is returned to pending, **Then** payment time and
    marking user are cleared and its amount returns to the pending summary.
-3. **Given** any expense, **When** its detail is opened, **Then** all three participants and their
+3. **Given** any expense, **When** its detail is opened, **Then** its selected participants and their
    settled, pending, or paid state are visible; the payer's settled state cannot be changed.
 4. **Given** multiple expenses, **When** the dashboard is opened, **Then** it shows expense count,
    total spend, total paid and total share by participant, net balances, total pending, and an
@@ -158,7 +157,7 @@ keyboard and touch input.
 ### User Story 7 - Bootstrap and administer access (Priority: P1)
 
 As the person deploying the tracker, I create the permanent root account once and then manage
-administrator and regular-user access without changing household participants or losing audit data.
+administrator and regular-user access while keeping household participants and audit data aligned.
 
 **Independent Test**: Start with a migrated empty database, create root through setup, sign in,
 create an admin, use root and that admin to update a regular user's names and password, create and
@@ -168,8 +167,8 @@ remove users and another admin, and attempt to modify or remove root.
 
 1. **Given** no root exists, **When** the first-run form is completed, **Then** exactly one root is
    created, signed in, and the setup endpoint closes.
-2. **Given** a root or admin session, **When** an admin or regular user is created, **Then** the new
-   account can sign in with exactly that role.
+2. **Given** a root or admin session, **When** a regular user is created, **Then** its participant is
+   created atomically; when an admin is created, no participant is created.
 3. **Given** an admin or regular user, **When** root or another admin removes the account, **Then**
    access is revoked while historical financial references remain.
 4. **Given** the root account, **When** any application or direct database action tries to delete,
@@ -178,11 +177,14 @@ remove users and another admin, and attempt to modify or remove root.
    the API returns a forbidden response.
 6. **Given** a regular-user account, **When** root or an admin changes its display name, username,
    and optionally its password, **Then** the updated identity appears immediately and the new
-   credentials can sign in, while admin and root accounts remain unavailable for editing.
+   credentials can sign in, its participant name stays synchronized, and admin and root accounts
+   remain unavailable for editing.
 
 ### Edge Cases
 
-- Amounts of 1 or 2 minor units still produce three non-negative shares whose sum is exact.
+- Amounts smaller than the selected participant count still produce non-negative shares whose sum is exact.
+- Adding a user never adds a share to an existing expense; historical participant sets are immutable
+  until that expense is explicitly edited.
 - Expenses on the same date have stable ordering and do not disappear between page loads.
 - A participant or user referenced by existing records is never hard-deleted by MVP flows.
 - An expired session during a mutation produces no partial financial write.
@@ -211,8 +213,9 @@ remove users and another admin, and attempt to modify or remove root.
 - **FR-003**: The system MUST provide a mobile-usable list of all non-deleted expenses showing
   date, name, amount, payer, receipt presence, reimbursement state, and view/edit/delete actions.
 - **FR-004**: An authenticated user MUST be able to create an expense with required name, positive
-  amount, currency, date, and payer plus optional description and receipt. Creation MUST atomically
-  create one share for each participant. Integer remainder units MUST be assigned by participant
+  amount, currency, date, payer, and one or more selected participants plus optional description and
+  receipt. The payer MUST be selected. Creation MUST atomically create one share for each selected
+  participant. Integer remainder units MUST be assigned by participant
   order so that shares always sum exactly to the original amount.
 - **FR-005**: The system MUST mark the payer's share settled automatically, start each non-payer
   share pending, allow non-payer shares to change between pending and paid, record payment time and
@@ -230,8 +233,9 @@ remove users and another admin, and attempt to modify or remove root.
   description, payer filtering, and pending-reimbursement filtering. Filters MUST be combinable.
 - **FR-010**: The application MUST present Spanish user-facing labels and make add expense, receipt
   upload, reimbursement update, and balance checking efficient at phone widths and by keyboard.
-- **FR-011**: The system MUST seed exactly Alvaro, Camila, and Trinidad as active participants in
-  that order and link the initial household users to their respective participant when applicable.
+- **FR-011**: Every regular user MUST map one-to-one to a participant created in the same atomic
+  operation. Root and admin accounts MUST NOT map to participants. Disabling or renaming a regular
+  user MUST update future participant availability or display name without deleting history.
 - **FR-012**: Every mutation MUST validate input on the server and record applicable creator,
   updater time, payment marker, and payment time audit data.
 - **FR-013**: Expense creation and amount/payer recalculation MUST be all-or-nothing operations;
@@ -252,9 +256,8 @@ remove users and another admin, and attempt to modify or remove root.
 ### Key Entities
 
 - **Application User**: A private household login with username, display name, one hierarchical role,
-  optional participant link, password verifier, timestamps, and optional disabled state.
-- **Participant**: One of Alvaro, Camila, or Trinidad, with stable identity and ordering used for
-  split remainder assignment.
+  a required participant link for regular users only, password verifier, timestamps, and optional disabled state.
+- **Participant**: A regular user's stable expense identity and ordering used for split remainder assignment.
 - **Expense**: A named shared cost with optional description, integer amount, currency, date,
   payer, optional receipt reference and metadata, creator, timestamps, and optional deletion time.
 - **Expense Share**: One participant's exact portion of an expense, its settled/pending/paid state,
@@ -269,9 +272,9 @@ remove users and another admin, and attempt to modify or remove root.
 ### Measurable Outcomes
 
 - **SC-001**: All protected pages and operations reject unauthenticated access in automated tests,
-  while each of the three seeded users can successfully sign in with valid credentials.
-- **SC-002**: For every positive amount exercised by the test suite, three generated shares are
-  deterministic, non-negative, and sum exactly to the expense amount.
+  while managed regular users can successfully sign in with valid credentials.
+- **SC-002**: For every positive amount and selected group exercised by the test suite, generated
+  shares are deterministic, non-negative, and sum exactly to the expense amount.
 - **SC-003**: A user can record a typical expense with a phone-sized interface in under 60 seconds
   and no more than one navigation away from the dashboard.
 - **SC-004**: A reimbursement state change is visible in expense detail and dashboard pending totals
@@ -292,8 +295,8 @@ remove users and another admin, and attempt to modify or remove root.
 
 ## Assumptions
 
-- The household consists of exactly three participants for the MVP; membership management and
-  unequal splits are not required.
+- Regular-user management is participant management; each expense independently chooses any
+  non-empty subset of active participants. Unequal splits are not required.
 - CLP is the default and primary currency, amounts are entered as whole minor units, and no currency
   conversion is performed.
 - Accounts use one hierarchical `root`, `admin`, or `user` role. There is no public signup; the only
@@ -306,7 +309,7 @@ remove users and another admin, and attempt to modify or remove root.
 
 ## Out of Scope
 
-- Unequal splits, additional participants, multiple households, or participant management.
+- Unequal splits, multiple households, or participant identities independent from regular users.
 - Public registration, password reset email, email or push notifications.
 - Multi-currency conversion, bank integration, settlement optimization, or accounting exports.
 - Receipt OCR, parsing, image enhancement, and offline-first or installable application behavior.

@@ -38,6 +38,7 @@ describe("expense persistence", () => {
 				expenseDate: "2026-07-08",
 				name: "Supermercado",
 				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_alvaro", "participant_camila", "participant_trinidad"],
 			},
 			"user_alvaro",
 			bindings.database,
@@ -59,6 +60,37 @@ describe("expense persistence", () => {
 		]);
 	});
 
+	it("splits only among selected participants and keeps old shares when a user is added", async () => {
+		const result = await createExpense(
+			{
+				amountMinor: 10_000,
+				currency: "CLP",
+				expenseDate: "2026-07-08",
+				name: "Compra de dos",
+				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_alvaro", "participant_camila"],
+			},
+			"user_alvaro",
+			bindings.database,
+			NOW,
+		);
+		if (result.err) throw result.val;
+		expect(result.val.shares.map((share) => share.participant.id)).toEqual([
+			"participant_alvaro",
+			"participant_camila",
+		]);
+		expect(result.val.shares.map((share) => share.shareAmountMinor)).toEqual([5_000, 5_000]);
+
+		await bindings.database
+			.prepare(
+				"INSERT INTO participants (id, name, slug, sort_order, active, created_at, updated_at) VALUES ('participant_new', 'Nueva', 'nueva', 4, 1, ?, ?)",
+			)
+			.bind(NOW.toISOString(), NOW.toISOString())
+			.run();
+		const unchanged = await findExpenseById(result.val.id, bindings.database);
+		expect(unchanged.ok && unchanged.val?.shares).toHaveLength(2);
+	});
+
 	it("lists and reads complete active expense information newest first", async () => {
 		const older = await createExpense(
 			{
@@ -67,6 +99,7 @@ describe("expense persistence", () => {
 				expenseDate: "2026-07-01",
 				name: "Internet",
 				paidByParticipantId: "participant_camila",
+				participantIds: ["participant_alvaro", "participant_camila", "participant_trinidad"],
 			},
 			"user_alvaro",
 			bindings.database,
@@ -79,6 +112,7 @@ describe("expense persistence", () => {
 				expenseDate: "2026-07-09",
 				name: "Pan",
 				paidByParticipantId: "participant_trinidad",
+				participantIds: ["participant_alvaro", "participant_camila", "participant_trinidad"],
 			},
 			"user_alvaro",
 			bindings.database,
@@ -107,6 +141,7 @@ describe("expense persistence", () => {
 				expenseDate: "2026-07-09",
 				name: "Inválido",
 				paidByParticipantId: "participant_unknown",
+				participantIds: ["participant_alvaro", "participant_camila", "participant_trinidad"],
 			},
 			"user_alvaro",
 			bindings.database,

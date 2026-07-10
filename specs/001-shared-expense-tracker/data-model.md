@@ -1,40 +1,41 @@
 # Data Model: Shared Expense Tracker
 
-All identifiers are text UUIDs unless a fixed seed identifier is specified. Timestamps are UTC ISO
+All identifiers are text UUIDs. Timestamps are UTC ISO
 8601 text. Calendar expense dates use `YYYY-MM-DD`. Money is an integer in the currency's minor unit.
 
 ## Participant
 
-Represents a person included in every equal split.
+Represents a regular application user who can be selected for an equal split.
 
 | Field        | Type    | Rules                                           |
 | ------------ | ------- | ----------------------------------------------- |
-| `id`         | text    | Primary key; fixed seeded identifier            |
+| `id`         | text    | Primary key                                     |
 | `name`       | text    | Required; display name                          |
 | `slug`       | text    | Required; unique normalized name                |
 | `sort_order` | integer | Required; unique; controls remainder allocation |
-| `active`     | integer | `0` or `1`; defaults to `1`                     |
+| `active`     | integer | `0` or `1`; follows the linked user's state     |
 | `created_at` | text    | Required UTC timestamp                          |
 | `updated_at` | text    | Required UTC timestamp                          |
 
-Seed order is `participant_alvaro` (1), `participant_camila` (2), and
-`participant_trinidad` (3). Existing participants are not deleted in MVP flows.
+Creating a regular user atomically creates one participant. Disabling that user deactivates the
+participant for future bills, while existing participant and share rows remain for history.
 
 ## Application User
 
-Represents a private credentials login and optional participant identity.
+Represents a private credentials login. Every regular user has exactly one participant identity;
+root and admin accounts have none.
 
-| Field            | Type | Rules                                                    |
-| ---------------- | ---- | -------------------------------------------------------- |
-| `id`             | text | Primary key                                              |
-| `username`       | text | Required; unique case-insensitive normalized value       |
-| `password_hash`  | text | Required; self-describing PBKDF2 value                   |
-| `display_name`   | text | Required                                                 |
-| `participant_id` | text | Nullable foreign key to participant; unique when present |
-| `role`           | text | Required; exactly `root`, `admin`, or `user`             |
-| `created_at`     | text | Required UTC timestamp                                   |
-| `updated_at`     | text | Required UTC timestamp                                   |
-| `disabled_at`    | text | Nullable UTC timestamp                                   |
+| Field            | Type | Rules                                                   |
+| ---------------- | ---- | ------------------------------------------------------- |
+| `id`             | text | Primary key                                             |
+| `username`       | text | Required; unique case-insensitive normalized value      |
+| `password_hash`  | text | Required; self-describing PBKDF2 value                  |
+| `display_name`   | text | Required                                                |
+| `participant_id` | text | Required and unique for `user`; null for `root`/`admin` |
+| `role`           | text | Required; exactly `root`, `admin`, or `user`            |
+| `created_at`     | text | Required UTC timestamp                                  |
+| `updated_at`     | text | Required UTC timestamp                                  |
+| `disabled_at`    | text | Nullable UTC timestamp                                  |
 
 Every account has one hierarchical role. Multiple simultaneous roles are intentionally unsupported:
 `root` and `admin` already include user-management privileges, so role sets would add ambiguity
@@ -42,10 +43,9 @@ without granting useful capabilities. A partial unique index permits at most one
 triggers prevent deleting, disabling, or changing the role of that root account. Other account
 deletions set `disabled_at` so financial audit foreign keys remain intact.
 
-On a fresh database, `/setup` creates root once. The optional local seed creates `alvaro`, `camila`,
-and `trinidad` as regular users; passwords are accepted only from process environment, hashed before
-insertion, and never written to repository files. The E2E harness can explicitly promote its
-disposable Alvaro fixture to root.
+On a fresh database, `/setup` creates root once. Root or an admin creates regular users through the
+management UI; user and participant insertion is one atomic database batch. Database triggers
+enforce the role/link invariant and synchronize participant name and active state.
 
 ## Login Attempt Window
 
@@ -112,10 +112,10 @@ Payer:      settled (terminal)
 Non-payer:  pending ↔ paid
 ```
 
-- Creation sets exactly one payer share to `settled` and two non-payer shares to `pending`.
+- Creation sets exactly one payer share to `settled` and selected non-payer shares to `pending`.
 - `pending → paid` sets `paid_at`, `marked_by_user_id`, and `updated_at` together.
 - `paid → pending` clears `paid_at` and `marked_by_user_id` and updates `updated_at`.
-- Amount or payer recalculation replaces all three shares only after required confirmation.
+- Amount, payer, or participant-set recalculation replaces selected shares only after required confirmation.
 
 ## Exact split algorithm
 
@@ -124,7 +124,7 @@ Given positive integer `amount` and participants sorted ascending:
 1. `base = floor(amount / participantCount)`
 2. `remainder = amount % participantCount`
 3. Participant at zero-based position `i` receives `base + (i < remainder ? 1 : 0)`
-4. The three outputs are non-negative and sum exactly to `amount`
+4. All outputs are non-negative and sum exactly to `amount`
 
 ## Derived dashboard model
 

@@ -23,8 +23,6 @@
 		"auth:secret": "node scripts/generate-auth-secret.mjs",
 		"db:migrate:local": "wrangler d1 migrations apply expenses-db --local",
 		"db:migrate:remote": "wrangler d1 migrations apply expenses-db --remote",
-		"db:seed:local": "tsx scripts/seed-users.ts --local",
-		"db:seed:remote": "tsx scripts/seed-users.ts --remote",
 		"db:reset:local": "rm -rf .wrangler/state && pnpm db:migrate:local",
 		"deploy": "pnpm cf:build && opennextjs-cloudflare deploy",
 		"deploy:cf": "opennextjs-cloudflare deploy",

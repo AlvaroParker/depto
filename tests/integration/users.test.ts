@@ -99,12 +99,24 @@ describe("bootstrap and managed users", () => {
 			bindings.database,
 		);
 		if (admin.err || user.err) throw new Error("Could not create fixtures.");
+		expect(admin.val.participantId).toBeNull();
+		expect(user.val.participantId).not.toBeNull();
+		const participant = await bindings.database
+			.prepare("SELECT name, active FROM participants WHERE id = ?")
+			.bind(user.val.participantId)
+			.first<{ active: number; name: string }>();
+		expect(participant).toEqual({ active: 1, name: "Invitada" });
 
 		const listed = await listManagedUsers(bindings.database);
 		expect(listed.ok && listed.val.map(({ role }) => role)).toEqual(["admin", "user"]);
 
 		const disabled = await disableManagedUser(user.val.id, admin.val.id, bindings.database);
 		expect(disabled.ok && disabled.val.kind).toBe("disabled");
+		const disabledParticipant = await bindings.database
+			.prepare("SELECT active FROM participants WHERE id = ?")
+			.bind(user.val.participantId)
+			.first<{ active: number }>();
+		expect(disabledParticipant?.active).toBe(0);
 		const after = await listManagedUsers(bindings.database);
 		expect(after.ok && after.val.map(({ username }) => username)).toEqual(["admin"]);
 
@@ -144,6 +156,11 @@ describe("bootstrap and managed users", () => {
 			kind: "updated",
 			user: { displayName: "Invitada renovada", username: "invitada.nueva" },
 		});
+		const renamedParticipant = await bindings.database
+			.prepare("SELECT name FROM participants WHERE id = ?")
+			.bind(user.val.participantId)
+			.first<{ name: string }>();
+		expect(renamedParticipant?.name).toBe("Invitada renovada");
 		const afterRename = await findAppUserByUsername("invitada.nueva", bindings.database);
 		expect(
 			afterRename.ok &&

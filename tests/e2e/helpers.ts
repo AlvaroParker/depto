@@ -10,6 +10,16 @@ export async function signIn(page: Page, username = "alvaro", passwordOverride?:
 	await page.waitForURL("/");
 }
 
+export async function selectExpenseParticipants(page: Page, names: string[]): Promise<void> {
+	const participantGroup = page.getByRole("group", { name: "¿Quiénes participan?" });
+	for (const checkbox of await participantGroup.getByRole("checkbox").all()) {
+		await checkbox.uncheck();
+	}
+	for (const name of names) {
+		await participantGroup.getByRole("checkbox", { exact: true, name }).check();
+	}
+}
+
 export function uniqueName(prefix: string): string {
 	return `${prefix} ${Date.now()}-${Math.round(Math.random() * 10_000)}`;
 }

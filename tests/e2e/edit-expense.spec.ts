@@ -7,7 +7,7 @@ test("edits and deletes an expense with explicit confirmation", async ({ page })
 	const name = uniqueName("Para corregir");
 	await page.getByLabel("Nombre del gasto").fill(name);
 	await page.getByLabel("Monto (CLP)").fill("3000");
-	await page.getByLabel("¿Quién pagó?").selectOption("participant_trinidad");
+	await page.getByLabel("¿Quién pagó?").selectOption({ label: "Trinidad" });
 	await page.getByLabel("Comprobante (opcional)").setInputFiles({
 		buffer: Buffer.from("%PDF original"),
 		mimeType: "application/pdf",

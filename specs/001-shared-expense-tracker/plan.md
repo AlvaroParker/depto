@@ -33,10 +33,10 @@ desktop browsers
 **Performance Goals**: Dashboard and filtered expense list render in under one second for 1,000
 expenses under normal conditions; common mutations provide feedback within two seconds
 
-**Constraints**: Integer-only money, exactly three participants, 10 MB receipt limit, private R2,
+**Constraints**: Integer-only money, selectable bill participants, 10 MB receipt limit, private R2,
 128 MB Worker memory, Spanish-default UI, no public registration, native local bindings
 
-**Scale/Scope**: Three fixed expense participants, multiple application users, one household, up to
+**Scale/Scope**: One participant per regular application user, one household, up to
 1,000 active expenses, seven protected pages, ten application API resources, one D1 database, one R2 bucket
 
 ## Constitution Check
@@ -79,7 +79,7 @@ _GATE: Passed before research and re-checked after design._
 - `src/lib/db/` is server-only and owns all SQL. Route handlers do not inline queries.
 - Prepared statements bind every input. Database helpers return `Result` values so HTTP handlers
   map predictable failures without scattered exception handling.
-- Expense creation batches the expense plus three shares. Recalculation batches the expense update,
+- Expense creation batches the expense plus one share per selected participant. Recalculation batches the expense update,
   share deletion, and replacement shares; a paid-state preflight enforces confirmation.
 - `splitAmount()` is a pure utility that divides integer minor units and assigns remainder units in
   ascending participant order.
@@ -123,11 +123,8 @@ specs/001-shared-expense-tracker/
 ```text
 migrations/
 ├── 0001_initial.sql
-├── 0002_seed_participants.sql
-└── 0003_add_user_roles.sql
-
-scripts/
-└── seed-users.ts
+├── 0003_add_user_roles.sql
+└── 0004_link_users_and_participants.sql
 
 src/
 ├── app/
@@ -175,7 +172,7 @@ and Next.js skill conventions. Tests are separated by boundary rather than dupli
 
 ## Delivery Sequence
 
-1. Bind and migrate native D1/R2 resources; generate binding types and seed participants.
+1. Bind and migrate native D1/R2 resources and generate binding types.
 2. Bootstrap the one-time root account and manage subsequent accounts through role-gated UI/API.
 3. Add PBKDF2 and Auth.js Credentials with rate limiting and complete route protection.
 4. Implement exact splitting, database result wrappers, expense CRUD, and reimbursement updates.

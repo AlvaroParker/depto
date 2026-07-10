@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { DeleteExpenseButton } from "@/components/expenses/delete-expense-button";
 import { ExpenseForm } from "@/components/expenses/expense-form";
 import { findExpenseById } from "@/lib/db/expenses";
-import { findActiveParticipants } from "@/lib/db/participants";
+import { findParticipantsForExpense } from "@/lib/db/participants";
 
 export const metadata: Metadata = { title: "Editar gasto" };
 
@@ -12,7 +12,7 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
 	const id = (await params).id;
 	const [expense, participants] = await Promise.all([
 		findExpenseById(id),
-		findActiveParticipants(),
+		findParticipantsForExpense(id),
 	]);
 	if (expense.err || participants.err) throw new Error("Could not load expense editor.");
 	if (!expense.val) notFound();

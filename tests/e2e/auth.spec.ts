@@ -18,7 +18,7 @@ test("shows one generic failure for invalid credentials", async ({ page }) => {
 	).toBeVisible();
 });
 
-test("signs in a seeded active household user", async ({ page }) => {
+test("signs in a managed active household user", async ({ page }) => {
 	await signIn(page, "camila");
 	await expect(page.getByRole("heading", { name: /todo en orden/i })).toBeVisible();
 });

@@ -24,7 +24,7 @@ pnpm auth:secret
 
 ## Initialize local bindings
 
-Apply the schema and participant migrations to the local D1 simulation:
+Apply the schema migrations to the local D1 simulation:
 
 ```bash
 pnpm db:migrate:local
@@ -37,9 +37,9 @@ pnpm dev
 ```
 
 The first request redirects to `/setup`. Create the single root account there; it signs in
-automatically. Root can then create admins and regular users under `/settings/users`. The optional
-`pnpm db:seed:local` development helper creates the three participant-linked household accounts as
-regular users when all three `SEED_PASSWORD_*` variables are present. Root always comes from setup.
+automatically. Root can then create admins and regular users under `/settings/users`. Creating a
+regular user atomically creates the corresponding expense participant; admins and root do not get
+participant identities.
 
 ## Reset local data
 
@@ -84,5 +84,5 @@ pnpm deploy
 
 Open the deployed application immediately and complete `/setup` to create root. The endpoint closes
 after that account exists. Create all remaining admins and users from the authenticated management
-screen. Never commit `.env`, `.dev.vars`, seed password variables, uploaded receipts, or the local
+screen. Never commit `.env`, `.dev.vars`, uploaded receipts, or the local
 `.wrangler` directory.

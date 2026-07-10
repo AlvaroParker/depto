@@ -1,7 +1,6 @@
 import "server-only";
 
 import type { Result } from "ts-results";
-import { PARTICIPANT_COUNT } from "@/lib/const/participants";
 import { getDatabase } from "@/lib/db/bindings";
 import { type DbError, safeDbCall } from "@/lib/db/safe-db-call";
 import type {
@@ -56,6 +55,34 @@ interface ParticipantRow {
 	name: string;
 	slug: string;
 	sort_order: number;
+}
+
+async function findSelectedParticipants(
+	database: D1Database,
+	participantIds: string[],
+	expenseId?: string,
+): Promise<ParticipantRow[]> {
+	const placeholders = participantIds.map(() => "?").join(", ");
+	const availability = expenseId
+		? `active = 1 OR EXISTS (
+		     SELECT 1 FROM expense_shares
+		     WHERE expense_id = ? AND participant_id = participants.id
+		   )`
+		: "active = 1";
+	const bindings = expenseId ? [expenseId, ...participantIds] : participantIds;
+	const result = await database
+		.prepare(
+			`SELECT id, name, slug, sort_order
+			 FROM participants
+			 WHERE (${availability}) AND id IN (${placeholders})
+			 ORDER BY sort_order ASC`,
+		)
+		.bind(...bindings)
+		.all<ParticipantRow>();
+	if (result.results.length !== participantIds.length) {
+		throw new Error("One or more selected participants are not available.");
+	}
+	return result.results;
 }
 
 const EXPENSE_SELECT = `
@@ -159,20 +186,9 @@ export async function createExpense(
 	now: Date = new Date(),
 ): Promise<Result<ExpenseDetail, DbError>> {
 	return safeDbCall(async () => {
-		const participantResult = await database
-			.prepare(
-				`SELECT id, name, slug, sort_order
-				 FROM participants
-				 WHERE active = 1
-				 ORDER BY sort_order ASC`,
-			)
-			.all<ParticipantRow>();
-		const participants = participantResult.results;
-		if (
-			participants.length !== PARTICIPANT_COUNT ||
-			!participants.some((participant) => participant.id === input.paidByParticipantId)
-		) {
-			throw new Error("Invalid participant configuration.");
+		const participants = await findSelectedParticipants(database, input.participantIds);
+		if (!participants.some((participant) => participant.id === input.paidByParticipantId)) {
+			throw new Error("The payer must be one of the selected participants.");
 		}
 		const amounts = splitAmount(input.amountMinor, participants.length);
 		const id = createId();
@@ -308,22 +324,22 @@ export async function updateExpense(
 	return safeDbCall(async () => {
 		const existing = await findExpense(database, id);
 		if (!existing) return { kind: "not_found" };
+		const currentParticipantIds = existing.shares.map((share) => share.participant.id).sort();
+		const requestedParticipantIds = [...input.participantIds].sort();
 		const financialChange =
-			existing.amountMinor !== input.amountMinor || existing.payer.id !== input.paidByParticipantId;
+			existing.amountMinor !== input.amountMinor ||
+			existing.payer.id !== input.paidByParticipantId ||
+			currentParticipantIds.length !== requestedParticipantIds.length ||
+			currentParticipantIds.some(
+				(participantId, index) => participantId !== requestedParticipantIds[index],
+			);
 		if (financialChange) {
 			const hasPaid = existing.shares.some((share) => share.status === "paid");
 			if (hasPaid && !input.resetPaidReimbursements) return { kind: "paid_reset_required" };
-			const participantResult = await database
-				.prepare(
-					"SELECT id, name, slug, sort_order FROM participants WHERE active = 1 ORDER BY sort_order",
-				)
-				.all<ParticipantRow>();
-			const participants = participantResult.results;
-			if (
-				participants.length !== PARTICIPANT_COUNT ||
-				!participants.some((participant) => participant.id === input.paidByParticipantId)
-			)
-				throw new Error("Invalid participant configuration.");
+			const participants = await findSelectedParticipants(database, input.participantIds, id);
+			if (!participants.some((participant) => participant.id === input.paidByParticipantId)) {
+				throw new Error("The payer must be one of the selected participants.");
+			}
 			const timestamp = now.toISOString();
 			const amounts = splitAmount(input.amountMinor, participants.length);
 			const statements: D1PreparedStatement[] = [

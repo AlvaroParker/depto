@@ -1,6 +1,6 @@
 # La cuenta de la casa
 
-Aplicación privada y móvil para que Alvaro, Camila y Trinidad registren gastos compartidos, dividan cada monto exactamente, adjunten comprobantes y lleven los reembolsos al día.
+Aplicación privada y móvil para que un hogar registre gastos compartidos, elija quién participa en cada compra, divida cada monto exactamente, adjunte comprobantes y lleve los reembolsos al día.
 
 ## Stack
 
@@ -37,7 +37,7 @@ pnpm dev
 
 Abre `http://localhost:3000`. En una base nueva, la aplicación redirige a `/setup` para crear el único usuario `root`. Después, root puede crear administradores y usuarios desde **Ajustes → Administrar usuarios**. `pnpm db:reset:local` elimina solamente el estado simulado local y vuelve a aplicar migraciones.
 
-`pnpm db:seed:local` sigue disponible como ayuda de desarrollo: crea a Alvaro, Camila y Trinidad como usuarios regulares usando las variables `SEED_PASSWORD_*`. El root siempre se crea mediante el bootstrap; solamente el suite E2E promueve su fixture desechable de Alvaro a root.
+Cada cuenta creada con rol `user` genera automáticamente su participante. Las cuentas `root` y `admin` administran accesos, pero no participan en gastos.
 
 ## Comandos
 
@@ -46,7 +46,6 @@ Abre `http://localhost:3000`. En una base nueva, la aplicación redirige a `/set
 | `pnpm run init`           | Borra D1/R2 local, migra y abre preview en `0.0.0.0:3000` |
 | `pnpm dev`                | Desarrollo Next.js con bindings locales                   |
 | `pnpm db:migrate:local`   | Aplica migraciones D1 locales                             |
-| `pnpm db:seed:local`      | Crea/actualiza usuarios desde variables de entorno        |
 | `pnpm test`               | Pruebas unitarias                                         |
 | `pnpm test:integration`   | D1/R2 realistas mediante Miniflare                        |
 | `pnpm test:e2e`           | Journeys de escritorio y móvil; usa una base local limpia |
@@ -58,7 +57,7 @@ Abre `http://localhost:3000`. En una base nueva, la aplicación redirige a `/set
 | `pnpm cf:build`           | Build OpenNext para Cloudflare Workers                    |
 | `pnpm preview`            | Build OpenNext y preview en Workers local                 |
 
-El suite E2E genera claves efímeras en memoria, reinicia `.wrangler/state` y siembra usuarios automáticamente. En Arch Linux, Chromium puede requerir las bibliotecas gráficas/accesibilidad estándar del sistema.
+El suite E2E genera claves efímeras en memoria, reinicia `.wrangler/state` y crea sus usuarios mediante la API de administración. En Arch Linux, Chromium puede requerir las bibliotecas gráficas/accesibilidad estándar del sistema.
 
 `pnpm run init` es destructivo: elimina todo el estado local de Wrangler, incluidos D1 y R2. No
 afecta recursos remotos de Cloudflare.
@@ -85,6 +84,6 @@ El bucket no tiene URL pública. Todos los comprobantes se leen a través de una
 
 ## Correctitud financiera
 
-Los montos se almacenan como enteros CLP. Cada gasto crea tres partes dentro de un `D1.batch()`: base `floor(monto / 3)` y los pesos restantes se asignan en orden Alvaro, Camila, Trinidad. Por ejemplo, $10.000 queda en $3.334, $3.333 y $3.333. Cambiar monto o pagador reinicia estados pagados solamente después de confirmación explícita.
+Los montos se almacenan como enteros CLP. Cada gasto crea una parte por participante seleccionado dentro de un `D1.batch()`: base `floor(monto / cantidad)` y los pesos restantes se asignan en el orden estable de participantes. Agregar un usuario no modifica las partes de gastos anteriores. Cambiar monto, pagador o participantes reinicia estados pagados solamente después de confirmación explícita.
 
 La especificación, modelo, contrato OpenAPI y plan ejecutable están en [`specs/001-shared-expense-tracker`](specs/001-shared-expense-tracker/).
