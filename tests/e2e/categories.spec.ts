@@ -41,6 +41,6 @@ test("lets an admin create and edit an icon category, then use and filter it", a
 
 	await page.goto("/expenses");
 	await page.getByLabel("Filtrar por categoría").selectOption({ label: editedName });
-	await page.getByRole("button", { name: "Filtrar" }).click();
+	await expect(page.getByText(`Categoría: ${editedName}`, { exact: true })).toBeVisible();
 	await expect(page.getByText(expenseName, { exact: true })).toBeVisible();
 });

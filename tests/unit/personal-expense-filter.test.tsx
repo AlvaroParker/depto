@@ -1,8 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ExpenseFilters } from "@/components/expenses/expense-filters";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { ExpenseQuerySchema, type ExpenseSummary } from "@/lib/types/expense";
+
+vi.mock("next/navigation", () => ({
+	useRouter: () => ({ replace: vi.fn() }),
+}));
 
 const expense: ExpenseSummary = {
 	amountMinor: 12_000,

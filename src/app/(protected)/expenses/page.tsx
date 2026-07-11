@@ -78,6 +78,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
 			<ExpenseFilters
 				canFilterMyPending={Boolean(session.user.participantId)}
 				expenseKinds={expenseKinds.val}
+				key={[query.q, query.kind, query.payer, query.pending, query.pageSize].join("|")}
 				participants={participants.val}
 				query={query}
 			/>
