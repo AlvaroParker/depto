@@ -20,7 +20,8 @@ test("shows one generic failure for invalid credentials", async ({ page }) => {
 
 test("signs in a managed active household user", async ({ page }) => {
 	await signIn(page, "camila");
-	await expect(page.getByRole("heading", { name: /todo en orden/i })).toBeVisible();
+	await expect(page.getByRole("heading", { name: /hola, camila/i })).toBeVisible();
+	await expect(page.getByText("Tu resumen", { exact: true })).toBeVisible();
 });
 
 test("returns no household data from unauthenticated APIs", async ({ request }) => {
