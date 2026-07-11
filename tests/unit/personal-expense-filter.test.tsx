@@ -74,6 +74,39 @@ describe("personal expense filter", () => {
 		expect(markup).not.toContain("1 pendiente");
 	});
 
+	it("shows a checked personal state when the user paid or reimbursed the expense", () => {
+		const reimbursedExpense: ExpenseSummary = {
+			...expense,
+			shares: expense.shares.map((share) =>
+				share.participant.id === "participant_alvaro"
+					? { ...share, paidAt: "2026-07-10T12:00:00.000Z", status: "paid" }
+					: share,
+			),
+		};
+		const paidByUserExpense: ExpenseSummary = {
+			...expense,
+			id: "expense-paid-by-user",
+			payer: expense.shares[0].participant,
+			shares: expense.shares.map((share) =>
+				share.participant.id === "participant_alvaro"
+					? { ...share, paidToParticipantId: null, status: "settled" }
+					: share,
+			),
+		};
+
+		const reimbursedMarkup = renderToStaticMarkup(
+			<ExpenseList expenses={[reimbursedExpense]} personalParticipantId="participant_alvaro" />,
+		);
+		const payerMarkup = renderToStaticMarkup(
+			<ExpenseList expenses={[paidByUserExpense]} personalParticipantId="participant_alvaro" />,
+		);
+
+		expect(reimbursedMarkup).toContain("Tu parte pagada");
+		expect(reimbursedMarkup).not.toContain("1 pendiente");
+		expect(payerMarkup).toContain("Pagaste tú");
+		expect(payerMarkup).not.toContain("1 pendiente");
+	});
+
 	it("renders an all-clear state when no personal payments remain", () => {
 		const markup = renderToStaticMarkup(
 			<ExpenseList expenses={[]} personalParticipantId="participant_alvaro" />,
@@ -81,5 +114,18 @@ describe("personal expense filter", () => {
 
 		expect(markup).toContain("No tienes pagos pendientes");
 		expect(markup).toContain("Ver todos los gastos");
+	});
+
+	it("keeps the household empty state when personal status is used on the dashboard", () => {
+		const markup = renderToStaticMarkup(
+			<ExpenseList
+				expenses={[]}
+				personalParticipantId="participant_alvaro"
+				showPersonalEmptyState={false}
+			/>,
+		);
+
+		expect(markup).toContain("Todavía no hay gastos");
+		expect(markup).not.toContain("No tienes pagos pendientes");
 	});
 });

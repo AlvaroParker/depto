@@ -1,10 +1,14 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { PendingMatrix } from "@/components/dashboard/pending-matrix";
 import { SummaryCards } from "@/components/dashboard/summary-cards";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { getDashboardSummary } from "@/lib/db/dashboard";
 
 export default async function DashboardPage() {
+	const session = await auth();
+	if (!session?.user) redirect("/login");
 	const result = await getDashboardSummary();
 	if (result.err) throw new Error("Could not load dashboard.");
 	const dashboard = result.val;
@@ -40,7 +44,11 @@ export default async function DashboardPage() {
 							Ver todos
 						</Link>
 					</div>
-					<ExpenseList expenses={dashboard.recentExpenses} />
+					<ExpenseList
+						expenses={dashboard.recentExpenses}
+						personalParticipantId={session.user.participantId}
+						showPersonalEmptyState={false}
+					/>
 				</section>
 			</div>
 		</main>

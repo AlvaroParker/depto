@@ -9,12 +9,14 @@ import { formatExpenseDate, formatMoney } from "@/lib/util/format";
 export function ExpenseList({
 	expenses,
 	personalParticipantId,
+	showPersonalEmptyState = Boolean(personalParticipantId),
 }: {
 	expenses: ExpenseSummary[];
 	personalParticipantId?: string | null;
+	showPersonalEmptyState?: boolean;
 }) {
 	if (expenses.length === 0) {
-		if (personalParticipantId) {
+		if (showPersonalEmptyState) {
 			return (
 				<EmptyState
 					action={
@@ -52,10 +54,7 @@ export function ExpenseList({
 			{expenses.map((expense) => {
 				const pending = expense.shares.filter((share) => share.status === "pending").length;
 				const personalShare = personalParticipantId
-					? expense.shares.find(
-							(share) =>
-								share.participant.id === personalParticipantId && share.status === "pending",
-						)
+					? expense.shares.find((share) => share.participant.id === personalParticipantId)
 					: undefined;
 				return (
 					<Link
@@ -81,7 +80,7 @@ export function ExpenseList({
 							</div>
 						</div>
 						<div className="flex items-center justify-between gap-3 sm:block sm:text-right">
-							{personalShare ? (
+							{personalShare?.status === "pending" ? (
 								<div>
 									<p className="text-pending-strong flex items-center gap-1.5 text-xs font-bold tracking-wide uppercase sm:justify-end">
 										<WalletCards aria-hidden size={14} /> Debes
@@ -92,6 +91,20 @@ export function ExpenseList({
 									<p className="text-ink-faint mt-1 text-xs">
 										Total {formatMoney(expense.amountMinor, expense.currency)}
 									</p>
+								</div>
+							) : personalShare ? (
+								<div>
+									<strong className="font-display text-xl">
+										{formatMoney(expense.amountMinor, expense.currency)}
+									</strong>
+									<div className="mt-1">
+										<Badge tone="paid">
+											<CheckCircle2 aria-hidden size={13} />{" "}
+											{expense.payer.id === personalParticipantId
+												? "Pagaste tú"
+												: "Tu parte pagada"}
+										</Badge>
+									</div>
 								</div>
 							) : (
 								<div>

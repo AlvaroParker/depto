@@ -27,6 +27,10 @@ test("filters and settles the signed-in user's pending expense shares", async ({
 
 	await page.goto("/expenses?pending=mine");
 	await expect(page.getByText(expenseName, { exact: true })).not.toBeVisible();
+
+	await page.goto("/");
+	const recentExpenseCard = page.getByRole("link", { name: new RegExp(expenseName) });
+	await expect(recentExpenseCard.getByText("Tu parte pagada", { exact: true })).toBeVisible();
 });
 
 test("does not offer the personal filter to accounts without participants", async ({ page }) => {
