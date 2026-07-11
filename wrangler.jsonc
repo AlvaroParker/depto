@@ -56,8 +56,12 @@
 		"enabled": true,
 	},
 	"upload_source_maps": true,
+	"vars": {
+		"APP_BASE_URL": "https://depto.parker.ci",
+		"RESEND_FROM_EMAIL": "La cuenta <info@depto.parker.ci>",
+	},
 	"secrets": {
-		"required": ["AUTH_SECRET"],
+		"required": ["AUTH_SECRET", "RESEND_API_KEY"],
 	},
 	/**
 	 * Smart Placement
@@ -76,5 +80,4 @@
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
-	// "vars": {  "MY_VARIABLE": "production_value" }
 }

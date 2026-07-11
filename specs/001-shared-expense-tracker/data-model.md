@@ -12,6 +12,7 @@ Represents a regular application user who can be selected for an equal split.
 | `id`         | text    | Primary key                                     |
 | `name`       | text    | Required; display name                          |
 | `slug`       | text    | Required; unique normalized name                |
+| `email`      | text    | Nullable for migration; normalized and unique   |
 | `sort_order` | integer | Required; unique; controls remainder allocation |
 | `active`     | integer | `0` or `1`; follows the linked user's state     |
 | `created_at` | text    | Required UTC timestamp                          |
@@ -19,6 +20,8 @@ Represents a regular application user who can be selected for an equal split.
 
 Creating a regular user atomically creates one participant. Disabling that user deactivates the
 participant for future bills, while existing participant and share rows remain for history.
+New regular users require an email. Existing rows remain nullable so deployment does not invent
+addresses; email-less participants are skipped for notifications until an administrator updates them.
 
 ## Application User
 

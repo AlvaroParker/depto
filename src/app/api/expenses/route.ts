@@ -8,6 +8,9 @@ import {
 } from "@/lib/api/server";
 import { findExpenseKindById } from "@/lib/db/expense-kinds";
 import { createExpense, listExpenses } from "@/lib/db/expenses";
+import { getBindings } from "@/lib/db/bindings";
+import { findExpenseNotificationRecipients } from "@/lib/db/participants";
+import { sendExpenseCreatedEmails } from "@/lib/email/expense-created";
 import { ExpenseInputSchema, ExpenseQuerySchema } from "@/lib/types/expense";
 
 export async function GET(request: Request): Promise<NextResponse> {
@@ -54,5 +57,30 @@ export async function POST(request: Request) {
 	}
 	const result = await createExpense(parsed.data, session.user.id);
 	if (result.err) return databaseErrorResponse();
+
+	const recipients = await findExpenseNotificationRecipients(result.val.id);
+	if (recipients.err) {
+		console.error("Could not load expense notification recipients.", {
+			expenseId: result.val.id,
+		});
+	} else {
+		const bindings = getBindings();
+		const delivery = await sendExpenseCreatedEmails(
+			result.val,
+			recipients.val,
+			session.user.displayName,
+			{
+				apiKey: bindings.RESEND_API_KEY,
+				appBaseUrl: bindings.APP_BASE_URL || "https://depto.parker.ci",
+				from: bindings.RESEND_FROM_EMAIL || "La cuenta <info@depto.parker.ci>",
+			},
+		);
+		if (delivery.kind === "failed") {
+			console.error("Could not send expense notification emails.", {
+				expenseId: result.val.id,
+				status: delivery.status,
+			});
+		}
+	}
 	return NextResponse.json(result.val, { status: 201 });
 }

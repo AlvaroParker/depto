@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MANAGEABLE_USER_ROLES, type ManageableUserRole, type UserRole } from "@/lib/const/roles";
+import type { UserRole } from "@/lib/const/roles";
 
 export interface AppUser {
 	id: string;
@@ -23,6 +23,7 @@ export interface ManagedUser {
 	createdAt: string;
 	disabledAt: string | null;
 	displayName: string;
+	email: string | null;
 	id: string;
 	participantId: string | null;
 	role: UserRole;
@@ -47,6 +48,13 @@ const displayNameSchema = z
 	.min(1, "Ingresa un nombre.")
 	.max(80, "El nombre no puede superar los 80 caracteres.");
 
+export const emailSchema = z
+	.string()
+	.trim()
+	.toLowerCase()
+	.email("Ingresa un correo válido.")
+	.max(254, "El correo no puede superar los 254 caracteres.");
+
 export const BootstrapRootInputSchema = z
 	.object({
 		displayName: displayNameSchema,
@@ -66,19 +74,28 @@ export interface BootstrapRootInput {
 	username: string;
 }
 
-export const CreateManagedUserInputSchema = z.object({
-	displayName: displayNameSchema,
-	password: passwordSchema,
-	role: z.enum(MANAGEABLE_USER_ROLES),
-	username: usernameSchema,
-});
+export const CreateManagedUserInputSchema = z.discriminatedUnion("role", [
+	z.object({
+		displayName: displayNameSchema,
+		email: emailSchema,
+		password: passwordSchema,
+		role: z.literal("user"),
+		username: usernameSchema,
+	}),
+	z.object({
+		displayName: displayNameSchema,
+		email: z.undefined().optional(),
+		password: passwordSchema,
+		role: z.literal("admin"),
+		username: usernameSchema,
+	}),
+]);
 
-export interface CreateManagedUserInput extends z.infer<typeof CreateManagedUserInputSchema> {
-	role: ManageableUserRole;
-}
+export type CreateManagedUserInput = z.infer<typeof CreateManagedUserInputSchema>;
 
 export const UpdateManagedUserInputSchema = z.object({
 	displayName: displayNameSchema,
+	email: emailSchema,
 	password: passwordSchema.optional(),
 	username: usernameSchema,
 });

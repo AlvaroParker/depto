@@ -39,7 +39,7 @@ pnpm dev
 The first request redirects to `/setup`. Create the single root account there; it signs in
 automatically. Root can then create admins and regular users under `/settings/users`. Creating a
 regular user atomically creates the corresponding expense participant; admins and root do not get
-participant identities.
+participant identities. Regular users require a unique email for expense notifications.
 
 ## Reset local data
 
@@ -79,8 +79,14 @@ pnpm wrangler d1 create expenses-db
 pnpm wrangler r2 bucket create expenses-receipts
 pnpm db:migrate:remote
 pnpm wrangler secret put AUTH_SECRET
+pnpm wrangler secret put RESEND_API_KEY
 pnpm deploy
 ```
+
+Before deployment, verify `depto.parker.ci` as a sending domain in Resend. Wrangler provides
+`APP_BASE_URL=https://depto.parker.ci` and `La cuenta <info@depto.parker.ci>` as non-secret
+configuration; keep only the Resend API key in the secret store. Local development may leave
+`RESEND_API_KEY` empty to skip delivery.
 
 Open the deployed application immediately and complete `/setup` to create root. The endpoint closes
 after that account exists. Create all remaining admins and users from the authenticated management
@@ -97,3 +103,11 @@ screen. Never commit `.env`, `.dev.vars`, uploaded receipts, or the local
 
 Root and admin can perform the same mutations for any non-payer share. Other regular users can view
 current proof but cannot change another participant's status or attachment.
+
+## Email-notification smoke test
+
+1. Give two regular users distinct inboxes in **Ajustes → Administrar usuarios**.
+2. Create an expense that selects both participants.
+3. Confirm each inbox receives an individual message from `info@depto.parker.ci` containing that
+   participant's exact share and a working authenticated expense-detail link.
+4. Create an expense without selecting one of those participants and confirm that inbox is not addressed.

@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { Result } from "ts-results";
-import { isUserRole, type ManageableUserRole, type UserRole } from "@/lib/const/roles";
+import { isUserRole, type UserRole } from "@/lib/const/roles";
 import { getDatabase } from "@/lib/db/bindings";
 import { type DbError, safeDbCall } from "@/lib/db/safe-db-call";
 import type {
@@ -18,6 +18,7 @@ interface AppUserRow {
 	created_at: string;
 	disabled_at: string | null;
 	display_name: string;
+	participant_email: string | null;
 	id: string;
 	participant_id: string | null;
 	password_hash: string;
@@ -35,6 +36,7 @@ export type UpdateManagedUserOutcome =
 	| { kind: "not_found" }
 	| { kind: "role_protected" }
 	| { kind: "updated"; user: ManagedUser }
+	| { kind: "email_taken" }
 	| { kind: "username_taken" };
 
 const APP_USER_COLUMNS = `
@@ -46,10 +48,15 @@ const APP_USER_COLUMNS = `
 	role,
 	created_at,
 	disabled_at
+	, (SELECT email FROM participants WHERE id = app_users.participant_id) AS participant_email
 `;
 
 export function normalizeUsername(username: string): string {
 	return username.trim().toLocaleLowerCase("es-CL");
+}
+
+export function normalizeEmail(email: string): string {
+	return email.trim().toLowerCase();
 }
 
 function parseRole(role: string): UserRole {
@@ -74,6 +81,7 @@ function mapManagedUser(row: AppUserRow): ManagedUser {
 		createdAt: row.created_at,
 		disabledAt: row.disabled_at,
 		displayName: row.display_name,
+		email: row.participant_email,
 		id: row.id,
 		participantId: row.participant_id,
 		role: parseRole(row.role),
@@ -141,7 +149,7 @@ export async function listManagedUsers(
 }
 
 async function insertUser(
-	input: Pick<BootstrapRootInput, "displayName" | "password" | "username">,
+	input: Pick<BootstrapRootInput, "displayName" | "password" | "username"> & { email?: string },
 	role: UserRole,
 	database: D1Database,
 ): Promise<ManagedUser> {
@@ -156,11 +164,18 @@ async function insertUser(
 			database
 				.prepare(
 					`INSERT INTO participants
-					 (id, name, slug, sort_order, active, created_at, updated_at)
-					 SELECT ?, ?, ?, COALESCE(MAX(sort_order), 0) + 1, 0, ?, ?
+					 (id, name, slug, email, sort_order, active, created_at, updated_at)
+					 SELECT ?, ?, ?, ?, COALESCE(MAX(sort_order), 0) + 1, 0, ?, ?
 					 FROM participants`,
 				)
-				.bind(participantId, input.displayName.trim(), `user-${participantId}`, now, now),
+				.bind(
+					participantId,
+					input.displayName.trim(),
+					`user-${participantId}`,
+					input.email ? normalizeEmail(input.email) : null,
+					now,
+					now,
+				),
 		);
 	}
 	statements.push(
@@ -177,6 +192,7 @@ async function insertUser(
 		createdAt: now,
 		disabledAt: null,
 		displayName: input.displayName.trim(),
+		email: participantId && input.email ? normalizeEmail(input.email) : null,
 		id,
 		participantId,
 		role,
@@ -192,7 +208,7 @@ export async function createRootUser(
 }
 
 export async function createManagedUser(
-	input: CreateManagedUserInput & { role: ManageableUserRole },
+	input: CreateManagedUserInput,
 	database: D1Database = getDatabase(),
 ): Promise<Result<ManagedUser, DbError>> {
 	return safeDbCall(() => insertUser(input, input.role, database));
@@ -212,18 +228,34 @@ export async function updateManagedUser(
 		if (target.role !== "user") return { kind: "role_protected" };
 
 		const displayName = input.displayName.trim();
+		const email = normalizeEmail(input.email);
 		const passwordHash = input.password ? await hashPassword(input.password) : target.password_hash;
 		const username = normalizeUsername(input.username);
 		const now = new Date().toISOString();
-		const updated = await database
-			.prepare(
-				`UPDATE OR IGNORE app_users
+		const usernameOwner = await database
+			.prepare("SELECT id FROM app_users WHERE username = ? COLLATE NOCASE AND id <> ?")
+			.bind(username, id)
+			.first<{ id: string }>();
+		if (usernameOwner) return { kind: "username_taken" };
+		const emailOwner = await database
+			.prepare("SELECT id FROM participants WHERE email = ? COLLATE NOCASE AND id <> ?")
+			.bind(email, target.participant_id)
+			.first<{ id: string }>();
+		if (emailOwner) return { kind: "email_taken" };
+
+		const [updated] = await database.batch([
+			database
+				.prepare(
+					`UPDATE app_users
 				 SET username = ?, display_name = ?, password_hash = ?, updated_at = ?
 				 WHERE id = ? AND role = 'user' AND disabled_at IS NULL`,
-			)
-			.bind(username, displayName, passwordHash, now, id)
-			.run();
-		if (updated.meta.changes === 0) return { kind: "username_taken" };
+				)
+				.bind(username, displayName, passwordHash, now, id),
+			database
+				.prepare("UPDATE participants SET email = ?, updated_at = ? WHERE id = ?")
+				.bind(email, now, target.participant_id),
+		]);
+		if (updated.meta.changes === 0) return { kind: "not_found" };
 
 		return {
 			kind: "updated",
@@ -231,6 +263,7 @@ export async function updateManagedUser(
 				createdAt: target.created_at,
 				disabledAt: null,
 				displayName,
+				email,
 				id,
 				participantId: target.participant_id,
 				role: "user",

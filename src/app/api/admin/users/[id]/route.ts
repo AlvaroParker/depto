@@ -40,6 +40,9 @@ export async function PATCH(request: Request, { params }: UserRouteContext): Pro
 			{ status: 409 },
 		);
 	}
+	if (result.val.kind === "email_taken") {
+		return NextResponse.json({ message: "Ese correo ya está ocupado." }, { status: 409 });
+	}
 	return NextResponse.json<ManagedUserResponse>({ user: result.val.user });
 }
 

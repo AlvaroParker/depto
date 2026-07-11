@@ -21,13 +21,13 @@ export default async function globalSetup(): Promise<void> {
 			form: { callbackUrl: "/", csrfToken, password, username: "root-e2e" },
 		});
 		if (!signIn.ok()) throw new Error("Could not authenticate the E2E root user.");
-		for (const [username, displayName] of [
-			["alvaro", "Alvaro"],
-			["camila", "Camila"],
-			["trinidad", "Trinidad"],
+		for (const [username, displayName, email] of [
+			["alvaro", "Alvaro", "alvaro@example.com"],
+			["camila", "Camila", "camila@example.com"],
+			["trinidad", "Trinidad", "trinidad@example.com"],
 		] as const) {
 			const response = await context.post("/api/admin/users", {
-				data: { displayName, password, role: "user", username },
+				data: { displayName, email, password, role: "user", username },
 			});
 			if (!response.ok()) throw new Error(`Could not create E2E user ${username}.`);
 		}

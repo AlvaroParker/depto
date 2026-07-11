@@ -92,6 +92,7 @@ describe("bootstrap and managed users", () => {
 		const user = await createManagedUser(
 			{
 				displayName: "Invitada",
+				email: "invitada@example.com",
 				password: "clave-user-segura",
 				role: "user",
 				username: "invitada",
@@ -102,10 +103,10 @@ describe("bootstrap and managed users", () => {
 		expect(admin.val.participantId).toBeNull();
 		expect(user.val.participantId).not.toBeNull();
 		const participant = await bindings.database
-			.prepare("SELECT name, active FROM participants WHERE id = ?")
+			.prepare("SELECT name, email, active FROM participants WHERE id = ?")
 			.bind(user.val.participantId)
-			.first<{ active: number; name: string }>();
-		expect(participant).toEqual({ active: 1, name: "Invitada" });
+			.first<{ active: number; email: string; name: string }>();
+		expect(participant).toEqual({ active: 1, email: "invitada@example.com", name: "Invitada" });
 
 		const listed = await listManagedUsers(bindings.database);
 		expect(listed.ok && listed.val.map(({ role }) => role)).toEqual(["admin", "user"]);
@@ -130,6 +131,7 @@ describe("bootstrap and managed users", () => {
 		const user = await createManagedUser(
 			{
 				displayName: "Invitada original",
+				email: "original@example.com",
 				password: originalPassword,
 				role: "user",
 				username: "invitada-original",
@@ -139,6 +141,7 @@ describe("bootstrap and managed users", () => {
 		const occupied = await createManagedUser(
 			{
 				displayName: "Usuario ocupado",
+				email: "ocupado@example.com",
 				password: "clave-user-ocupada",
 				role: "user",
 				username: "ocupado",
@@ -149,7 +152,11 @@ describe("bootstrap and managed users", () => {
 
 		const renamed = await updateManagedUser(
 			user.val.id,
-			{ displayName: "  Invitada renovada  ", username: "INVITADA.NUEVA" },
+			{
+				displayName: "  Invitada renovada  ",
+				email: "RENOVADA@EXAMPLE.COM",
+				username: "INVITADA.NUEVA",
+			},
 			bindings.database,
 		);
 		expect(renamed.ok && renamed.val).toMatchObject({
@@ -157,10 +164,11 @@ describe("bootstrap and managed users", () => {
 			user: { displayName: "Invitada renovada", username: "invitada.nueva" },
 		});
 		const renamedParticipant = await bindings.database
-			.prepare("SELECT name FROM participants WHERE id = ?")
+			.prepare("SELECT name, email FROM participants WHERE id = ?")
 			.bind(user.val.participantId)
-			.first<{ name: string }>();
+			.first<{ email: string; name: string }>();
 		expect(renamedParticipant?.name).toBe("Invitada renovada");
+		expect(renamedParticipant?.email).toBe("renovada@example.com");
 		const afterRename = await findAppUserByUsername("invitada.nueva", bindings.database);
 		expect(
 			afterRename.ok &&
@@ -172,6 +180,7 @@ describe("bootstrap and managed users", () => {
 			user.val.id,
 			{
 				displayName: "Invitada renovada",
+				email: "renovada@example.com",
 				password: replacementPassword,
 				username: "invitada.nueva",
 			},
@@ -191,10 +200,29 @@ describe("bootstrap and managed users", () => {
 
 		const conflict = await updateManagedUser(
 			user.val.id,
-			{ displayName: "Invitada renovada", username: occupied.val.username },
+			{
+				displayName: "Invitada renovada",
+				email: "renovada@example.com",
+				username: occupied.val.username,
+			},
 			bindings.database,
 		);
 		expect(conflict.ok && conflict.val.kind).toBe("username_taken");
+		const emailConflict = await updateManagedUser(
+			user.val.id,
+			{
+				displayName: "Invitada renovada",
+				email: "OCUPADO@EXAMPLE.COM",
+				username: "invitada.nueva",
+			},
+			bindings.database,
+		);
+		expect(emailConflict.ok && emailConflict.val.kind).toBe("email_taken");
+		const afterConflicts = await bindings.database
+			.prepare("SELECT email FROM participants WHERE id = ?")
+			.bind(user.val.participantId)
+			.first<{ email: string }>();
+		expect(afterConflicts?.email).toBe("renovada@example.com");
 	});
 
 	it("protects root, admin, disabled, and missing accounts from profile edits", async () => {
@@ -219,6 +247,7 @@ describe("bootstrap and managed users", () => {
 		const user = await createManagedUser(
 			{
 				displayName: "Invitada",
+				email: "invitada-protegida@example.com",
 				password: "clave-user-segura",
 				role: "user",
 				username: "invitada",
@@ -230,7 +259,11 @@ describe("bootstrap and managed users", () => {
 		for (const id of [root.val.id, admin.val.id]) {
 			const result = await updateManagedUser(
 				id,
-				{ displayName: "No permitido", username: "no-permitido" },
+				{
+					displayName: "No permitido",
+					email: "no-permitido@example.com",
+					username: "no-permitido",
+				},
 				bindings.database,
 			);
 			expect(result.ok && result.val.kind).toBe("role_protected");
@@ -239,14 +272,22 @@ describe("bootstrap and managed users", () => {
 		await disableManagedUser(user.val.id, admin.val.id, bindings.database);
 		const disabled = await updateManagedUser(
 			user.val.id,
-			{ displayName: "No permitido", username: "deshabilitada" },
+			{
+				displayName: "No permitido",
+				email: "deshabilitada@example.com",
+				username: "deshabilitada",
+			},
 			bindings.database,
 		);
 		expect(disabled.ok && disabled.val.kind).toBe("not_found");
 
 		const missing = await updateManagedUser(
 			"missing-user",
-			{ displayName: "No existe", username: "no-existe" },
+			{
+				displayName: "No existe",
+				email: "no-existe@example.com",
+				username: "no-existe",
+			},
 			bindings.database,
 		);
 		expect(missing.ok && missing.val.kind).toBe("not_found");

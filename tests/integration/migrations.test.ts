@@ -110,5 +110,21 @@ describe("production user-participant migration", () => {
 			)
 			.first<{ name: string }>();
 		expect(proofTable?.name).toBe("expense_share_payment_proofs");
+
+		await applyMigrations(bindings.database, ["0007_add_participant_emails.sql"]);
+		await bindings.database
+			.prepare("UPDATE participants SET email = 'linked@example.com' WHERE id = ?")
+			.bind("linked-user-participant")
+			.run();
+		await expect(
+			bindings.database
+				.prepare("UPDATE participants SET email = 'linked@example.com' WHERE id = ?")
+				.bind("participant-user-missing-user")
+				.run(),
+		).rejects.toThrow(/unique constraint/i);
+		const legacyEmail = await bindings.database
+			.prepare("SELECT email FROM participants WHERE id = 'legacy-root-participant'")
+			.first<{ email: string | null }>();
+		expect(legacyEmail?.email).toBeNull();
 	});
 });
