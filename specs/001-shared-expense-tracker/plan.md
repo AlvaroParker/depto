@@ -19,12 +19,16 @@ Participant payment proofs reuse the private R2 binding with a separate key pref
 D1 metadata per paid share. Share owners and root/admin users manage proof and status, while all
 authenticated household users may inspect current evidence.
 
+New expense creation resolves the selected participant emails from D1 and sends isolated messages
+through Resend's batch REST API. Delivery uses an expense-scoped idempotency key and is best-effort
+after the atomic financial write, so provider availability cannot corrupt or roll back an expense.
+
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9 in strict mode, React 19.2, Next.js 16.2, Node.js 20+ for tools
 
 **Primary Dependencies**: Next.js App Router, `@opennextjs/cloudflare`, Auth.js v5 Credentials,
-Zod, `ts-results`, Tailwind CSS 4, Lucide React
+Zod, `ts-results`, Tailwind CSS 4, Lucide React, Resend REST API
 
 **Storage**: Cloudflare D1 through prepared statements and transactional `batch()`; Cloudflare R2
 through a private Worker binding; Auth.js JWT cookie sessions
@@ -43,7 +47,7 @@ expenses under normal conditions; common mutations provide feedback within two s
 **Constraints**: Integer-only money, selectable bill participants, 10 MB receipt limit, private R2,
 128 MB Worker memory, Spanish-default UI, no public registration, native local bindings
 
-**Scale/Scope**: One participant per regular application user, one household, up to
+**Scale/Scope**: One participant and notification email per regular application user, one household, up to
 1,000 active expenses, seven protected pages, ten application API resources, one D1 database, one R2 bucket
 
 ## Constitution Check
@@ -111,6 +115,17 @@ _GATE: Passed before research and re-checked after design._
   household-wide through a protected streaming route.
 - Reverting to pending deletes proof metadata before best-effort R2 cleanup. Financial share
   recalculation returns displaced keys for the route to clean up; soft deletion retains proof.
+
+### Email notifications
+
+- `participants.email` is normalized and unique; it remains nullable only as a forward-compatible
+  bridge for pre-existing household identities.
+- Expense creation remains a single D1 batch. After it commits, the route loads only selected
+  participants with emails and submits one Resend batch containing one message per recipient.
+- Messages use `La cuenta <info@depto.parker.ci>`, include each recipient's exact integer share,
+  and link to the protected expense detail on `APP_BASE_URL`.
+- `expense-created/{expenseId}` is the Resend idempotency key. Missing configuration or provider
+  failure is reported safely and never changes the `201` result for the committed expense.
 
 ### Rendering and interaction
 

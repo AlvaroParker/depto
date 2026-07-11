@@ -29,15 +29,45 @@ describe("role-based access control", () => {
 		expect(
 			UpdateManagedUserInputSchema.safeParse({
 				displayName: "Nombre actualizado",
+				email: "persona@example.com",
 				username: "usuario-actualizado",
 			}).success,
 		).toBe(true);
 		expect(
 			UpdateManagedUserInputSchema.safeParse({
 				displayName: "Nombre actualizado",
+				email: "persona@example.com",
 				password: "muy-corta",
 				username: "usuario-actualizado",
 			}).success,
 		).toBe(false);
+	});
+
+	it("requires a valid participant email only for regular-user creation", () => {
+		expect(
+			CreateManagedUserInputSchema.safeParse({
+				displayName: "Persona",
+				password: "una-clave-muy-segura",
+				role: "user",
+				username: "persona",
+			}).success,
+		).toBe(false);
+		expect(
+			CreateManagedUserInputSchema.safeParse({
+				displayName: "Persona",
+				email: "PERSONA@EXAMPLE.COM",
+				password: "una-clave-muy-segura",
+				role: "user",
+				username: "persona",
+			}).data,
+		).toMatchObject({ email: "persona@example.com" });
+		expect(
+			CreateManagedUserInputSchema.safeParse({
+				displayName: "Admin",
+				password: "una-clave-muy-segura",
+				role: "admin",
+				username: "admin-nuevo",
+			}).success,
+		).toBe(true);
 	});
 });

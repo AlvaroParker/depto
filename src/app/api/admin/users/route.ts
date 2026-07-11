@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { canManageUsers } from "@/lib/const/roles";
+import { getDatabase } from "@/lib/db/bindings";
 import {
 	databaseErrorResponse,
 	forbiddenResponse,
@@ -41,6 +42,15 @@ export async function POST(request: Request): Promise<Response> {
 
 	const created = await createManagedUser(parsed.data);
 	if (created.err) {
+		if (parsed.data.role === "user") {
+			const emailOwner = await getDatabase()
+				.prepare("SELECT 1 AS present FROM participants WHERE email = ? COLLATE NOCASE")
+				.bind(parsed.data.email)
+				.first<{ present: number }>();
+			if (emailOwner) {
+				return NextResponse.json({ message: "Ese correo ya está ocupado." }, { status: 409 });
+			}
+		}
 		const existing = await findAppUserByUsername(parsed.data.username);
 		if (existing.ok && existing.val) {
 			return NextResponse.json(

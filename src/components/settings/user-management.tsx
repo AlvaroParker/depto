@@ -1,6 +1,15 @@
 "use client";
 
-import { LockKeyhole, Pencil, Save, ShieldCheck, Trash2, UserPlus, UserRound } from "lucide-react";
+import {
+	LockKeyhole,
+	Mail,
+	Pencil,
+	Save,
+	ShieldCheck,
+	Trash2,
+	UserPlus,
+	UserRound,
+} from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import type { FormEvent } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +37,7 @@ function sortUsers(users: ManagedUser[]): ManagedUser[] {
 
 export function UserManagement({ currentUserId, initialUsers }: UserManagementProps) {
 	const [users, setUsers] = useState(initialUsers);
+	const [createRole, setCreateRole] = useState<"admin" | "user">("user");
 	const [deletingUser, setDeletingUser] = useState<ManagedUser | null>(null);
 	const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
 	const [formError, setFormError] = useState("");
@@ -49,12 +59,16 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 		setFieldErrors({});
 		setNotice("");
 		startTransition(async () => {
-			const result = await createUser({
+			const common = {
 				displayName: String(formData.get("displayName") ?? ""),
 				password: String(formData.get("password") ?? ""),
-				role: formData.get("role") === "admin" ? "admin" : "user",
 				username: String(formData.get("username") ?? ""),
-			});
+			};
+			const result = await createUser(
+				createRole === "user"
+					? { ...common, email: String(formData.get("email") ?? ""), role: "user" }
+					: { ...common, role: "admin" },
+			);
 			if (result.err) {
 				setFormError(result.val.message);
 				setFieldErrors(result.val.errors ?? {});
@@ -64,6 +78,7 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 			setNotice(`Acceso creado para ${result.val.user.displayName}.`);
 			const form = document.getElementById("create-user-form");
 			if (form instanceof HTMLFormElement) form.reset();
+			setCreateRole("user");
 		});
 	}
 
@@ -111,6 +126,7 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 		startTransition(async () => {
 			const result = await updateUser(editingUser.id, {
 				displayName: String(formData.get("displayName") ?? ""),
+				email: String(formData.get("email") ?? ""),
 				...(password ? { password } : {}),
 				username: String(formData.get("username") ?? ""),
 			});
@@ -158,10 +174,30 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 						name="username"
 						required
 					/>
-					<SelectField error={fieldErrors.role?.[0]} id="role" label="Rol" name="role" required>
+					<SelectField
+						error={fieldErrors.role?.[0]}
+						id="role"
+						label="Rol"
+						name="role"
+						onChange={(event) => setCreateRole(event.target.value === "admin" ? "admin" : "user")}
+						required
+						value={createRole}
+					>
 						<option value="user">Usuario</option>
 						<option value="admin">Administrador</option>
 					</SelectField>
+					{createRole === "user" ? (
+						<Field
+							autoCapitalize="none"
+							autoComplete="email"
+							error={fieldErrors.email?.[0]}
+							id="email"
+							label="Correo"
+							name="email"
+							required
+							type="email"
+						/>
+					) : null}
 					<Field
 						autoComplete="new-password"
 						error={fieldErrors.password?.[0]}
@@ -248,6 +284,11 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 										{isCurrent ? <span className="text-ink-faint text-xs">Tú</span> : null}
 									</div>
 									<p className="text-ink-muted mt-1 truncate text-xs">@{user.username}</p>
+									{user.role === "user" ? (
+										<p className="text-ink-muted mt-1 flex items-center gap-1.5 truncate text-xs">
+											<Mail aria-hidden size={13} /> {user.email ?? "Correo pendiente"}
+										</p>
+									) : null}
 								</div>
 								<div className="border-line col-span-2 flex w-full shrink-0 items-center justify-end gap-1 border-t pt-2 sm:w-auto sm:border-0 sm:pt-0">
 									{user.role === "user" ? (
@@ -335,6 +376,17 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 							label="Usuario"
 							name="username"
 							required
+						/>
+						<Field
+							autoCapitalize="none"
+							autoComplete="email"
+							defaultValue={editingUser.email ?? ""}
+							error={editFieldErrors.email?.[0]}
+							id="edit-email"
+							label="Correo"
+							name="email"
+							required
+							type="email"
 						/>
 						<Field
 							autoComplete="new-password"

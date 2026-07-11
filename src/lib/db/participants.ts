@@ -12,6 +12,13 @@ interface ParticipantRow {
 	sort_order: number;
 }
 
+export interface ExpenseNotificationRecipient {
+	email: string;
+	name: string;
+	participantId: string;
+	shareAmountMinor: number;
+}
+
 function mapParticipant(row: ParticipantRow): Participant {
 	return { id: row.id, name: row.name, slug: row.slug, sortOrder: row.sort_order };
 }
@@ -67,5 +74,34 @@ export async function findParticipantsForExpense(
 			.bind(expenseId)
 			.all<ParticipantRow>();
 		return result.results.map(mapParticipant);
+	});
+}
+
+export async function findExpenseNotificationRecipients(
+	expenseId: string,
+	database: D1Database = getDatabase(),
+): Promise<Result<ExpenseNotificationRecipient[], DbError>> {
+	return safeDbCall(async () => {
+		const result = await database
+			.prepare(
+				`SELECT p.id AS participant_id, p.name, p.email, s.share_amount_minor
+				 FROM expense_shares s
+				 JOIN participants p ON p.id = s.participant_id
+				 WHERE s.expense_id = ? AND p.email IS NOT NULL
+				 ORDER BY p.sort_order ASC`,
+			)
+			.bind(expenseId)
+			.all<{
+				email: string;
+				name: string;
+				participant_id: string;
+				share_amount_minor: number;
+			}>();
+		return result.results.map((row) => ({
+			email: row.email,
+			name: row.name,
+			participantId: row.participant_id,
+			shareAmountMinor: row.share_amount_minor,
+		}));
 	});
 }

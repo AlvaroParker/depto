@@ -29,6 +29,9 @@ test("lets root and admin update regular-user names, usernames, and passwords", 
 	const adminEditedUsername = `admin-edit-${suffix}`;
 	const rootEditedDisplayName = `Usuario renovado por root ${suffix}`;
 	const adminEditedDisplayName = `Usuario renovado por admin ${suffix}`;
+	const originalEmail = `editable-${suffix}@example.com`;
+	const rootEditedEmail = `root-edit-${suffix}@example.com`;
+	const adminEditedEmail = `admin-edit-${suffix}@example.com`;
 	const password = process.env.E2E_PASSWORD;
 	if (!password) throw new Error("E2E_PASSWORD was not configured.");
 	const rootEditedPassword = `${password}-root`;
@@ -43,6 +46,7 @@ test("lets root and admin update regular-user names, usernames, and passwords", 
 		await page.getByLabel("Nombre").fill(name);
 		await page.getByLabel("Usuario", { exact: true }).fill(username);
 		await page.getByLabel("Rol", { exact: true }).selectOption(role);
+		if (role === "user") await page.getByLabel("Correo", { exact: true }).fill(originalEmail);
 		await page.getByLabel("Contraseña inicial").fill(password);
 		await page.getByRole("button", { name: "Crear acceso" }).click();
 		await expect(page.getByText(`@${username}`, { exact: true })).toBeVisible();
@@ -55,6 +59,7 @@ test("lets root and admin update regular-user names, usernames, and passwords", 
 	const rootEditDialog = page.getByRole("dialog", { name: "Editar acceso" });
 	await rootEditDialog.getByLabel("Nombre visible").fill(rootEditedDisplayName);
 	await rootEditDialog.getByLabel("Usuario", { exact: true }).fill(rootEditedUsername);
+	await rootEditDialog.getByLabel("Correo", { exact: true }).fill(rootEditedEmail);
 	await rootEditDialog.getByLabel("Nueva contraseña").fill(rootEditedPassword);
 	await rootEditDialog.getByRole("button", { name: "Guardar cambios" }).click();
 	await expect(rootEditDialog).not.toBeVisible();
@@ -69,7 +74,11 @@ test("lets root and admin update regular-user names, usernames, and passwords", 
 		if (!root) throw new Error("Root fixture was not found.");
 		return (
 			await fetch(`/api/admin/users/${root.id}`, {
-				body: JSON.stringify({ displayName: "Root editado", username: "root-editado" }),
+				body: JSON.stringify({
+					displayName: "Root editado",
+					email: "root@example.com",
+					username: "root-editado",
+				}),
 				headers: { "content-type": "application/json" },
 				method: "PATCH",
 			})
@@ -86,6 +95,7 @@ test("lets root and admin update regular-user names, usernames, and passwords", 
 	const adminEditDialog = page.getByRole("dialog", { name: "Editar acceso" });
 	await adminEditDialog.getByLabel("Nombre visible").fill(adminEditedDisplayName);
 	await adminEditDialog.getByLabel("Usuario", { exact: true }).fill(adminEditedUsername);
+	await adminEditDialog.getByLabel("Correo", { exact: true }).fill(adminEditedEmail);
 	await adminEditDialog.getByLabel("Nueva contraseña").fill(adminEditedPassword);
 	await adminEditDialog.getByRole("button", { name: "Guardar cambios" }).click();
 	await expect(adminEditDialog).not.toBeVisible();
@@ -126,6 +136,9 @@ test("lets an admin create users and other admins while protecting root", async 
 		await page.getByLabel("Nombre").fill(name);
 		await page.getByLabel("Usuario", { exact: true }).fill(username);
 		await page.getByLabel("Rol", { exact: true }).selectOption(role);
+		if (role === "user") {
+			await page.getByLabel("Correo", { exact: true }).fill(`${username}@example.com`);
+		}
 		await page.getByLabel("Contraseña inicial").fill(password);
 		await page.getByRole("button", { name: "Crear acceso" }).click();
 		await expect(page.getByText(`@${username}`, { exact: true })).toBeVisible();

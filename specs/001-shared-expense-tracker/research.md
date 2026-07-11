@@ -139,3 +139,20 @@ Reusing the established streaming and compensating-cleanup pattern keeps Worker 
 - Multipart status plus file upload: rejected because it buffers parsing and duplicates the existing
   raw-body R2 transport.
 - Multiple immutable submissions: rejected because the product requires one current proof only.
+
+## Expense-created email notifications
+
+**Decision**: Call Resend's HTTPS batch endpoint directly from the Worker after expense creation,
+with one message per selected participant and `expense-created/{expenseId}` as the idempotency key.
+
+**Rationale**: The batch API accepts up to 100 independent messages, keeping recipient addresses
+isolated while using one request. Resend supports Cloudflare Workers and honors idempotency keys for
+24 hours. A direct fetch avoids an unnecessary runtime dependency.
+
+**Failure semantics**: D1 expense/share creation commits first. Missing email configuration,
+email-less migrated participants, or provider failure skips/fails notification without rolling back
+the financial record. Logs include only expense ID and provider status, never keys or addresses.
+
+**Sources**: [Send batch emails](https://resend.com/docs/api-reference/emails/send-batch-emails),
+[Idempotency keys](https://resend.com/docs/dashboard/emails/idempotency-keys),
+[Cloudflare Workers](https://resend.com/docs/knowledge-base/cloudflare)

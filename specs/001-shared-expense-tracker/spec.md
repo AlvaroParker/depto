@@ -217,6 +217,24 @@ icon in list and detail views, filter history by it, and verify a regular user c
 5. **Given** categorized expenses, **When** a category filter is combined with other history filters,
    **Then** only matching non-deleted expenses are returned with stable pagination and ordering.
 
+### User Story 9 - Notify participants about a new expense (Priority: P2)
+
+As a selected participant, I receive an email when a household expense is created so that I know
+the expense, payer, and exact amount assigned to me without repeatedly checking the application.
+
+**Independent Test**: Create an expense with participants that have distinct emails, capture the
+Resend batch request, and verify one private message per selected participant with the exact share.
+
+**Acceptance Scenarios**:
+
+1. **Given** selected participants with configured emails, **When** an expense is created, **Then**
+   each receives an individual message from `info@depto.parker.ci` with the expense total, payer,
+   date, their exact share, and an authenticated detail link.
+2. **Given** a participant not selected for the expense, **When** it is created, **Then** no message
+   is addressed to that participant.
+3. **Given** Resend is unavailable or unconfigured, **When** expense creation succeeds, **Then** the
+   financial record remains committed and the notification failure is logged without exposing secrets.
+
 ### Edge Cases
 
 - Amounts smaller than the selected participant count still produce non-negative shares whose sum is exact.
@@ -237,6 +255,9 @@ icon in list and detail views, filter history by it, and verify a regular user c
 - Updating a regular user to an occupied username is rejected without changing any credentials.
 - Category names are unique case-insensitively, and arbitrary icon names are rejected.
 - Renaming a category updates its display on historical expenses without changing financial state.
+- Participant emails are unique case-insensitively; migrated participants without an email remain
+  usable but are skipped until an administrator adds one.
+- Retrying delivery for the same expense does not create duplicate email batches.
 
 ## Requirements _(mandatory)_
 
@@ -315,12 +336,21 @@ icon in list and detail views, filter history by it, and verify a regular user c
 - **FR-025**: Reverting a paid share to pending MUST remove its current proof. Confirmed financial
   recalculation MUST remove proofs for replaced shares, while soft-deleted expenses retain proofs
   privately for audit.
+- **FR-026**: Every newly created regular user MUST supply one normalized, unique email stored on
+  its one-to-one participant; root and admin accounts MUST NOT own participant email identities.
+- **FR-027**: After a successful expense creation, the system MUST send one private notification to
+  every selected participant with a configured email. Each message MUST identify the expense,
+  creator, payer, date, total, recipient's exact share, and authenticated detail link, using
+  `info@depto.parker.ci` as the sender address.
+- **FR-028**: Email delivery MUST use an idempotent Resend batch request. Provider failure MUST NOT
+  roll back or hide the committed financial record, and logs MUST NOT contain API keys or recipient data.
 
 ### Key Entities
 
 - **Application User**: A private household login with username, display name, one hierarchical role,
   a required participant link for regular users only, password verifier, timestamps, and optional disabled state.
-- **Participant**: A regular user's stable expense identity and ordering used for split remainder assignment.
+- **Participant**: A regular user's stable expense identity, unique notification email, and ordering
+  used for split remainder assignment.
 - **Expense**: A named shared cost with optional description, integer amount, currency, date,
   required category, payer, optional receipt reference and metadata, creator, timestamps, and
   optional deletion time.
@@ -363,6 +393,9 @@ icon in list and detail views, filter history by it, and verify a regular user c
 - **SC-011**: Automated tests prove owner/admin payment-proof authorization, all supported image
   formats at the 10 MB boundary, private authenticated reads, replacement, reversion cleanup, and
   successful paid transitions without proof.
+- **SC-012**: Automated tests prove selected participants receive isolated messages containing
+  their exact shares, non-selected or email-less participants receive none, and provider failure
+  leaves the successfully created expense intact.
 
 ## Assumptions
 
@@ -377,12 +410,11 @@ icon in list and detail views, filter history by it, and verify a regular user c
   specified; they are not exposed through normal user flows.
 - Payment proofs are optional evidence tied to the stored share amount. They are not parsed, OCRed,
   amount-verified, or subject to a separate payer approval state.
-- The household has ordinary internet connectivity; offline entry, installation, and notifications
-  are future enhancements.
+- The household has ordinary internet connectivity; offline entry and installation are future enhancements.
 
 ## Out of Scope
 
 - Unequal splits, multiple households, or participant identities independent from regular users.
-- Public registration, password reset email, email or push notifications.
+- Public registration, password reset email, or push notifications.
 - Multi-currency conversion, bank integration, settlement optimization, or accounting exports.
 - Receipt OCR, parsing, image enhancement, and offline-first or installable application behavior.

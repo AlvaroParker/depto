@@ -9,6 +9,7 @@ Aplicación privada y móvil para que un hogar registre gastos compartidos, elij
 - RBAC con roles `root`, `admin` y `user`
 - Cloudflare D1 para usuarios, gastos, partes y estados
 - Cloudflare R2 privado para JPG, PNG, WebP y PDF de hasta 10 MB
+- Resend para avisar por correo a quienes participan en un gasto nuevo
 - OpenNext para ejecutar Next.js en Cloudflare Workers
 - Vitest + Miniflare y Playwright
 
@@ -37,7 +38,9 @@ pnpm dev
 
 Abre `http://localhost:3000`. En una base nueva, la aplicación redirige a `/setup` para crear el único usuario `root`. Después, root puede crear administradores y usuarios desde **Ajustes → Administrar usuarios**. `pnpm db:reset:local` elimina solamente el estado simulado local y vuelve a aplicar migraciones.
 
-Cada cuenta creada con rol `user` genera automáticamente su participante. Las cuentas `root` y `admin` administran accesos, pero no participan en gastos.
+Cada cuenta creada con rol `user` requiere un correo y genera automáticamente su participante. Las
+cuentas `root` y `admin` administran accesos, pero no participan en gastos. Si `RESEND_API_KEY` está
+vacío en desarrollo, el gasto se crea normalmente y el envío se omite.
 
 ## Comandos
 
@@ -66,10 +69,11 @@ afecta recursos remotos de Cloudflare.
 
 1. Crea una base D1 y un bucket R2 privados en Cloudflare.
 2. Reemplaza solamente para tu entorno los identificadores de ejemplo en `wrangler.jsonc`; no confirmes identificadores de producción.
-3. Configura `AUTH_SECRET` con `wrangler secret put AUTH_SECRET`.
-4. Ejecuta `pnpm db:migrate:remote`.
-5. Valida con `pnpm preview` y despliega con `pnpm deploy`.
-6. Abre el despliegue inmediatamente y completa `/setup` para crear el usuario root.
+3. Verifica `depto.parker.ci` como dominio remitente en Resend.
+4. Configura `AUTH_SECRET` y `RESEND_API_KEY` con `wrangler secret put NOMBRE_DEL_SECRETO`.
+5. Ejecuta `pnpm db:migrate:remote`.
+6. Valida con `pnpm preview` y despliega con `pnpm deploy`.
+7. Abre el despliegue inmediatamente y completa `/setup` para crear el usuario root.
 
 ## Roles y administración
 
@@ -77,6 +81,10 @@ afecta recursos remotos de Cloudflare.
 - `admin`: puede crear y eliminar otros administradores y usuarios regulares, y actualizar el
   nombre visible, usuario y contraseña de las cuentas con rol `user`.
 - `user`: usa los flujos de gastos, comprobantes y reembolsos, sin administrar accesos.
+
+Al crear un gasto, cada participante seleccionado que tenga correo recibe un mensaje individual de
+`info@depto.parker.ci` con el total, pagador, fecha, su parte exacta y el enlace privado al detalle.
+Una falla temporal de Resend no revierte el gasto ya guardado.
 
 Cada cuenta tiene un solo rol jerárquico. Combinar roles no agrega permisos y haría ambiguas las garantías del único root. “Eliminar” una cuenta desactiva su acceso y conserva sus referencias históricas para auditoría.
 

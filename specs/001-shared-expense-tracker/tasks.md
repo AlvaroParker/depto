@@ -342,3 +342,15 @@ receipts, edit/delete, dashboard/UI, tests, and documentation.
 - [x] T094 [US3] Build the mobile payment dialog, protected proof viewer, replacement, and revert confirmation in `src/components/expenses/` and the expense detail route
 - [x] T095 Reconcile payment-proof specification, data model, research, OpenAPI, and operational documentation in `specs/001-shared-expense-tracker/`
 - [x] T096 Run formatting, lint, typecheck, unit/integration/browser tests, Next.js build, and OpenNext Cloudflare build
+
+## Expense email-notification extension
+
+- [x] T097 [P] [US9] Specify participant email ownership, delivery semantics, Resend decisions, and API contracts in `specs/001-shared-expense-tracker/`
+- [x] T098 [P] [US9] Add email schema, Resend request, failure, recipient-isolation, and exact-share tests in `tests/unit/` and `tests/integration/`
+- [x] T099 [US9] Add nullable normalized unique participant email storage in `migrations/0007_add_participant_emails.sql` and the Miniflare fixture
+- [x] T100 [US9] Require and persist email for regular-user create/edit flows in `src/lib/types/user.ts`, `src/lib/db/users.ts`, and management API routes
+- [x] T101 [US9] Extend the established account-management interface with conditional email fields and legacy missing-email state in `src/components/settings/user-management.tsx`
+- [x] T102 [US9] Implement selected-recipient lookup and idempotent Resend batch messages in `src/lib/db/participants.ts` and `src/lib/email/expense-created.ts`
+- [x] T103 [US9] Trigger best-effort participant notifications after committed expense creation in `src/app/api/expenses/route.ts`
+- [x] T104 Configure Resend secrets, sender, application URL, generated binding types, and deployment guidance in `wrangler.jsonc`, `.dev.vars.example`, `README.md`, and `quickstart.md`
+- [x] T105 Run formatting, lint, typecheck, unit/integration/browser tests, Next.js build, and OpenNext Cloudflare build
