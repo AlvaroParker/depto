@@ -63,10 +63,12 @@ describe("1,000 expense query performance", () => {
 		const list = await listExpenses({ page: 1, pageSize: 25 }, { database: bindings.database });
 		const listDuration = performance.now() - listStarted;
 		const dashboardStarted = performance.now();
-		const dashboard = await getDashboardSummary(bindings.database);
+		const dashboard = await getDashboardSummary({ database: bindings.database });
 		const dashboardDuration = performance.now() - dashboardStarted;
 		expect(list.ok && list.val.total).toBe(1_000);
-		expect(dashboard.ok && dashboard.val.expenseCount).toBe(1_000);
+		expect(dashboard.ok && dashboard.val.view === "household" && dashboard.val.expenseCount).toBe(
+			1_000,
+		);
 		expect(listDuration).toBeLessThan(1_000);
 		expect(dashboardDuration).toBeLessThan(1_000);
 	});

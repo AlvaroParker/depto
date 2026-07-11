@@ -59,9 +59,10 @@ describe("dashboard aggregates", () => {
 		if (first.err || second.err) throw new Error("fixture failed");
 		await updateShareStatus(first.val.shares[1].id, "paid", "user_alvaro", bindings.database, NOW);
 
-		const result = await getDashboardSummary(bindings.database);
+		const result = await getDashboardSummary({ database: bindings.database });
 		expect(result.ok).toBe(true);
 		if (result.err) return;
+		if (result.val.view !== "household") throw new Error("expected household dashboard");
 		expect(result.val).toMatchObject({
 			expenseCount: 2,
 			pendingTotalMinor: 7_000,
@@ -118,9 +119,10 @@ describe("dashboard aggregates", () => {
 			NOW,
 		);
 
-		const result = await getDashboardSummary(bindings.database);
+		const result = await getDashboardSummary({ database: bindings.database });
 		expect(result.ok).toBe(true);
 		if (result.err) return;
+		if (result.val.view !== "household") throw new Error("expected household dashboard");
 		expect(
 			result.val.balances.map((balance) => [balance.participant.name, balance.netBalanceMinor]),
 		).toEqual([
@@ -128,5 +130,147 @@ describe("dashboard aggregates", () => {
 			["Camila", 5_000],
 			["Trinidad", -5_000],
 		]);
+	});
+
+	it("calculates a participant's cash spend, final share, debts, and recent expenses", async () => {
+		const paidByAlvaro = await createExpense(
+			{
+				amountMinor: 9_000,
+				currency: "CLP",
+				kindId: "kind-other",
+				expenseDate: "2026-07-08",
+				name: "Gas personal",
+				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_alvaro", "participant_camila", "participant_trinidad"],
+			},
+			"user_alvaro",
+			bindings.database,
+			NOW,
+		);
+		const paidByCamila = await createExpense(
+			{
+				amountMinor: 6_000,
+				currency: "CLP",
+				kindId: "kind-other",
+				expenseDate: "2026-07-09",
+				name: "Agua personal",
+				paidByParticipantId: "participant_camila",
+				participantIds: ["participant_alvaro", "participant_camila", "participant_trinidad"],
+			},
+			"user_alvaro",
+			bindings.database,
+			new Date(NOW.getTime() + 1_000),
+		);
+		const unrelated = await createExpense(
+			{
+				amountMinor: 5_000,
+				currency: "CLP",
+				kindId: "kind-other",
+				expenseDate: "2026-07-10",
+				name: "Gasto ajeno",
+				paidByParticipantId: "participant_camila",
+				participantIds: ["participant_camila"],
+			},
+			"user_alvaro",
+			bindings.database,
+			new Date(NOW.getTime() + 2_000),
+		);
+		if (paidByAlvaro.err || paidByCamila.err || unrelated.err) throw new Error("fixture failed");
+
+		await updateShareStatus(
+			paidByAlvaro.val.shares[1].id,
+			"paid",
+			"user_alvaro",
+			bindings.database,
+			NOW,
+		);
+		const initial = await getDashboardSummary({
+			currentParticipantId: "participant_alvaro",
+			database: bindings.database,
+		});
+		expect(initial.ok).toBe(true);
+		if (initial.err || initial.val.view !== "personal") return;
+		expect(initial.val).toMatchObject({
+			amountDueToMeMinor: 3_000,
+			amountOwedMinor: 2_000,
+			dueToMeExpenseCount: 1,
+			expectedSpendMinor: 5_000,
+			owedExpenseCount: 1,
+			spentSoFarMinor: 6_000,
+		});
+		expect(initial.val.recentExpenses.map((expense) => expense.name)).toEqual([
+			"Agua personal",
+			"Gas personal",
+		]);
+		expect(
+			initial.val.debtsByParticipant.map((debt) => [
+				debt.participant.name,
+				debt.amountOwedMinor,
+				debt.amountDueToMeMinor,
+			]),
+		).toEqual([
+			["Trinidad", 0, 3_000],
+			["Camila", 2_000, 0],
+		]);
+
+		await updateShareStatus(
+			paidByCamila.val.shares[0].id,
+			"paid",
+			"user_alvaro",
+			bindings.database,
+			NOW,
+		);
+		const afterPayment = await getDashboardSummary({
+			currentParticipantId: "participant_alvaro",
+			database: bindings.database,
+		});
+		expect(afterPayment.ok).toBe(true);
+		if (afterPayment.err || afterPayment.val.view !== "personal") return;
+		expect(afterPayment.val).toMatchObject({
+			amountOwedMinor: 0,
+			expectedSpendMinor: 5_000,
+			owedExpenseCount: 0,
+			spentSoFarMinor: 8_000,
+		});
+		expect(afterPayment.val.debtsByParticipant.map((debt) => debt.participant.name)).toEqual([
+			"Trinidad",
+		]);
+
+		await bindings.database
+			.prepare("UPDATE expenses SET deleted_at = ? WHERE id = ?")
+			.bind(NOW.toISOString(), paidByCamila.val.id)
+			.run();
+		const afterDeletion = await getDashboardSummary({
+			currentParticipantId: "participant_alvaro",
+			database: bindings.database,
+		});
+		expect(afterDeletion.ok).toBe(true);
+		if (afterDeletion.err || afterDeletion.val.view !== "personal") return;
+		expect(afterDeletion.val).toMatchObject({
+			expectedSpendMinor: 3_000,
+			spentSoFarMinor: 6_000,
+		});
+		expect(afterDeletion.val.recentExpenses.map((expense) => expense.name)).toEqual([
+			"Gas personal",
+		]);
+	});
+
+	it("returns zero personal totals when the participant has no expenses", async () => {
+		const result = await getDashboardSummary({
+			currentParticipantId: "participant_alvaro",
+			database: bindings.database,
+		});
+		expect(result.ok).toBe(true);
+		if (result.err || result.val.view !== "personal") return;
+		expect(result.val).toMatchObject({
+			amountDueToMeMinor: 0,
+			amountOwedMinor: 0,
+			dueToMeExpenseCount: 0,
+			expectedSpendMinor: 0,
+			owedExpenseCount: 0,
+			spentSoFarMinor: 0,
+		});
+		expect(result.val.recentExpenses).toEqual([]);
+		expect(result.val.debtsByParticipant).toEqual([]);
 	});
 });
