@@ -5,7 +5,7 @@ import { getDatabase } from "@/lib/db/bindings";
 import { type DbError, safeDbCall } from "@/lib/db/safe-db-call";
 import type {
 	ExpenseDetail,
-	ExpenseInput,
+	ExpenseCreateInput,
 	ExpensePage,
 	ExpensePatch,
 	ExpenseQuery,
@@ -223,7 +223,7 @@ async function findExpense(database: D1Database, id: string): Promise<ExpenseDet
 }
 
 export async function createExpense(
-	input: ExpenseInput,
+	input: ExpenseCreateInput,
 	createdByUserId: string,
 	database: D1Database = getDatabase(),
 	now: Date = new Date(),
@@ -232,6 +232,17 @@ export async function createExpense(
 		const participants = await findSelectedParticipants(database, input.participantIds);
 		if (!participants.some((participant) => participant.id === input.paidByParticipantId)) {
 			throw new Error("The payer must be one of the selected participants.");
+		}
+		const initialPaidParticipantIds = input.initialPaidParticipantIds ?? [];
+		const initialPaidParticipantIdSet = new Set(initialPaidParticipantIds);
+		if (
+			initialPaidParticipantIdSet.size !== initialPaidParticipantIds.length ||
+			initialPaidParticipantIds.includes(input.paidByParticipantId) ||
+			initialPaidParticipantIds.some(
+				(participantId) => !input.participantIds.includes(participantId),
+			)
+		) {
+			throw new Error("Initial paid participants must be unique selected non-payers.");
 		}
 		const amounts = splitAmount(input.amountMinor, participants.length);
 		const id = createId();
@@ -260,21 +271,24 @@ export async function createExpense(
 		];
 		participants.forEach((participant, index) => {
 			const isPayer = participant.id === input.paidByParticipantId;
+			const isInitiallyPaid = initialPaidParticipantIdSet.has(participant.id);
 			statements.push(
 				database
 					.prepare(
 						`INSERT INTO expense_shares
 						 (id, expense_id, participant_id, share_amount_minor, status,
 						  paid_to_participant_id, paid_at, marked_by_user_id, created_at, updated_at)
-						 VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
+						 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 					)
 					.bind(
 						createId(),
 						id,
 						participant.id,
 						amounts[index],
-						isPayer ? "settled" : "pending",
+						isPayer ? "settled" : isInitiallyPaid ? "paid" : "pending",
 						isPayer ? null : input.paidByParticipantId,
+						isInitiallyPaid ? timestamp : null,
+						isInitiallyPaid ? createdByUserId : null,
 						timestamp,
 						timestamp,
 					),

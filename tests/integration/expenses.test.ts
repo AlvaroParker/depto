@@ -61,6 +61,77 @@ describe("expense persistence", () => {
 		]);
 	});
 
+	it("creates selected non-payer shares as already paid with creator audit data", async () => {
+		const result = await createExpense(
+			{
+				amountMinor: 10_000,
+				currency: "CLP",
+				expenseDate: "2026-07-08",
+				initialPaidParticipantIds: ["participant_camila", "participant_trinidad"],
+				kindId: "kind-other",
+				name: "Supermercado reembolsado",
+				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_alvaro", "participant_camila", "participant_trinidad"],
+			},
+			"user_alvaro",
+			bindings.database,
+			NOW,
+		);
+
+		expect(result.ok).toBe(true);
+		if (result.err) return;
+		expect(result.val.shares).toMatchObject([
+			{
+				markedByUserId: null,
+				paidAt: null,
+				paidToParticipantId: null,
+				status: "settled",
+			},
+			{
+				markedByUserId: "user_alvaro",
+				paidAt: NOW.toISOString(),
+				paidToParticipantId: "participant_alvaro",
+				paymentProof: null,
+				status: "paid",
+			},
+			{
+				markedByUserId: "user_alvaro",
+				paidAt: NOW.toISOString(),
+				paidToParticipantId: "participant_alvaro",
+				paymentProof: null,
+				status: "paid",
+			},
+		]);
+	});
+
+	it("writes nothing for an invalid initial paid selection", async () => {
+		const result = await createExpense(
+			{
+				amountMinor: 1_000,
+				currency: "CLP",
+				expenseDate: "2026-07-09",
+				initialPaidParticipantIds: ["participant_unknown"],
+				kindId: "kind-other",
+				name: "Inválido",
+				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_alvaro", "participant_camila"],
+			},
+			"user_alvaro",
+			bindings.database,
+			NOW,
+		);
+
+		expect(result.err).toBe(true);
+		const expenseCount = await bindings.database
+			.prepare("SELECT COUNT(*) AS count FROM expenses")
+			.first<{ count: number }>();
+		const shareCount = await bindings.database
+			.prepare("SELECT COUNT(*) AS count FROM expense_shares")
+			.first<{ count: number }>();
+		expect(expenseCount?.count).toBe(0);
+		expect(shareCount?.count).toBe(0);
+	});
+
 	it("splits only among selected participants and keeps old shares when a user is added", async () => {
 		const result = await createExpense(
 			{

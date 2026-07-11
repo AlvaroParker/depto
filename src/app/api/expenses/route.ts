@@ -11,7 +11,7 @@ import { createExpense, listExpenses } from "@/lib/db/expenses";
 import { getBindings } from "@/lib/db/bindings";
 import { findExpenseNotificationRecipients } from "@/lib/db/participants";
 import { sendExpenseCreatedEmails } from "@/lib/email/expense-created";
-import { ExpenseInputSchema, ExpenseQuerySchema } from "@/lib/types/expense";
+import { ExpenseCreateInputSchema, ExpenseQuerySchema } from "@/lib/types/expense";
 
 export async function GET(request: Request): Promise<NextResponse> {
 	const session = await auth();
@@ -29,7 +29,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 	return NextResponse.json(result.val);
 }
 
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<NextResponse> {
 	const session = await auth();
 	if (!session?.user) return unauthorizedResponse();
 	let body: unknown;
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 			{ status: 400 },
 		);
 	}
-	const parsed = ExpenseInputSchema.safeParse(body);
+	const parsed = ExpenseCreateInputSchema.safeParse(body);
 	if (!parsed.success) return validationErrorResponse(parsed.error);
 	const expenseKind = await findExpenseKindById(parsed.data.kindId);
 	if (expenseKind.err) return databaseErrorResponse();

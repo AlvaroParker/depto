@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Check, Save, UsersRound } from "lucide-react";
+import { BadgeCheck, CalendarDays, Check, Save, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ export function ExpenseForm({
 		: participants.map((participant) => participant.id);
 	const [participantIds, setParticipantIds] = useState(initialParticipantIds);
 	const [payerId, setPayerId] = useState(expense?.payer.id ?? "");
+	const [initialPaidParticipantIds, setInitialPaidParticipantIds] = useState<string[]>([]);
 	const [kindId, setKindId] = useState(
 		expense?.kind.id ??
 			expenseKinds.find((kind) => kind.id === DEFAULT_EXPENSE_KIND_ID)?.id ??
@@ -44,6 +45,9 @@ export function ExpenseForm({
 	const [receiptProgress, setReceiptProgress] = useState<number | null>(null);
 	const [savedId, setSavedId] = useState<string | null>(null);
 	const [pending, startTransition] = useTransition();
+	const eligibleInitialPaidParticipants = participants.filter(
+		(participant) => participantIds.includes(participant.id) && participant.id !== payerId,
+	);
 
 	function submit(formData: FormData) {
 		setErrors({});
@@ -77,7 +81,7 @@ export function ExpenseForm({
 						...input,
 						...(expense
 							? { resetPaidReimbursements: formData.get("resetPaidReimbursements") === "on" }
-							: {}),
+							: { initialPaidParticipantIds }),
 					}),
 					method: expense ? "PATCH" : "POST",
 				},
@@ -197,7 +201,13 @@ export function ExpenseForm({
 						value={payerId}
 						id="paidByParticipantId"
 						name="paidByParticipantId"
-						onChange={(event) => setPayerId(event.target.value)}
+						onChange={(event) => {
+							const nextPayerId = event.target.value;
+							setPayerId(nextPayerId);
+							setInitialPaidParticipantIds((current) =>
+								current.filter((participantId) => participantId !== nextPayerId),
+							);
+						}}
 						required
 					>
 						<option disabled value="">
@@ -241,6 +251,9 @@ export function ExpenseForm({
 												? [...participantIds, participant.id]
 												: participantIds.filter((id) => id !== participant.id);
 											setParticipantIds(next);
+											setInitialPaidParticipantIds((current) =>
+												current.filter((participantId) => next.includes(participantId)),
+											);
 											if (!next.includes(payerId)) setPayerId("");
 										}}
 										type="checkbox"
@@ -266,6 +279,62 @@ export function ExpenseForm({
 						</span>
 					) : null}
 				</fieldset>
+				{!expense ? (
+					<fieldset className="border-positive/20 bg-positive/5 grid gap-3 rounded-2xl border p-4 sm:col-span-2">
+						<legend className="px-1 text-sm font-semibold">¿Quién ya pagó su parte?</legend>
+						<p className="text-ink-muted flex items-start gap-2 text-xs leading-5">
+							<BadgeCheck aria-hidden className="text-positive mt-0.5 shrink-0" size={16} />
+							{payerId
+								? `Marca a quienes ya le pagaron a ${participants.find((participant) => participant.id === payerId)?.name ?? "quien pagó"}. Podrán agregar un comprobante después.`
+								: "Selecciona primero quién pagó para registrar reembolsos ya recibidos."}
+						</p>
+						{payerId ? (
+							eligibleInitialPaidParticipants.length > 0 ? (
+								<div className="grid gap-2 sm:grid-cols-2">
+									{eligibleInitialPaidParticipants.map((participant) => {
+										const paid = initialPaidParticipantIds.includes(participant.id);
+										return (
+											<label
+												className={`focus-within:ring-positive/20 flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors focus-within:ring-3 ${
+													paid
+														? "border-positive/40 bg-positive/10 text-ink"
+														: "border-line bg-paper text-ink-muted hover:border-line-strong"
+												}`}
+												key={participant.id}
+											>
+												<input
+													checked={paid}
+													className="accent-positive size-4 shrink-0"
+													onChange={(event) =>
+														setInitialPaidParticipantIds((current) =>
+															event.target.checked
+																? [...current, participant.id]
+																: current.filter((id) => id !== participant.id),
+														)
+													}
+													type="checkbox"
+												/>
+												<span className="font-medium">{participant.name}</span>
+												{paid ? (
+													<span className="text-positive-strong ml-auto text-xs font-semibold">
+														Ya pagó
+													</span>
+												) : null}
+											</label>
+										);
+									})}
+								</div>
+							) : (
+								<p className="text-ink-faint text-xs">No hay otras personas seleccionadas.</p>
+							)
+						) : null}
+						{errors.initialPaidParticipantIds?.[0] ? (
+							<span className="text-danger text-xs font-normal">
+								{errors.initialPaidParticipantIds[0]}
+							</span>
+						) : null}
+					</fieldset>
+				) : null}
 				<div className="relative">
 					<Field
 						className="pr-11"

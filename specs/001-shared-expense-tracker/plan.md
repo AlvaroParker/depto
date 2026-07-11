@@ -90,8 +90,9 @@ _GATE: Passed before research and re-checked after design._
 - `src/lib/db/` is server-only and owns all SQL. Route handlers do not inline queries.
 - Prepared statements bind every input. Database helpers return `Result` values so HTTP handlers
   map predictable failures without scattered exception handling.
-- Expense creation batches the expense plus one share per selected participant. Recalculation batches the expense update,
-  share deletion, and replacement shares; a paid-state preflight enforces confirmation.
+- Expense creation batches the expense plus one share per selected participant, including any
+  creator-selected initial paid statuses and their audit data. Recalculation batches the expense
+  update, share deletion, and replacement shares; a paid-state preflight enforces confirmation.
 - `splitAmount()` is a pure utility that divides integer minor units and assigns remainder units in
   ascending participant order.
 
