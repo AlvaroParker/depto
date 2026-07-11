@@ -6,6 +6,7 @@ import {
 	validationErrorResponse,
 } from "@/lib/api/server";
 import { findExpenseKindById } from "@/lib/db/expense-kinds";
+import { getBindings } from "@/lib/db/bindings";
 import { findExpenseById, softDeleteExpense, updateExpense } from "@/lib/db/expenses";
 import { ExpensePatchSchema } from "@/lib/types/expense";
 
@@ -51,6 +52,13 @@ export async function PATCH(request: Request, { params }: ExpenseRouteContext) {
 			},
 			{ status: 409 },
 		);
+	if (result.val.removedPaymentProofObjectKeys.length > 0) {
+		try {
+			await getBindings().RECEIPTS.delete(result.val.removedPaymentProofObjectKeys);
+		} catch (error) {
+			console.error("R2 payment proof cleanup failed after expense recalculation.", error);
+		}
+	}
 	return NextResponse.json(result.val.expense);
 }
 

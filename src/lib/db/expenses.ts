@@ -13,6 +13,7 @@ import type {
 	ExpenseSummary,
 } from "@/lib/types/expense";
 import type { Participant } from "@/lib/types/participant";
+import type { PaymentProofContentType } from "@/lib/const/payment-proofs";
 import { createId } from "@/lib/util/ids";
 import { splitAmount } from "@/lib/util/split-amount";
 
@@ -50,6 +51,11 @@ interface ShareRow {
 	participant_name: string;
 	participant_slug: string;
 	participant_sort_order: number;
+	proof_content_type: PaymentProofContentType | null;
+	proof_filename: string | null;
+	proof_size_bytes: number | null;
+	proof_uploaded_at: string | null;
+	proof_uploaded_by_user_id: string | null;
 	share_amount_minor: number;
 	status: ExpenseShare["status"];
 }
@@ -123,6 +129,20 @@ function mapShare(row: ShareRow): ExpenseShare {
 			row.participant_slug,
 			row.participant_sort_order,
 		),
+		paymentProof:
+			row.proof_filename &&
+			row.proof_content_type &&
+			row.proof_size_bytes &&
+			row.proof_uploaded_at &&
+			row.proof_uploaded_by_user_id
+				? {
+						contentType: row.proof_content_type,
+						filename: row.proof_filename,
+						sizeBytes: row.proof_size_bytes,
+						uploadedAt: row.proof_uploaded_at,
+						uploadedByUserId: row.proof_uploaded_by_user_id,
+					}
+				: null,
 		shareAmountMinor: row.share_amount_minor,
 		status: row.status,
 	};
@@ -172,9 +192,13 @@ async function findShares(
 			`SELECT s.id, s.expense_id, s.share_amount_minor, s.status,
 			        s.paid_to_participant_id, s.paid_at, s.marked_by_user_id,
 			        p.id AS participant_id, p.name AS participant_name,
-			        p.slug AS participant_slug, p.sort_order AS participant_sort_order
+			        p.slug AS participant_slug, p.sort_order AS participant_sort_order,
+			        proof.filename AS proof_filename, proof.content_type AS proof_content_type,
+			        proof.size_bytes AS proof_size_bytes, proof.uploaded_at AS proof_uploaded_at,
+			        proof.uploaded_by_user_id AS proof_uploaded_by_user_id
 			 FROM expense_shares s
 			 JOIN participants p ON p.id = s.participant_id
+			 LEFT JOIN expense_share_payment_proofs proof ON proof.share_id = s.id
 			 WHERE s.expense_id IN (${placeholders})
 			 ORDER BY p.sort_order ASC`,
 		)
@@ -360,7 +384,7 @@ export async function listExpenses(
 }
 
 export type ExpenseMutation =
-	| { kind: "updated"; expense: ExpenseDetail }
+	| { kind: "updated"; expense: ExpenseDetail; removedPaymentProofObjectKeys: string[] }
 	| { kind: "not_found" }
 	| { kind: "paid_reset_required" };
 
@@ -373,6 +397,7 @@ export async function updateExpense(
 	return safeDbCall(async () => {
 		const existing = await findExpense(database, id);
 		if (!existing) return { kind: "not_found" };
+		let removedPaymentProofObjectKeys: string[] = [];
 		const currentParticipantIds = existing.shares.map((share) => share.participant.id).sort();
 		const requestedParticipantIds = [...input.participantIds].sort();
 		const financialChange =
@@ -385,6 +410,16 @@ export async function updateExpense(
 		if (financialChange) {
 			const hasPaid = existing.shares.some((share) => share.status === "paid");
 			if (hasPaid && !input.resetPaidReimbursements) return { kind: "paid_reset_required" };
+			const proofKeys = await database
+				.prepare(
+					`SELECT proof.object_key
+					 FROM expense_share_payment_proofs proof
+					 JOIN expense_shares share ON share.id = proof.share_id
+					 WHERE share.expense_id = ?`,
+				)
+				.bind(id)
+				.all<{ object_key: string }>();
+			removedPaymentProofObjectKeys = proofKeys.results.map((proof) => proof.object_key);
 			const participants = await findSelectedParticipants(database, input.participantIds, id);
 			if (!participants.some((participant) => participant.id === input.paidByParticipantId)) {
 				throw new Error("The payer must be one of the selected participants.");
@@ -447,7 +482,7 @@ export async function updateExpense(
 		}
 		const updated = await findExpense(database, id);
 		if (!updated) return { kind: "not_found" };
-		return { expense: updated, kind: "updated" };
+		return { expense: updated, kind: "updated", removedPaymentProofObjectKeys };
 	});
 }
 

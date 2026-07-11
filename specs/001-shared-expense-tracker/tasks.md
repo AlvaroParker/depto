@@ -331,3 +331,14 @@ receipts, edit/delete, dashboard/UI, tests, and documentation.
 - Every user-story task includes its `[US#]` label and exact file path.
 - Setup, Foundational, and Polish tasks intentionally have no story label.
 - Test tasks precede implementation tasks within every story.
+
+## Payment-proof extension
+
+- [x] T089 [P] [US3] Add payment-proof validation, authorization, state, cleanup, and browser tests in `tests/unit/payment-proofs.test.ts`, `tests/integration/payment-proofs.test.ts`, and `tests/e2e/payment-proofs.spec.ts`
+- [x] T090 [US3] Add one-to-one paid-share proof metadata and invariants in `migrations/0006_add_payment_proofs.sql` and the Miniflare migration fixture
+- [x] T091 [P] [US3] Add payment-proof constants, public metadata types, raw-upload validation, and client progress handling in `src/lib/const/`, `src/lib/types/`, `src/lib/util/`, and `src/lib/api/`
+- [x] T092 [US3] Add owner/root/admin reimbursement authorization, idempotent status changes, proof association, and displaced-key results in `src/lib/db/expense-shares.ts` and `src/lib/db/expenses.ts`
+- [x] T093 [US3] Add authenticated payment-proof upload/read routes and R2 compensating cleanup in `src/app/api/expense-shares/[id]/proof/route.ts` and expense update handling
+- [x] T094 [US3] Build the mobile payment dialog, protected proof viewer, replacement, and revert confirmation in `src/components/expenses/` and the expense detail route
+- [x] T095 Reconcile payment-proof specification, data model, research, OpenAPI, and operational documentation in `specs/001-shared-expense-tracker/`
+- [x] T096 Run formatting, lint, typecheck, unit/integration/browser tests, Next.js build, and OpenNext Cloudflare build

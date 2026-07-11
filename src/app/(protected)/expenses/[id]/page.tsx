@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Pencil, Paperclip } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { ReimbursementList } from "@/components/expenses/reimbursement-list";
 import { ExpenseKindIcon } from "@/components/expenses/expense-kind-icon";
 import { ReceiptField } from "@/components/expenses/receipt-field";
@@ -19,6 +21,8 @@ export async function generateMetadata({ params }: ExpenseDetailPageProps): Prom
 }
 
 export default async function ExpenseDetailPage({ params }: ExpenseDetailPageProps) {
+	const session = await auth();
+	if (!session?.user) redirect("/login");
 	const result = await findExpenseById((await params).id);
 	if (result.err) throw new Error("Could not load expense.");
 	if (!result.val) notFound();
@@ -59,7 +63,15 @@ export default async function ExpenseDetailPage({ params }: ExpenseDetailPagePro
 				</strong>
 			</header>
 
-			<ReimbursementList currency={expense.currency} initialShares={expense.shares} />
+			<ReimbursementList
+				currency={expense.currency}
+				currentUser={{
+					participantId: session.user.participantId,
+					role: session.user.role,
+				}}
+				initialShares={expense.shares}
+				payeeName={expense.payer.name}
+			/>
 
 			<section className="border-line mt-4 grid gap-3 rounded-2xl border border-dashed p-5 sm:grid-cols-[auto_1fr] sm:items-center">
 				<Paperclip aria-hidden className="text-ink-faint" size={21} />

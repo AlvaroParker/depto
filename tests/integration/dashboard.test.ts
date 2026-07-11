@@ -57,7 +57,13 @@ describe("dashboard aggregates", () => {
 			new Date(NOW.getTime() + 1000),
 		);
 		if (first.err || second.err) throw new Error("fixture failed");
-		await updateShareStatus(first.val.shares[1].id, "paid", "user_alvaro", bindings.database, NOW);
+		await updateShareStatus(
+			first.val.shares[1].id,
+			"paid",
+			{ id: "user_alvaro", participantId: "participant_alvaro", role: "admin" },
+			bindings.database,
+			NOW,
+		);
 
 		const result = await getDashboardSummary({ database: bindings.database });
 		expect(result.ok).toBe(true);
@@ -114,7 +120,7 @@ describe("dashboard aggregates", () => {
 		await updateShareStatus(
 			expense.val.shares[0].id,
 			"paid",
-			"user_alvaro",
+			{ id: "user_alvaro", participantId: "participant_alvaro", role: "admin" },
 			bindings.database,
 			NOW,
 		);
@@ -180,7 +186,7 @@ describe("dashboard aggregates", () => {
 		await updateShareStatus(
 			paidByAlvaro.val.shares[1].id,
 			"paid",
-			"user_alvaro",
+			{ id: "user_alvaro", participantId: "participant_alvaro", role: "admin" },
 			bindings.database,
 			NOW,
 		);
@@ -216,7 +222,7 @@ describe("dashboard aggregates", () => {
 		await updateShareStatus(
 			paidByCamila.val.shares[0].id,
 			"paid",
-			"user_alvaro",
+			{ id: "user_alvaro", participantId: "participant_alvaro", role: "admin" },
 			bindings.database,
 			NOW,
 		);

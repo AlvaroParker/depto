@@ -21,9 +21,9 @@ test("filters and settles the signed-in user's pending expense shares", async ({
 	await expect(expenseCard.getByText("Total $12.000", { exact: true })).toBeVisible();
 	await expenseCard.click();
 
-	const alvaroShare = page.getByText("Alvaro", { exact: true }).locator("..").locator("..");
-	await alvaroShare.getByRole("button", { name: "Marcar pagado" }).click();
-	await expect(alvaroShare.getByText("Reembolsado", { exact: true })).toBeVisible();
+	await page.getByRole("button", { name: "Marcar pagado: Alvaro" }).click();
+	await page.getByRole("button", { name: "Marcar pagado sin comprobante" }).click();
+	await expect(page.getByText("Reembolsado", { exact: true })).toBeVisible();
 
 	await page.goto("/expenses?pending=mine");
 	await expect(page.getByText(expenseName, { exact: true })).not.toBeVisible();

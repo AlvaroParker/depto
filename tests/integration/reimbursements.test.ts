@@ -9,20 +9,18 @@ describe("reimbursement status", () => {
 	let bindings: TestBindings;
 	beforeEach(async () => {
 		bindings = await createTestBindings();
-		await bindings.database
-			.prepare(
-				"INSERT INTO app_users (id, username, password_hash, display_name, participant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-			)
-			.bind(
-				"user_alvaro",
-				"alvaro",
-				"hash",
-				"Alvaro",
-				"participant_alvaro",
-				NOW.toISOString(),
-				NOW.toISOString(),
-			)
-			.run();
+		await bindings.database.batch(
+			[
+				["user_alvaro", "alvaro", "Alvaro", "participant_alvaro"],
+				["user_camila", "camila", "Camila", "participant_camila"],
+			].map(([id, username, displayName, participantId]) =>
+				bindings.database
+					.prepare(
+						"INSERT INTO app_users (id, username, password_hash, display_name, participant_id, created_at, updated_at) VALUES (?, ?, 'hash', ?, ?, ?, ?)",
+					)
+					.bind(id, username, displayName, participantId, NOW.toISOString(), NOW.toISOString()),
+			),
+		);
 	});
 	afterEach(async () => bindings.dispose());
 
@@ -48,7 +46,7 @@ describe("reimbursement status", () => {
 		const immutable = await updateShareStatus(
 			payerShare.id,
 			"paid",
-			"user_alvaro",
+			{ id: "user_alvaro", participantId: "participant_alvaro", role: "user" },
 			bindings.database,
 			NOW,
 		);
@@ -57,14 +55,14 @@ describe("reimbursement status", () => {
 		const paid = await updateShareStatus(
 			debtorShare.id,
 			"paid",
-			"user_alvaro",
+			{ id: "user_camila", participantId: "participant_camila", role: "user" },
 			bindings.database,
 			NOW,
 		);
 		expect(paid.ok && paid.val.kind).toBe("updated");
 		if (paid.err || paid.val.kind !== "updated") return;
 		expect(paid.val.share).toMatchObject({
-			markedByUserId: "user_alvaro",
+			markedByUserId: "user_camila",
 			paidAt: NOW.toISOString(),
 			status: "paid",
 		});
@@ -72,7 +70,7 @@ describe("reimbursement status", () => {
 		const pending = await updateShareStatus(
 			debtorShare.id,
 			"pending",
-			"user_alvaro",
+			{ id: "user_camila", participantId: "participant_camila", role: "user" },
 			bindings.database,
 			new Date(NOW.getTime() + 1000),
 		);

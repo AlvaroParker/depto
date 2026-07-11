@@ -51,7 +51,7 @@ describe("expense corrections", () => {
 		await updateShareStatus(
 			created.val.shares[1].id,
 			"paid",
-			"user_alvaro",
+			{ id: "user_alvaro", participantId: "participant_alvaro", role: "admin" },
 			bindings.database,
 			NOW,
 		);

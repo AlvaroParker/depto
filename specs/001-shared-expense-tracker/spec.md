@@ -85,6 +85,15 @@ the detail plus all dashboard totals after each transition.
 5. **Given** a signed-in root or admin without a participant, **When** the dashboard is opened,
    **Then** it shows expense count, total spend, total paid and total share by participant, net
    balances, total pending, and an aggregated from/to reimbursement list.
+6. **Given** a pending share owned by the signed-in participant, **When** they mark it paid,
+   **Then** they may optionally attach one JPEG, PNG, or WebP payment proof up to 10 MB and the
+   proof is associated with that exact share amount.
+7. **Given** a paid share with proof, **When** its owner or a root/admin replaces the proof,
+   **Then** the original payment audit time remains unchanged and only the replacement is current.
+8. **Given** a paid share with proof, **When** it is returned to pending, **Then** the proof metadata
+   and object are removed together with the paid audit fields.
+9. **Given** a stored payment proof, **When** any authenticated household user opens it,
+   **Then** it is streamed privately; unauthenticated requests receive no content.
 
 ---
 
@@ -295,6 +304,17 @@ icon in list and detail views, filter history by it, and verify a regular user c
   case-insensitively, and categories referenced by history MUST NOT be deleted.
 - **FR-021**: Expense history MUST support a category filter combinable with search, payer, pending
   state, sorting, and pagination.
+- **FR-022**: A regular user MUST be able to mark only their own non-payer share paid or pending.
+  Root and admin MAY update any non-payer share. Other authenticated users MUST be denied.
+- **FR-023**: The share owner, root, or admin MUST be able to optionally upload one current JPEG,
+  PNG, or WebP payment proof up to and including 10 MB while marking a share paid, or add or replace
+  it later without changing the original payment audit fields.
+- **FR-024**: Payment-proof metadata MUST be associated one-to-one with the paid expense share while
+  the binary remains in private R2. Any authenticated user MAY view proof for an active expense, but
+  no object key, public URL, or bucket listing may be exposed.
+- **FR-025**: Reverting a paid share to pending MUST remove its current proof. Confirmed financial
+  recalculation MUST remove proofs for replaced shares, while soft-deleted expenses retain proofs
+  privately for audit.
 
 ### Key Entities
 
@@ -308,6 +328,8 @@ icon in list and detail views, filter history by it, and verify a regular user c
   and timestamps. It is editable by root/admin and retained for historical references.
 - **Expense Share**: One participant's exact portion of an expense, its settled/pending/paid state,
   payment recipient, optional payment time and marking user, and timestamps.
+- **Payment Proof**: One optional private image associated with a paid expense share, including safe
+  filename, image media type, size, uploader, upload time, and an opaque R2 reference.
 - **Receipt**: A private image or PDF object plus filename, media type, size, and opaque association
   reference; binary content is separate from financial records.
 - **Login Attempt Window**: Failed-attempt counters grouped by normalized username and client
@@ -338,6 +360,9 @@ icon in list and detail views, filter history by it, and verify a regular user c
 - **SC-010**: Automated tests prove one-time root bootstrap, database-enforced root immutability,
   regular-user denial, root/admin updates of regular-user identity and credentials, and admin
   creation/removal of both users and other admins.
+- **SC-011**: Automated tests prove owner/admin payment-proof authorization, all supported image
+  formats at the 10 MB boundary, private authenticated reads, replacement, reversion cleanup, and
+  successful paid transitions without proof.
 
 ## Assumptions
 
@@ -350,6 +375,8 @@ icon in list and detail views, filter history by it, and verify a regular user c
 - Expense dates are calendar dates selected by the user and displayed using Chilean Spanish locale.
 - Soft-deleted expenses and their receipts are retained for audit until a future retention policy is
   specified; they are not exposed through normal user flows.
+- Payment proofs are optional evidence tied to the stored share amount. They are not parsed, OCRed,
+  amount-verified, or subject to a separate payer approval state.
 - The household has ordinary internet connectivity; offline entry, installation, and notifications
   are future enhancements.
 
