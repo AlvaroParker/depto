@@ -86,3 +86,14 @@ Open the deployed application immediately and complete `/setup` to create root. 
 after that account exists. Create all remaining admins and users from the authenticated management
 screen. Never commit `.env`, `.dev.vars`, uploaded receipts, or the local
 `.wrangler` directory.
+
+## Payment-proof smoke test
+
+1. Sign in as a regular user and create or open an expense where that participant owes a share.
+2. Select **Marcar pagado**, optionally choose a JPG, PNG, or WebP up to 10 MB, and submit.
+3. Reload the expense and open the protected proof link as another authenticated household user.
+4. Sign out and confirm the same `/api/expense-shares/{shareId}/proof` URL returns `401`.
+5. Sign back in as the share owner, revert it to pending, and confirm the proof link disappears.
+
+Root and admin can perform the same mutations for any non-payer share. Other regular users can view
+current proof but cannot change another participant's status or attachment.

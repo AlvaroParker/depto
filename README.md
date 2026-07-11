@@ -80,7 +80,11 @@ afecta recursos remotos de Cloudflare.
 
 Cada cuenta tiene un solo rol jerárquico. Combinar roles no agrega permisos y haría ambiguas las garantías del único root. “Eliminar” una cuenta desactiva su acceso y conserva sus referencias históricas para auditoría.
 
-El bucket no tiene URL pública. Todos los comprobantes se leen a través de una ruta autenticada asociada a un gasto activo. Las eliminaciones de gastos son lógicas y conservan el objeto para auditoría.
+El bucket no tiene URL pública. Los comprobantes de compra y de pago se leen únicamente por rutas
+autenticadas. Cada usuario regular puede marcar y respaldar solamente su propia parte; root y admin
+pueden corregir cualquier reembolso. El comprobante de pago es opcional, acepta JPG, PNG o WebP de
+hasta 10 MB y puede ser visto por cualquier integrante autenticado. Volver una parte a pendiente
+elimina su comprobante; la eliminación lógica del gasto lo conserva de forma inaccesible para auditoría.
 
 ## Correctitud financiera
 

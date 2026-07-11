@@ -15,6 +15,10 @@ local D1 and R2 implementations, so Docker Compose is intentionally unnecessary.
 Expenses reference admin-managed household categories. D1 seeds the core taxonomy, while a typed
 semantic icon registry maps stored keys to explicit Lucide components in forms, history, and detail.
 
+Participant payment proofs reuse the private R2 binding with a separate key prefix and one-to-one
+D1 metadata per paid share. Share owners and root/admin users manage proof and status, while all
+authenticated household users may inspect current evidence.
+
 ## Technical Context
 
 **Language/Version**: TypeScript 5.9 in strict mode, React 19.2, Next.js 16.2, Node.js 20+ for tools
@@ -96,6 +100,17 @@ _GATE: Passed before research and re-checked after design._
   lists bucket contents and no public bucket URL is configured.
 - A failed receipt upload leaves a valid expense without a receipt and the UI offers retry. A failed
   D1 metadata update deletes the just-written object to avoid an orphan.
+
+### Payment proofs
+
+- `expense_share_payment_proofs` stores one current image association per paid share; object keys
+  remain server-only and use a distinct `payment-proofs/{shareId}/` R2 prefix.
+- A raw-body proof `PUT` marks a pending share paid and attaches metadata in one D1 batch, or replaces
+  proof on an already-paid share without changing its original payment audit fields.
+- Only the share owner and root/admin may mutate status or proof. Authenticated reads remain
+  household-wide through a protected streaming route.
+- Reverting to pending deletes proof metadata before best-effort R2 cleanup. Financial share
+  recalculation returns displaced keys for the route to clean up; soft deletion retains proof.
 
 ### Rendering and interaction
 

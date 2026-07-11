@@ -137,6 +137,27 @@ Non-payer:  pending ↔ paid
 - `paid → pending` clears `paid_at` and `marked_by_user_id` and updates `updated_at`.
 - Amount, payer, or participant-set recalculation replaces selected shares only after required confirmation.
 
+## Expense Share Payment Proof
+
+Represents the one current private deposit screenshot attached to a paid non-payer share.
+
+| Field                 | Type    | Rules                                                        |
+| --------------------- | ------- | ------------------------------------------------------------ |
+| `share_id`            | text    | Primary key and foreign key to expense share; cascade delete |
+| `object_key`          | text    | Required unique opaque R2 key; never returned publicly       |
+| `filename`            | text    | Required sanitized basename; maximum 255 characters          |
+| `content_type`        | text    | `image/jpeg`, `image/png`, or `image/webp`                   |
+| `size_bytes`          | integer | Required; 1 through 10,485,760                               |
+| `uploaded_by_user_id` | text    | Required foreign key to application user                     |
+| `uploaded_at`         | text    | Required UTC timestamp                                       |
+
+- A proof may exist only while its share is `paid`; database triggers defend this invariant.
+- Upload on a pending share sets the payment audit fields and proof metadata in one D1 batch.
+- Replacement preserves `paid_at` and `marked_by_user_id`, then deletes the prior R2 object.
+- Reversion deletes the association before changing the share to `pending` and clearing audit data.
+- Financial recalculation cascades metadata deletion and performs compensating R2 cleanup. Soft
+  expense deletion retains both the share and proof for inaccessible audit history.
+
 ## Exact split algorithm
 
 Given positive integer `amount` and participants sorted ascending:

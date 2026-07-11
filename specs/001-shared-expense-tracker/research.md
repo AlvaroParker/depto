@@ -121,3 +121,21 @@ a generic finance dashboard, while preserving dense legibility and touch-friendl
 - Generic blue SaaS dashboard: rejected as visually interchangeable and less domestic.
 - Highly decorative maximalism: rejected because receipt capture and reimbursement updates need
   speed, contrast, and clarity on phones.
+
+## Share-level payment proof
+
+**Decision**: Store one current proof-image metadata row per paid expense share in D1 and the binary
+under a separate opaque prefix in the existing private R2 bucket. Use a raw-body authenticated route
+that can attach proof and mark pending shares paid without multipart buffering.
+
+**Rationale**: A separate table preserves the distinction between purchase receipts and repayment
+evidence, enforces one current proof, and allows share recalculation to cascade metadata cleanly.
+Reusing the established streaming and compensating-cleanup pattern keeps Worker memory bounded.
+
+**Alternatives considered**:
+
+- Columns on `expense_shares`: rejected because a separate entity gives stronger complete-metadata
+  constraints and clearer lifecycle handling.
+- Multipart status plus file upload: rejected because it buffers parsing and duplicates the existing
+  raw-body R2 transport.
+- Multiple immutable submissions: rejected because the product requires one current proof only.

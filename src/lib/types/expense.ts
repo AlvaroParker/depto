@@ -2,6 +2,7 @@ import { z } from "zod";
 import { DEFAULT_CURRENCY, SUPPORTED_CURRENCIES } from "@/lib/const/currencies";
 import type { ExpenseKind } from "@/lib/types/expense-kind";
 import type { Participant } from "@/lib/types/participant";
+import type { PaymentProof } from "@/lib/types/payment-proof";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -67,6 +68,7 @@ export interface ExpenseShare {
 	paidToParticipantId: string | null;
 	paidAt: string | null;
 	markedByUserId: string | null;
+	paymentProof: PaymentProof | null;
 }
 
 export interface ExpenseSummary {

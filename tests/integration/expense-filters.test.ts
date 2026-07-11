@@ -71,7 +71,13 @@ describe("expense search and filters", () => {
 			created.push(result.val);
 		}
 		for (const share of created[0].shares.filter((item) => item.status === "pending"))
-			await updateShareStatus(share.id, "paid", "user_alvaro", bindings.database, NOW);
+			await updateShareStatus(
+				share.id,
+				"paid",
+				{ id: "user_alvaro", participantId: "participant_alvaro", role: "admin" },
+				bindings.database,
+				NOW,
+			);
 
 		const combined = await listExpenses(
 			{ kind: "kind-groceries", payer: "participant_camila", pending: true, q: " compra " },
@@ -110,7 +116,13 @@ describe("expense search and filters", () => {
 			(share) => share.participant.id === "participant_alvaro",
 		);
 		if (!alvaroMarketShare) throw new Error("Alvaro share fixture is missing");
-		await updateShareStatus(alvaroMarketShare.id, "paid", "user_alvaro", bindings.database, NOW);
+		await updateShareStatus(
+			alvaroMarketShare.id,
+			"paid",
+			{ id: "user_alvaro", participantId: "participant_alvaro", role: "admin" },
+			bindings.database,
+			NOW,
+		);
 		const personalAfterPayment = await listExpenses(
 			{ pending: "mine" },
 			{ currentParticipantId: "participant_alvaro", database: bindings.database },

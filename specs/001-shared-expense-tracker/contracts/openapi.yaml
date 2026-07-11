@@ -127,6 +127,19 @@ components:
         status: { type: string, enum: [settled, pending, paid] }
         paidAt: { type: [string, "null"], format: date-time }
         markedByUserId: { type: [string, "null"] }
+        paymentProof:
+          anyOf:
+            - { $ref: "#/components/schemas/PaymentProof" }
+            - { type: "null" }
+    PaymentProof:
+      type: object
+      required: [filename, contentType, sizeBytes, uploadedAt, uploadedByUserId]
+      properties:
+        filename: { type: string, minLength: 1, maxLength: 255 }
+        contentType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+        sizeBytes: { type: integer, minimum: 1, maximum: 10485760 }
+        uploadedAt: { type: string, format: date-time }
+        uploadedByUserId: { type: string }
     ExpenseSummary:
       type: object
       required: [id, name, amountMinor, currency, expenseDate, kind, payer, hasReceipt, shares]
@@ -548,4 +561,44 @@ paths:
               schema: { $ref: "#/components/schemas/Share" }
         "400": { description: Invalid transition or body }
         "401": { description: Unauthenticated }
+        "403": { description: Only the share owner or root/admin may mutate it }
         "404": { description: Share not found }
+  /expense-shares/{shareId}/proof:
+    put:
+      operationId: putExpenseSharePaymentProof
+      summary: Mark a pending share paid with proof, or add or replace proof on a paid share
+      parameters:
+        - { in: path, name: shareId, required: true, schema: { type: string } }
+        - { in: header, name: x-receipt-filename, required: true, schema: { type: string } }
+        - {
+            in: header,
+            name: x-receipt-size,
+            required: true,
+            schema: { type: integer, maximum: 10485760 },
+          }
+      requestBody:
+        required: true
+        content:
+          image/jpeg: { schema: { type: string, contentEncoding: binary } }
+          image/png: { schema: { type: string, contentEncoding: binary } }
+          image/webp: { schema: { type: string, contentEncoding: binary } }
+      responses:
+        "200":
+          description: Updated paid share with current proof metadata
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Share" }
+        "400": { description: "Invalid type, name, body, size, or settled share" }
+        "401": { description: Unauthenticated }
+        "403": { description: Only the share owner or root/admin may upload }
+        "404": { description: Share not found }
+        "413": { description: Proof exceeds 10 MB }
+    get:
+      operationId: getExpenseSharePaymentProof
+      summary: Stream current proof for an active expense share to an authenticated household user
+      parameters:
+        - { in: path, name: shareId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Private proof image body with safe inline response headers }
+        "401": { description: Unauthenticated }
+        "404": { description: Share or proof not found }

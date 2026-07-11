@@ -102,5 +102,13 @@ describe("production user-participant migration", () => {
 				.prepare("UPDATE expenses SET kind_id = NULL WHERE id = 'legacy-expense'")
 				.run(),
 		).rejects.toThrow(/expenses require a kind/i);
+
+		await applyMigrations(bindings.database, ["0006_add_payment_proofs.sql"]);
+		const proofTable = await bindings.database
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'expense_share_payment_proofs'",
+			)
+			.first<{ name: string }>();
+		expect(proofTable?.name).toBe("expense_share_payment_proofs");
 	});
 });

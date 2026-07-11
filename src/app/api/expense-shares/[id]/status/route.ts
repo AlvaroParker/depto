@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import {
 	databaseErrorResponse,
+	forbiddenResponse,
 	unauthorizedResponse,
 	validationErrorResponse,
 } from "@/lib/api/server";
+import { getBindings } from "@/lib/db/bindings";
 import { updateShareStatus } from "@/lib/db/expense-shares";
 import { ShareStatusInputSchema } from "@/lib/types/expense";
 
@@ -26,7 +28,11 @@ export async function PATCH(request: Request, { params }: ShareRouteContext) {
 	}
 	const parsed = ShareStatusInputSchema.safeParse(body);
 	if (!parsed.success) return validationErrorResponse(parsed.error);
-	const result = await updateShareStatus((await params).id, parsed.data.status, session.user.id);
+	const result = await updateShareStatus((await params).id, parsed.data.status, {
+		id: session.user.id,
+		participantId: session.user.participantId,
+		role: session.user.role,
+	});
 	if (result.err) return databaseErrorResponse();
 	if (result.val.kind === "not_found")
 		return NextResponse.json({ message: "No encontramos ese reembolso." }, { status: 404 });
@@ -35,5 +41,13 @@ export async function PATCH(request: Request, { params }: ShareRouteContext) {
 			{ message: "La parte de quien pagó no se puede cambiar." },
 			{ status: 400 },
 		);
+	if (result.val.kind === "forbidden") return forbiddenResponse();
+	if (result.val.removedProofObjectKey) {
+		try {
+			await getBindings().RECEIPTS.delete(result.val.removedProofObjectKey);
+		} catch (error) {
+			console.error("R2 payment proof cleanup failed after reverting a share.", error);
+		}
+	}
 	return NextResponse.json(result.val.share);
 }
