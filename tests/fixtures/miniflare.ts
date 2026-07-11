@@ -45,6 +45,7 @@ export async function createTestBindings(): Promise<TestBindings> {
 		"0005_add_expense_kinds.sql",
 		"0006_add_payment_proofs.sql",
 		"0007_add_participant_emails.sql",
+		"0008_add_expense_split_modes.sql",
 	]);
 	await bindings.database.batch(
 		[

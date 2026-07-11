@@ -238,6 +238,28 @@ Resend batch request, and verify one private message per selected participant wi
 3. **Given** Resend is unavailable or unconfigured, **When** expense creation succeeds, **Then** the
    financial record remains committed and the notification failure is logged without exposing secrets.
 
+### User Story 10 - Choose specific or participant-managed shares (Priority: P1)
+
+As an expense creator, I choose equal, specific, or open splitting so that unequal household costs
+remain exact while an open bill can leave pending contribution decisions to each participant.
+
+**Independent Test**: Create one expense with exact custom amounts and one open expense, change an
+open pending share as its owner, and verify the payer remainder and all dashboard totals stay exact.
+
+**Acceptance Scenarios**:
+
+1. **Given** selected participants and a positive total, **When** the creator enters one non-negative
+   custom amount per participant, **Then** creation succeeds only when those amounts sum exactly to
+   the expense total.
+2. **Given** a new open expense, **When** the creator accepts the initial values, **Then** exact equal
+   suggestions are active immediately and included in balances.
+3. **Given** an open pending non-payer share, **When** its owner or root/admin changes the amount,
+   **Then** that amount and the payer's settled remainder update atomically and still sum to the total.
+4. **Given** an open share already marked paid, **When** an amount change is attempted, **Then** it
+   remains locked until the owner or root/admin returns it to pending.
+5. **Given** a zero allocation, **When** expense state is summarized, **Then** the participant stays
+   associated but the share is not counted as pending and cannot be marked paid.
+
 ### Edge Cases
 
 - Amounts smaller than the selected participant count still produce non-negative shares whose sum is exact.
@@ -261,6 +283,8 @@ Resend batch request, and verify one private message per selected participant wi
 - Participant emails are unique case-insensitively; migrated participants without an email remain
   usable but are skipped until an administrator adds one.
 - Retrying delivery for the same expense does not create duplicate email batches.
+- Concurrent open-share updates cannot produce negative payer shares or a total different from the expense.
+- A regular user cannot bypass open-share ownership by changing the expense's financial structure.
 
 ## Requirements _(mandatory)_
 
@@ -352,6 +376,20 @@ Resend batch request, and verify one private message per selected participant wi
   `info@depto.parker.ci` as the sender address.
 - **FR-028**: Email delivery MUST use an idempotent Resend batch request. Provider failure MUST NOT
   roll back or hide the committed financial record, and logs MUST NOT contain API keys or recipient data.
+- **FR-029**: Every expense MUST store exactly one split mode: equal, custom, or open. Existing and
+  omitted-mode expenses MUST remain equal for compatibility.
+- **FR-030**: Custom and open creation MUST accept exactly one non-negative integer allocation per
+  selected participant and reject duplicates, missing participants, unsafe integers, or totals that
+  differ from the expense amount. Equal splitting MUST retain deterministic remainder ordering.
+- **FR-031**: Open expenses MUST initialize with equal suggested allocations by default while
+  permitting the creator to enter arbitrary exact amounts and mark positive non-payer amounts paid.
+- **FR-032**: The owner of an open pending non-payer share and root/admin MUST be able to change its
+  amount. Each mutation MUST atomically set the payer's settled share to the remaining amount and
+  reject any update that would make that remainder negative.
+- **FR-033**: Paid open shares MUST remain amount-locked until reverted to pending. Zero shares MUST
+  remain associated and editable, but MUST NOT be payable or included in pending counts and balances.
+- **FR-034**: Only root/admin MAY change the total, payer, participant set, allocations, or split
+  mode of an existing open expense. Other authenticated users MAY retain existing descriptive edits.
 
 ### Key Entities
 
@@ -360,8 +398,8 @@ Resend batch request, and verify one private message per selected participant wi
 - **Participant**: A regular user's stable expense identity, unique notification email, and ordering
   used for split remainder assignment.
 - **Expense**: A named shared cost with optional description, integer amount, currency, date,
-  required category, payer, optional receipt reference and metadata, creator, timestamps, and
-  optional deletion time.
+  required category, payer, equal/custom/open split mode, optional receipt reference and metadata,
+  creator, timestamps, and optional deletion time.
 - **Expense Kind**: A shared category with a unique display name, stable semantic icon key, ordering,
   and timestamps. It is editable by root/admin and retained for historical references.
 - **Expense Share**: One participant's exact portion of an expense, its settled/pending/paid state,
@@ -407,11 +445,13 @@ Resend batch request, and verify one private message per selected participant wi
 - **SC-013**: Automated tests prove multiple selected non-payers can start paid with exact creator
   audit data, invalid initial selections write nothing, and initial paid shares are excluded from
   pending aggregates and filters.
+- **SC-014**: Automated tests prove custom and open allocations remain non-negative and exact across
+  creation, owner/admin open updates, zero allocations, paid locking, concurrent writes, and mode conversion.
 
 ## Assumptions
 
 - Regular-user management is participant management; each expense independently chooses any
-  non-empty subset of active participants. Unequal splits are not required.
+  non-empty subset of active participants and one of the supported split modes.
 - CLP is the default and primary currency, amounts are entered as whole minor units, and no currency
   conversion is performed.
 - Accounts use one hierarchical `root`, `admin`, or `user` role. There is no public signup; the only
@@ -425,7 +465,7 @@ Resend batch request, and verify one private message per selected participant wi
 
 ## Out of Scope
 
-- Unequal splits, multiple households, or participant identities independent from regular users.
+- Multiple households or participant identities independent from regular users.
 - Public registration, password reset email, or push notifications.
 - Multi-currency conversion, bank integration, settlement optimization, or accounting exports.
 - Receipt OCR, parsing, image enhancement, and offline-first or installable application behavior.

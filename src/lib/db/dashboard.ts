@@ -66,16 +66,16 @@ async function getPersonalSummary(
 			.prepare(
 				`SELECT
 				   COALESCE(SUM(CASE
-				     WHEN s.participant_id = ? AND s.status = 'pending' THEN s.share_amount_minor
+				     WHEN s.participant_id = ? AND s.status = 'pending' AND s.share_amount_minor > 0 THEN s.share_amount_minor
 				     ELSE 0 END), 0) AS amount_owed_minor,
 				   COUNT(DISTINCT CASE
-				     WHEN s.participant_id = ? AND s.status = 'pending' THEN s.expense_id END
+				     WHEN s.participant_id = ? AND s.status = 'pending' AND s.share_amount_minor > 0 THEN s.expense_id END
 				   ) AS owed_expense_count,
 				   COALESCE(SUM(CASE
-				     WHEN s.paid_to_participant_id = ? AND s.status = 'pending' THEN s.share_amount_minor
+				     WHEN s.paid_to_participant_id = ? AND s.status = 'pending' AND s.share_amount_minor > 0 THEN s.share_amount_minor
 				     ELSE 0 END), 0) AS amount_due_to_me_minor,
 				   COUNT(DISTINCT CASE
-				     WHEN s.paid_to_participant_id = ? AND s.status = 'pending' THEN s.expense_id END
+				     WHEN s.paid_to_participant_id = ? AND s.status = 'pending' AND s.share_amount_minor > 0 THEN s.expense_id END
 				   ) AS due_to_me_expense_count,
 				   COALESCE(SUM(CASE
 				     WHEN s.participant_id = ? AND s.status = 'paid' THEN s.share_amount_minor
@@ -119,6 +119,7 @@ async function getPersonalSummary(
 				   ELSE s.participant_id
 				 END
 				 WHERE s.status = 'pending'
+				   AND s.share_amount_minor > 0
 				   AND (s.participant_id = ? OR s.paid_to_participant_id = ?)
 				 GROUP BY p.id, p.name, p.slug, p.sort_order
 				 ORDER BY amount_owed_minor + amount_due_to_me_minor DESC, p.sort_order ASC, p.id ASC`,
@@ -182,7 +183,7 @@ async function getHouseholdSummary(database: D1Database): Promise<HouseholdDashb
 				.all<GroupedRow>(),
 			database
 				.prepare(
-					"SELECT s.participant_id AS from_id, s.paid_to_participant_id AS to_id, SUM(s.share_amount_minor) AS amount_minor FROM expense_shares s JOIN expenses e ON e.id = s.expense_id WHERE e.deleted_at IS NULL AND s.status = 'pending' GROUP BY s.participant_id, s.paid_to_participant_id ORDER BY s.participant_id, s.paid_to_participant_id",
+					"SELECT s.participant_id AS from_id, s.paid_to_participant_id AS to_id, SUM(s.share_amount_minor) AS amount_minor FROM expense_shares s JOIN expenses e ON e.id = s.expense_id WHERE e.deleted_at IS NULL AND s.status = 'pending' AND s.share_amount_minor > 0 GROUP BY s.participant_id, s.paid_to_participant_id ORDER BY s.participant_id, s.paid_to_participant_id",
 				)
 				.all<MatrixRow>(),
 			listExpenses({ page: 1, pageSize: 5 }, { database }),

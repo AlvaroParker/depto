@@ -11,7 +11,9 @@ import type {
 	ExpenseQuery,
 	ExpenseShare,
 	ExpenseSummary,
+	ExpenseSplitMode,
 } from "@/lib/types/expense";
+import type { UserRole } from "@/lib/const/roles";
 import type { Participant } from "@/lib/types/participant";
 import type { PaymentProofContentType } from "@/lib/const/payment-proofs";
 import { createId } from "@/lib/util/ids";
@@ -38,6 +40,7 @@ interface ExpenseRow {
 	receipt_filename: string | null;
 	receipt_object_key: string | null;
 	receipt_size_bytes: number | null;
+	split_mode: ExpenseSplitMode;
 	updated_at: string;
 }
 
@@ -105,6 +108,7 @@ const EXPENSE_SELECT = `
 	SELECT e.id, e.name, e.description, e.amount_minor, e.currency, e.expense_date,
 	       e.receipt_object_key, e.receipt_filename, e.receipt_content_type,
 	       e.receipt_size_bytes, e.created_by_user_id, e.created_at, e.updated_at,
+	       e.split_mode,
 	       k.id AS kind_id, k.name AS kind_name, k.icon_key AS kind_icon_key,
 	       k.sort_order AS kind_sort_order,
 	       p.id AS payer_id, p.name AS payer_name, p.slug AS payer_slug,
@@ -165,7 +169,44 @@ function mapSummary(row: ExpenseRow, shares: ExpenseShare[]): ExpenseSummary {
 		name: row.name,
 		payer: mapParticipant(row.payer_id, row.payer_name, row.payer_slug, row.payer_sort_order),
 		shares,
+		splitMode: row.split_mode,
 	};
+}
+
+function resolveShareAmounts(
+	input: Pick<ExpenseCreateInput, "amountMinor" | "shareAllocations" | "splitMode">,
+	participants: ParticipantRow[],
+	splitMode: ExpenseSplitMode,
+): number[] {
+	if (splitMode === "equal") {
+		if (input.shareAllocations?.length) {
+			throw new Error("Equal splits cannot include manual allocations.");
+		}
+		return splitAmount(input.amountMinor, participants.length);
+	}
+	const allocations = input.shareAllocations ?? [];
+	const allocationByParticipant = new Map(
+		allocations.map((allocation) => [allocation.participantId, allocation.shareAmountMinor]),
+	);
+	if (
+		allocations.length !== participants.length ||
+		allocationByParticipant.size !== participants.length ||
+		participants.some((participant) => !allocationByParticipant.has(participant.id))
+	) {
+		throw new Error("Manual splits require one allocation per selected participant.");
+	}
+	const amounts = participants.map(
+		(participant) => allocationByParticipant.get(participant.id) ?? 0,
+	);
+	const total = amounts.reduce((sum, amount) => sum + amount, 0);
+	if (
+		amounts.some((amount) => !Number.isSafeInteger(amount) || amount < 0) ||
+		!Number.isSafeInteger(total) ||
+		total !== input.amountMinor
+	) {
+		throw new Error("Manual allocations must be non-negative safe integers with an exact total.");
+	}
+	return amounts;
 }
 
 function mapDetail(row: ExpenseRow, shares: ExpenseShare[]): ExpenseDetail {
@@ -244,16 +285,25 @@ export async function createExpense(
 		) {
 			throw new Error("Initial paid participants must be unique selected non-payers.");
 		}
-		const amounts = splitAmount(input.amountMinor, participants.length);
+		const splitMode = input.splitMode ?? "equal";
+		const amounts = resolveShareAmounts(input, participants, splitMode);
+		if (
+			initialPaidParticipantIds.some(
+				(participantId) =>
+					amounts[participants.findIndex((participant) => participant.id === participantId)] === 0,
+			)
+		) {
+			throw new Error("Zero-value shares cannot start paid.");
+		}
 		const id = createId();
 		const timestamp = now.toISOString();
 		const statements: D1PreparedStatement[] = [
 			database
 				.prepare(
 					`INSERT INTO expenses
-					 (id, name, description, amount_minor, currency, expense_date, kind_id,
+					 (id, name, description, amount_minor, currency, expense_date, kind_id, split_mode,
 					  paid_by_participant_id, created_by_user_id, created_at, updated_at)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				)
 				.bind(
 					id,
@@ -263,6 +313,7 @@ export async function createExpense(
 					input.currency,
 					input.expenseDate,
 					input.kindId,
+					splitMode,
 					input.paidByParticipantId,
 					createdByUserId,
 					timestamp,
@@ -358,6 +409,7 @@ export async function listExpenses(
 				 WHERE personal_share.expense_id = e.id
 				   AND personal_share.participant_id = ?
 				   AND personal_share.status = 'pending'
+				   AND personal_share.share_amount_minor > 0
 				   AND personal_share.paid_to_participant_id = e.paid_by_participant_id
 				)`,
 			);
@@ -366,7 +418,9 @@ export async function listExpenses(
 			where.push(
 				`${query.pending ? "" : "NOT "}EXISTS (
 				 SELECT 1 FROM expense_shares pending_share
-				 WHERE pending_share.expense_id = e.id AND pending_share.status = 'pending'
+				 WHERE pending_share.expense_id = e.id
+				   AND pending_share.status = 'pending'
+				   AND pending_share.share_amount_minor > 0
 				)`,
 			);
 		}
@@ -400,13 +454,19 @@ export async function listExpenses(
 export type ExpenseMutation =
 	| { kind: "updated"; expense: ExpenseDetail; removedPaymentProofObjectKeys: string[] }
 	| { kind: "not_found" }
-	| { kind: "paid_reset_required" };
+	| { kind: "paid_reset_required" }
+	| { kind: "forbidden" };
+
+export interface ExpenseMutationActor {
+	role: UserRole;
+}
 
 export async function updateExpense(
 	id: string,
 	input: ExpensePatch,
 	database: D1Database = getDatabase(),
 	now: Date = new Date(),
+	actor?: ExpenseMutationActor,
 ): Promise<Result<ExpenseMutation, DbError>> {
 	return safeDbCall(async () => {
 		const existing = await findExpense(database, id);
@@ -414,14 +474,28 @@ export async function updateExpense(
 		let removedPaymentProofObjectKeys: string[] = [];
 		const currentParticipantIds = existing.shares.map((share) => share.participant.id).sort();
 		const requestedParticipantIds = [...input.participantIds].sort();
+		const requestedSplitMode = input.splitMode ?? existing.splitMode;
+		const selectedParticipants = await findSelectedParticipants(database, input.participantIds, id);
+		const requestedAmounts = resolveShareAmounts(input, selectedParticipants, requestedSplitMode);
+		const requestedAmountByParticipant = new Map(
+			selectedParticipants.map((participant, index) => [participant.id, requestedAmounts[index]]),
+		);
 		const financialChange =
 			existing.amountMinor !== input.amountMinor ||
 			existing.payer.id !== input.paidByParticipantId ||
+			existing.splitMode !== requestedSplitMode ||
 			currentParticipantIds.length !== requestedParticipantIds.length ||
 			currentParticipantIds.some(
 				(participantId, index) => participantId !== requestedParticipantIds[index],
+			) ||
+			existing.shares.some(
+				(share) =>
+					requestedAmountByParticipant.get(share.participant.id) !== share.shareAmountMinor,
 			);
 		if (financialChange) {
+			if (existing.splitMode === "open" && actor?.role !== "root" && actor?.role !== "admin") {
+				return { kind: "forbidden" };
+			}
 			const hasPaid = existing.shares.some((share) => share.status === "paid");
 			if (hasPaid && !input.resetPaidReimbursements) return { kind: "paid_reset_required" };
 			const proofKeys = await database
@@ -434,16 +508,16 @@ export async function updateExpense(
 				.bind(id)
 				.all<{ object_key: string }>();
 			removedPaymentProofObjectKeys = proofKeys.results.map((proof) => proof.object_key);
-			const participants = await findSelectedParticipants(database, input.participantIds, id);
+			const participants = selectedParticipants;
 			if (!participants.some((participant) => participant.id === input.paidByParticipantId)) {
 				throw new Error("The payer must be one of the selected participants.");
 			}
 			const timestamp = now.toISOString();
-			const amounts = splitAmount(input.amountMinor, participants.length);
+			const amounts = requestedAmounts;
 			const statements: D1PreparedStatement[] = [
 				database
 					.prepare(
-						"UPDATE expenses SET name = ?, description = ?, amount_minor = ?, currency = ?, expense_date = ?, kind_id = ?, paid_by_participant_id = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+						"UPDATE expenses SET name = ?, description = ?, amount_minor = ?, currency = ?, expense_date = ?, kind_id = ?, split_mode = ?, paid_by_participant_id = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
 					)
 					.bind(
 						input.name,
@@ -452,6 +526,7 @@ export async function updateExpense(
 						input.currency,
 						input.expenseDate,
 						input.kindId,
+						requestedSplitMode,
 						input.paidByParticipantId,
 						timestamp,
 						id,

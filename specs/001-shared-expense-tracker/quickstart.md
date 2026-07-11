@@ -111,3 +111,13 @@ current proof but cannot change another participant's status or attachment.
 3. Confirm each inbox receives an individual message from `info@depto.parker.ci` containing that
    participant's exact share and a working authenticated expense-detail link.
 4. Create an expense without selecting one of those participants and confirm that inbox is not addressed.
+
+## Split-mode smoke test
+
+1. Create a **Montos específicos** expense and confirm the form rejects allocations until they sum
+   exactly to the total.
+2. Create a **Cuenta abierta**, adjust one non-payer amount, and confirm the payer row immediately
+   shows the remaining amount.
+3. Sign in as that non-payer, change the pending amount from the detail page, and confirm both rows
+   update while their total remains exact.
+4. Mark the share paid and confirm its amount stays locked until the reimbursement is reverted.

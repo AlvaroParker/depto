@@ -126,5 +126,16 @@ describe("production user-participant migration", () => {
 			.prepare("SELECT email FROM participants WHERE id = 'legacy-root-participant'")
 			.first<{ email: string | null }>();
 		expect(legacyEmail?.email).toBeNull();
+
+		await applyMigrations(bindings.database, ["0008_add_expense_split_modes.sql"]);
+		const migratedExpense = await bindings.database
+			.prepare("SELECT split_mode FROM expenses WHERE id = 'legacy-expense'")
+			.first<{ split_mode: string }>();
+		expect(migratedExpense?.split_mode).toBe("equal");
+		await expect(
+			bindings.database
+				.prepare("UPDATE expenses SET split_mode = 'invalid' WHERE id = 'legacy-expense'")
+				.run(),
+		).rejects.toThrow(/check constraint/i);
 	});
 });

@@ -6,6 +6,19 @@ import type { PaymentProof } from "@/lib/types/payment-proof";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
+export const ExpenseSplitModeSchema = z.enum(["equal", "custom", "open"]);
+export type ExpenseSplitMode = z.infer<typeof ExpenseSplitModeSchema>;
+
+export const ExpenseShareAllocationSchema = z.object({
+	participantId: z.string().trim().min(1),
+	shareAmountMinor: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+});
+
+export interface ExpenseShareAllocation {
+	participantId: string;
+	shareAmountMinor: number;
+}
+
 function isCalendarDate(value: string): boolean {
 	if (!datePattern.test(value)) return false;
 	const [year, month, day] = value.split("-").map(Number);
@@ -27,15 +40,62 @@ const ExpenseFieldsSchema = z.object({
 		.array(z.string().trim().min(1))
 		.min(1, "Selecciona al menos una persona.")
 		.refine((ids) => new Set(ids).size === ids.length, "No repitas participantes."),
+	shareAllocations: z.array(ExpenseShareAllocationSchema).optional(),
+	splitMode: ExpenseSplitModeSchema.optional(),
 });
 
-export const ExpenseInputSchema = ExpenseFieldsSchema.refine(
-	(input) => input.participantIds.includes(input.paidByParticipantId),
-	{
-		message: "Quien pagó debe participar en el gasto.",
-		path: ["paidByParticipantId"],
-	},
-);
+function validateSplitConfiguration(
+	input: z.infer<typeof ExpenseFieldsSchema>,
+	context: z.RefinementCtx,
+): void {
+	const splitMode = input.splitMode ?? "equal";
+	const allocations = input.shareAllocations ?? [];
+	if (splitMode === "equal") {
+		if (allocations.length > 0) {
+			context.addIssue({
+				code: "custom",
+				message: "La división igual no acepta montos manuales.",
+				path: ["shareAllocations"],
+			});
+		}
+		return;
+	}
+	const allocationIds = allocations.map((allocation) => allocation.participantId);
+	if (
+		allocations.length !== input.participantIds.length ||
+		new Set(allocationIds).size !== allocationIds.length ||
+		input.participantIds.some((participantId) => !allocationIds.includes(participantId))
+	) {
+		context.addIssue({
+			code: "custom",
+			message: "Define un monto para cada participante seleccionado.",
+			path: ["shareAllocations"],
+		});
+		return;
+	}
+	const allocatedTotal = allocations.reduce(
+		(sum, allocation) => sum + allocation.shareAmountMinor,
+		0,
+	);
+	if (!Number.isSafeInteger(allocatedTotal) || allocatedTotal !== input.amountMinor) {
+		context.addIssue({
+			code: "custom",
+			message: "Los montos deben sumar exactamente el total del gasto.",
+			path: ["shareAllocations"],
+		});
+	}
+}
+
+export const ExpenseInputSchema = ExpenseFieldsSchema.superRefine((input, context) => {
+	if (!input.participantIds.includes(input.paidByParticipantId)) {
+		context.addIssue({
+			code: "custom",
+			message: "Quien pagó debe participar en el gasto.",
+			path: ["paidByParticipantId"],
+		});
+	}
+	validateSplitConfiguration(input, context);
+});
 
 export const ExpenseCreateInputSchema = ExpenseFieldsSchema.extend({
 	initialPaidParticipantIds: z
@@ -43,6 +103,7 @@ export const ExpenseCreateInputSchema = ExpenseFieldsSchema.extend({
 		.refine((ids) => new Set(ids).size === ids.length, "No repitas participantes pagados.")
 		.optional(),
 }).superRefine((input, context) => {
+	validateSplitConfiguration(input, context);
 	if (!input.participantIds.includes(input.paidByParticipantId)) {
 		context.addIssue({
 			code: "custom",
@@ -68,13 +129,36 @@ export const ExpenseCreateInputSchema = ExpenseFieldsSchema.extend({
 			path: ["initialPaidParticipantIds"],
 		});
 	}
+	const allocationByParticipant = new Map(
+		(input.shareAllocations ?? []).map((allocation) => [
+			allocation.participantId,
+			allocation.shareAmountMinor,
+		]),
+	);
+	if (
+		input.initialPaidParticipantIds?.some(
+			(participantId) => allocationByParticipant.get(participantId) === 0,
+		)
+	) {
+		context.addIssue({
+			code: "custom",
+			message: "Un monto de $0 no se puede marcar como pagado.",
+			path: ["initialPaidParticipantIds"],
+		});
+	}
 });
 
 export const ExpensePatchSchema = ExpenseFieldsSchema.extend({
 	resetPaidReimbursements: z.boolean().default(false),
-}).refine((input) => input.participantIds.includes(input.paidByParticipantId), {
-	message: "Quien pagó debe participar en el gasto.",
-	path: ["paidByParticipantId"],
+}).superRefine((input, context) => {
+	if (!input.participantIds.includes(input.paidByParticipantId)) {
+		context.addIssue({
+			code: "custom",
+			message: "Quien pagó debe participar en el gasto.",
+			path: ["paidByParticipantId"],
+		});
+	}
+	validateSplitConfiguration(input, context);
 });
 
 export const ExpenseQuerySchema = z.object({
@@ -91,6 +175,10 @@ export const ExpenseQuerySchema = z.object({
 
 export const ShareStatusInputSchema = z.object({
 	status: z.enum(["pending", "paid"]),
+});
+
+export const OpenShareAmountInputSchema = z.object({
+	shareAmountMinor: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
 });
 
 export type ExpenseInput = z.infer<typeof ExpenseInputSchema>;
@@ -121,6 +209,11 @@ export interface ExpenseSummary {
 	payer: Participant;
 	hasReceipt: boolean;
 	kind: ExpenseKind;
+	shares: ExpenseShare[];
+	splitMode: ExpenseSplitMode;
+}
+
+export interface OpenShareAmountResponse {
 	shares: ExpenseShare[];
 }
 

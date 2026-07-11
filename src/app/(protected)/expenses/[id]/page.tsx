@@ -64,6 +64,7 @@ export default async function ExpenseDetailPage({ params }: ExpenseDetailPagePro
 			</header>
 
 			<ReimbursementList
+				amountMinor={expense.amountMinor}
 				currency={expense.currency}
 				currentUser={{
 					participantId: session.user.participantId,
@@ -71,6 +72,7 @@ export default async function ExpenseDetailPage({ params }: ExpenseDetailPagePro
 				}}
 				initialShares={expense.shares}
 				payeeName={expense.payer.name}
+				splitMode={expense.splitMode}
 			/>
 
 			<section className="border-line mt-4 grid gap-3 rounded-2xl border border-dashed p-5 sm:grid-cols-[auto_1fr] sm:items-center">

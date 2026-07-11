@@ -15,6 +15,10 @@ local D1 and R2 implementations, so Docker Compose is intentionally unnecessary.
 Expenses reference admin-managed household categories. D1 seeds the core taxonomy, while a typed
 semantic icon registry maps stored keys to explicit Lucide components in forms, history, and detail.
 
+Expense splitting supports equal, custom, and open modes. Custom shares must sum exactly at creation;
+open shares begin with equal suggestions and keep the payer's settled share as an atomically updated
+remainder while each participant controls their own pending amount.
+
 Participant payment proofs reuse the private R2 binding with a separate key prefix and one-to-one
 D1 metadata per paid share. Share owners and root/admin users manage proof and status, while all
 authenticated household users may inspect current evidence.
@@ -95,6 +99,10 @@ _GATE: Passed before research and re-checked after design._
   update, share deletion, and replacement shares; a paid-state preflight enforces confirmation.
 - `splitAmount()` is a pure utility that divides integer minor units and assigns remainder units in
   ascending participant order.
+- Expenses persist their split mode. Custom/open inputs validate one exact allocation per selected
+  participant, while conditional D1 updates keep open participant changes and the payer remainder exact.
+- Open pending amounts are mutable by their owner or root/admin. Paid amounts lock until reverted;
+  zero amounts remain associated but do not enter pending aggregates.
 
 ### Receipts
 
@@ -161,7 +169,10 @@ migrations/
 ├── 0001_initial.sql
 ├── 0003_add_user_roles.sql
 ├── 0004_link_users_and_participants.sql
-└── 0005_add_expense_kinds.sql
+├── 0005_add_expense_kinds.sql
+├── 0006_add_payment_proofs.sql
+├── 0007_add_participant_emails.sql
+└── 0008_add_expense_split_modes.sql
 
 src/
 ├── app/

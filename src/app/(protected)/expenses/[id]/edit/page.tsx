@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { DeleteExpenseButton } from "@/components/expenses/delete-expense-button";
 import { ExpenseForm } from "@/components/expenses/expense-form";
 import { listExpenseKinds } from "@/lib/db/expense-kinds";
@@ -10,6 +12,8 @@ import { findParticipantsForExpense } from "@/lib/db/participants";
 export const metadata: Metadata = { title: "Editar gasto" };
 
 export default async function EditExpensePage({ params }: { params: Promise<{ id: string }> }) {
+	const session = await auth();
+	if (!session?.user) redirect("/login");
 	const id = (await params).id;
 	const [expense, participants, expenseKinds] = await Promise.all([
 		findExpenseById(id),
@@ -37,6 +41,7 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
 			</header>
 			<section className="border-line bg-paper rounded-[1.75rem] border p-5 sm:p-8">
 				<ExpenseForm
+					canEditFinancials={session.user.role === "root" || session.user.role === "admin"}
 					defaultDate={expense.val.expenseDate}
 					expense={expense.val}
 					expenseKinds={expenseKinds.val}

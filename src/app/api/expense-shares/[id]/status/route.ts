@@ -41,6 +41,11 @@ export async function PATCH(request: Request, { params }: ShareRouteContext) {
 			{ message: "La parte de quien pagó no se puede cambiar." },
 			{ status: 400 },
 		);
+	if (result.val.kind === "zero_amount")
+		return NextResponse.json(
+			{ message: "Un monto de $0 no necesita marcarse como pagado." },
+			{ status: 400 },
+		);
 	if (result.val.kind === "forbidden") return forbiddenResponse();
 	if (result.val.removedProofObjectKey) {
 		try {

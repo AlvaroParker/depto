@@ -141,6 +141,15 @@ components:
           anyOf:
             - { $ref: "#/components/schemas/PaymentProof" }
             - { type: "null" }
+    ExpenseSplitMode:
+      type: string
+      enum: [equal, custom, open]
+    ExpenseShareAllocation:
+      type: object
+      required: [participantId, shareAmountMinor]
+      properties:
+        participantId: { type: string }
+        shareAmountMinor: { type: integer, minimum: 0 }
     PaymentProof:
       type: object
       required: [filename, contentType, sizeBytes, uploadedAt, uploadedByUserId]
@@ -152,7 +161,8 @@ components:
         uploadedByUserId: { type: string }
     ExpenseSummary:
       type: object
-      required: [id, name, amountMinor, currency, expenseDate, kind, payer, hasReceipt, shares]
+      required:
+        [id, name, amountMinor, currency, expenseDate, kind, payer, hasReceipt, shares, splitMode]
       properties:
         id: { type: string }
         name: { type: string }
@@ -163,6 +173,7 @@ components:
         kind: { $ref: "#/components/schemas/ExpenseKind" }
         payer: { $ref: "#/components/schemas/Participant" }
         hasReceipt: { type: boolean }
+        splitMode: { $ref: "#/components/schemas/ExpenseSplitMode" }
         shares:
           type: array
           minItems: 1
@@ -196,6 +207,16 @@ components:
           minItems: 1
           uniqueItems: true
           items: { type: string }
+        splitMode:
+          allOf: [{ $ref: "#/components/schemas/ExpenseSplitMode" }]
+          default: equal
+        shareAllocations:
+          type: array
+          uniqueItems: true
+          description: >-
+            Required for custom and open modes, with one non-negative allocation per selected
+            participant and an exact sum equal to amountMinor. Omitted for equal mode.
+          items: { $ref: "#/components/schemas/ExpenseShareAllocation" }
     ExpenseCreateInput:
       allOf:
         - { $ref: "#/components/schemas/ExpenseInput" }
@@ -506,6 +527,7 @@ paths:
               schema: { $ref: "#/components/schemas/ExpenseDetail" }
         "400": { description: Validation failed }
         "401": { description: Unauthenticated }
+        "403": { description: Only root/admin may structurally edit an existing open expense }
         "404": { description: Expense not found }
         "409": { description: Paid reimbursement reset confirmation required }
     delete:
@@ -584,6 +606,39 @@ paths:
         "401": { description: Unauthenticated }
         "403": { description: Only the share owner or root/admin may mutate it }
         "404": { description: Share not found }
+  /expense-shares/{shareId}/amount:
+    patch:
+      operationId: updateOpenExpenseShareAmount
+      summary: Update a pending participant-owned amount on an open expense
+      parameters:
+        - { in: path, name: shareId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shareAmountMinor]
+              properties:
+                shareAmountMinor: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: Ordered shares after atomically updating the participant and payer remainder
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [shares]
+                properties:
+                  shares:
+                    type: array
+                    items: { $ref: "#/components/schemas/Share" }
+        "400": { description: Invalid body or payer share mutation }
+        "401": { description: Unauthenticated }
+        "403": { description: Only the share owner or root/admin may mutate it }
+        "404": { description: Share not found }
+        "409":
+          { description: Expense is not open, share is paid, or amount exceeds available total }
   /expense-shares/{shareId}/proof:
     put:
       operationId: putExpenseSharePaymentProof
