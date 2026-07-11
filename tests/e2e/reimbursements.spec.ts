@@ -14,5 +14,5 @@ test("marks a reimbursement paid and updates the dashboard", async ({ page }) =>
 	await paidButtons.first().click();
 	await expect(page.getByText("Reembolsado")).toBeVisible();
 	await page.goto("/");
-	await expect(page.getByRole("heading", { name: /balance por persona/i })).toBeVisible();
+	await expect(page.getByRole("heading", { name: /reembolsos pendientes/i })).toBeVisible();
 });

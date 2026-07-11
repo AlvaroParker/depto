@@ -386,7 +386,13 @@ paths:
         - { in: query, name: q, schema: { type: string, maxLength: 120 } }
         - { in: query, name: kind, schema: { type: string } }
         - { in: query, name: payer, schema: { type: string } }
-        - { in: query, name: pending, schema: { type: boolean } }
+        - in: query
+          name: pending
+          description: >-
+            Reimbursement state. `true` finds any household pending share, `false` finds fully
+            reimbursed expenses, and `mine` finds pending shares for the authenticated regular
+            user's participant.
+          schema: { type: string, enum: ["true", "false", mine] }
         - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
         - {
             in: query,
@@ -410,6 +416,7 @@ paths:
                   total: { type: integer }
         "400": { description: Invalid filters }
         "401": { description: Unauthenticated }
+        "403": { description: Personal filter requested by an account without a participant }
     post:
       operationId: createExpense
       summary: Atomically create an expense and one share per selected participant

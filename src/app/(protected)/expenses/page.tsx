@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Plus } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { ExpenseFilters } from "@/components/expenses/expense-filters";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { listExpenseKinds } from "@/lib/db/expense-kinds";
@@ -15,7 +17,13 @@ interface ExpensesPageProps {
 }
 
 function pageHref(
-	query: { kind?: string; q?: string; payer?: string; pending?: boolean; pageSize: number },
+	query: {
+		kind?: string;
+		q?: string;
+		payer?: string;
+		pending?: boolean | "mine";
+		pageSize: number;
+	},
 	page: number,
 ) {
 	const values = new URLSearchParams();
@@ -29,6 +37,8 @@ function pageHref(
 }
 
 export default async function ExpensesPage({ searchParams }: ExpensesPageProps) {
+	const session = await auth();
+	if (!session?.user) redirect("/login");
 	const raw = await searchParams;
 	const flat = Object.fromEntries(
 		Object.entries(raw).flatMap(([key, value]) =>
@@ -37,8 +47,9 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
 	);
 	const parsed = ExpenseQuerySchema.safeParse(flat);
 	const query = parsed.success ? parsed.data : ExpenseQuerySchema.parse({});
+	if (query.pending === "mine" && !session.user.participantId) redirect("/expenses");
 	const [result, participants, expenseKinds] = await Promise.all([
-		listExpenses(query),
+		listExpenses(query, { currentParticipantId: session.user.participantId }),
 		findActiveParticipants(),
 		listExpenseKinds(),
 	]);
@@ -65,11 +76,15 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
 				</Link>
 			</header>
 			<ExpenseFilters
+				canFilterMyPending={Boolean(session.user.participantId)}
 				expenseKinds={expenseKinds.val}
 				participants={participants.val}
 				query={query}
 			/>
-			<ExpenseList expenses={result.val.expenses} />
+			<ExpenseList
+				expenses={result.val.expenses}
+				personalParticipantId={query.pending === "mine" ? session.user.participantId : null}
+			/>
 			{totalPages > 1 ? (
 				<nav aria-label="Paginación de gastos" className="mt-6 flex items-center justify-between">
 					<span className="text-ink-muted text-sm">

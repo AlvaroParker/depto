@@ -147,7 +147,7 @@ describe("expense corrections", () => {
 			.bind("receipts/a.pdf", "a.pdf", "application/pdf", 10, created.val.id)
 			.run();
 		expect((await softDeleteExpense(created.val.id, bindings.database, NOW)).val).toBe(true);
-		const page = await listExpenses({}, bindings.database);
+		const page = await listExpenses({}, { database: bindings.database });
 		expect(page.ok).toBe(true);
 		if (page.err) return;
 		expect(page.val.total).toBe(0);

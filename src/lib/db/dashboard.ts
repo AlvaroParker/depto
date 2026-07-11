@@ -62,7 +62,7 @@ export async function getDashboardSummary(
 						"SELECT s.participant_id AS from_id, s.paid_to_participant_id AS to_id, SUM(s.share_amount_minor) AS amount_minor FROM expense_shares s JOIN expenses e ON e.id = s.expense_id WHERE e.deleted_at IS NULL AND s.status = 'pending' GROUP BY s.participant_id, s.paid_to_participant_id ORDER BY s.participant_id, s.paid_to_participant_id",
 					)
 					.all<MatrixRow>(),
-				listExpenses({ page: 1, pageSize: 5 }, database),
+				listExpenses({ page: 1, pageSize: 5 }, { database }),
 			]);
 		if (recentResult.err) throw recentResult.val.cause;
 		const participants = participantResult.results.map(mapParticipant);

@@ -75,15 +75,30 @@ describe("expense search and filters", () => {
 
 		const combined = await listExpenses(
 			{ kind: "kind-groceries", payer: "participant_camila", pending: true, q: " compra " },
-			bindings.database,
+			{ database: bindings.database },
 		);
 		expect(combined.ok && combined.val.expenses.map((expense) => expense.name)).toEqual([
 			"Mercado",
 		]);
-		const settled = await listExpenses({ pending: false }, bindings.database);
+		const settled = await listExpenses({ pending: false }, { database: bindings.database });
 		expect(settled.ok && settled.val.expenses.map((expense) => expense.name)).toEqual(["Verduras"]);
-		const firstPage = await listExpenses({ page: 1, pageSize: 2 }, bindings.database);
-		const secondPage = await listExpenses({ page: 2, pageSize: 2 }, bindings.database);
+		const personal = await listExpenses(
+			{ payer: "participant_camila", pending: "mine", q: "mercado" },
+			{ currentParticipantId: "participant_alvaro", database: bindings.database },
+		);
+		expect(personal.ok && personal.val.expenses.map((expense) => expense.name)).toEqual([
+			"Mercado",
+		]);
+		const missingIdentity = await listExpenses(
+			{ pending: "mine" },
+			{ database: bindings.database },
+		);
+		expect(missingIdentity.err).toBe(true);
+		const firstPage = await listExpenses({ page: 1, pageSize: 2 }, { database: bindings.database });
+		const secondPage = await listExpenses(
+			{ page: 2, pageSize: 2 },
+			{ database: bindings.database },
+		);
 		expect(firstPage.ok && firstPage.val.expenses.map((expense) => expense.name)).toEqual([
 			"Pan",
 			"Mercado",
@@ -91,9 +106,19 @@ describe("expense search and filters", () => {
 		expect(secondPage.ok && secondPage.val.expenses.map((expense) => expense.name)).toEqual([
 			"Verduras",
 		]);
+		const alvaroMarketShare = created[1].shares.find(
+			(share) => share.participant.id === "participant_alvaro",
+		);
+		if (!alvaroMarketShare) throw new Error("Alvaro share fixture is missing");
+		await updateShareStatus(alvaroMarketShare.id, "paid", "user_alvaro", bindings.database, NOW);
+		const personalAfterPayment = await listExpenses(
+			{ pending: "mine" },
+			{ currentParticipantId: "participant_alvaro", database: bindings.database },
+		);
+		expect(personalAfterPayment.ok && personalAfterPayment.val.expenses).toEqual([]);
 
 		await softDeleteExpense(created[2].id, bindings.database, NOW);
-		const active = await listExpenses({}, bindings.database);
+		const active = await listExpenses({}, { database: bindings.database });
 		expect(active.ok && active.val.expenses.map((expense) => expense.name)).toEqual([
 			"Mercado",
 			"Verduras",

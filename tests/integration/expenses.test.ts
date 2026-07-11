@@ -125,7 +125,7 @@ describe("expense persistence", () => {
 		expect(older.ok && newer.ok).toBe(true);
 		if (older.err || newer.err) return;
 
-		const page = await listExpenses({}, bindings.database);
+		const page = await listExpenses({}, { database: bindings.database });
 		expect(page.ok).toBe(true);
 		if (page.err) return;
 		expect(page.val.total).toBe(2);

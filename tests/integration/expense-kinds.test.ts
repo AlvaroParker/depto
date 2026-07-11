@@ -105,7 +105,7 @@ describe("expense kinds", () => {
 			expect(result.ok && result.val.kind.id).toBe(kindId);
 		}
 
-		const filtered = await listExpenses({ kind: "kind-water" }, bindings.database);
+		const filtered = await listExpenses({ kind: "kind-water" }, { database: bindings.database });
 		expect(filtered.ok && filtered.val.expenses).toHaveLength(1);
 		expect(filtered.ok && filtered.val.expenses[0].kind).toMatchObject({
 			iconKey: "water",

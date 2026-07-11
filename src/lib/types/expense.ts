@@ -43,8 +43,8 @@ export const ExpenseQuerySchema = z.object({
 	pageSize: z.coerce.number().int().min(1).max(100).default(25),
 	payer: z.string().trim().optional(),
 	pending: z
-		.enum(["true", "false"])
-		.transform((value) => value === "true")
+		.enum(["true", "false", "mine"])
+		.transform((value) => (value === "mine" ? value : value === "true"))
 		.optional(),
 	q: z.string().trim().max(120).optional(),
 });

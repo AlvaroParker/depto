@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import {
 	databaseErrorResponse,
+	forbiddenResponse,
 	unauthorizedResponse,
 	validationErrorResponse,
 } from "@/lib/api/server";
@@ -9,13 +10,18 @@ import { findExpenseKindById } from "@/lib/db/expense-kinds";
 import { createExpense, listExpenses } from "@/lib/db/expenses";
 import { ExpenseInputSchema, ExpenseQuerySchema } from "@/lib/types/expense";
 
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
 	const session = await auth();
 	if (!session?.user) return unauthorizedResponse();
 	const url = new URL(request.url);
 	const parsed = ExpenseQuerySchema.safeParse(Object.fromEntries(url.searchParams));
 	if (!parsed.success) return validationErrorResponse(parsed.error);
-	const result = await listExpenses(parsed.data);
+	if (parsed.data.pending === "mine" && !session.user.participantId) {
+		return forbiddenResponse();
+	}
+	const result = await listExpenses(parsed.data, {
+		currentParticipantId: session.user.participantId,
+	});
 	if (result.err) return databaseErrorResponse();
 	return NextResponse.json(result.val);
 }
