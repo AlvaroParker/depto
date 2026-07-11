@@ -32,6 +32,7 @@ test("filters and settles the signed-in user's pending expense shares", async ({
 	await expect(page.getByText("Tu resumen", { exact: true })).toBeVisible();
 	await expect(page.getByText("Gastado hasta hoy", { exact: true })).toBeVisible();
 	await expect(page.getByText("Tu gasto total", { exact: true })).toBeVisible();
+	await expect(page.getByRole("heading", { name: "Deudas por persona" })).toBeVisible();
 	await expect(page.getByRole("heading", { name: "Tus gastos recientes" })).toBeVisible();
 	const recentExpenseCard = page.getByRole("link", { name: new RegExp(expenseName) });
 	await expect(recentExpenseCard.getByText("Tu parte pagada", { exact: true })).toBeVisible();

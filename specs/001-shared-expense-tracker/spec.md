@@ -79,8 +79,9 @@ the detail plus all dashboard totals after each transition.
 3. **Given** any expense, **When** its detail is opened, **Then** its selected participants and their
    settled, pending, or paid state are visible; the payer's settled state cannot be changed.
 4. **Given** a signed-in regular user linked to a participant, **When** the dashboard is opened,
-   **Then** it shows what they owe, what others owe them, their current cash spend, their final
-   allocated share, and only recent expenses in which they participate.
+   **Then** it shows what they owe, what others owe them, a descending per-participant debt
+   breakdown, their current cash spend, their final allocated share, and only recent expenses in
+   which they participate.
 5. **Given** a signed-in root or admin without a participant, **When** the dashboard is opened,
    **Then** it shows expense count, total spend, total paid and total share by participant, net
    balances, total pending, and an aggregated from/to reimbursement list.
@@ -237,11 +238,11 @@ icon in list and detail views, filter history by it, and verify a regular user c
   through one-time setup, store only password hashes, return generic failures, reject disabled
   users, and rate-limit repeated failures by username and client address.
 - **FR-002**: For a regular user linked to a participant, the dashboard MUST show their pending
-  outgoing amount and expense count, pending incoming amount and expense count, current cash spend,
-  final allocated share, and recent participating expenses. For root or admin accounts without a
-  participant, it MUST show expense count, total amount spent, total paid and share by participant,
-  net balances, total pending reimbursements, an aggregated from/to pending matrix, and household
-  recent expenses.
+  outgoing amount and expense count, pending incoming amount and expense count, a descending
+  per-participant breakdown that keeps both directions visible, current cash spend, final allocated
+  share, and recent participating expenses. For root or admin accounts without a participant, it
+  MUST show expense count, total amount spent, total paid and share by participant, net balances,
+  total pending reimbursements, an aggregated from/to pending matrix, and household recent expenses.
 - **FR-003**: The system MUST provide a mobile-usable list of all non-deleted expenses showing
   date, name, amount, payer, receipt presence, reimbursement state, and view/edit/delete actions.
 - **FR-004**: An authenticated user MUST be able to create an expense with required name, positive

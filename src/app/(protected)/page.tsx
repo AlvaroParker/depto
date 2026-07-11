@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { PendingMatrix } from "@/components/dashboard/pending-matrix";
+import { PersonalDebtOverview } from "@/components/dashboard/personal-debt-overview";
 import { PersonalObligations } from "@/components/dashboard/personal-obligations";
 import { PersonalSummaryCards } from "@/components/dashboard/personal-summary-cards";
 import { SummaryCards } from "@/components/dashboard/summary-cards";
@@ -61,6 +62,7 @@ export default async function DashboardPage() {
 							Lo que debes, lo que te deben y cuánto has gastado hasta ahora.
 						</p>
 						<PersonalObligations summary={dashboard} />
+						<PersonalDebtOverview debts={dashboard.debtsByParticipant} />
 						<PersonalSummaryCards summary={dashboard} />
 						<RecentExpenses
 							expenses={dashboard.recentExpenses}

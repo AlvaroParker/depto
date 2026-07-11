@@ -202,6 +202,16 @@ describe("dashboard aggregates", () => {
 			"Agua personal",
 			"Gas personal",
 		]);
+		expect(
+			initial.val.debtsByParticipant.map((debt) => [
+				debt.participant.name,
+				debt.amountOwedMinor,
+				debt.amountDueToMeMinor,
+			]),
+		).toEqual([
+			["Trinidad", 0, 3_000],
+			["Camila", 2_000, 0],
+		]);
 
 		await updateShareStatus(
 			paidByCamila.val.shares[0].id,
@@ -222,6 +232,9 @@ describe("dashboard aggregates", () => {
 			owedExpenseCount: 0,
 			spentSoFarMinor: 8_000,
 		});
+		expect(afterPayment.val.debtsByParticipant.map((debt) => debt.participant.name)).toEqual([
+			"Trinidad",
+		]);
 
 		await bindings.database
 			.prepare("UPDATE expenses SET deleted_at = ? WHERE id = ?")
@@ -258,5 +271,6 @@ describe("dashboard aggregates", () => {
 			spentSoFarMinor: 0,
 		});
 		expect(result.val.recentExpenses).toEqual([]);
+		expect(result.val.debtsByParticipant).toEqual([]);
 	});
 });

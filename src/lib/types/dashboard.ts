@@ -34,7 +34,14 @@ export interface PersonalDashboardSummary {
 	dueToMeExpenseCount: number;
 	spentSoFarMinor: number;
 	expectedSpendMinor: number;
+	debtsByParticipant: PersonalDebtByParticipant[];
 	recentExpenses: ExpenseSummary[];
+}
+
+export interface PersonalDebtByParticipant {
+	participant: Participant;
+	amountOwedMinor: number;
+	amountDueToMeMinor: number;
 }
 
 export type DashboardSummary = HouseholdDashboardSummary | PersonalDashboardSummary;

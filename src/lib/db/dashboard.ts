@@ -9,6 +9,7 @@ import type {
 	HouseholdDashboardSummary,
 	ParticipantBalance,
 	PendingTransfer,
+	PersonalDebtByParticipant,
 	PersonalDashboardSummary,
 } from "@/lib/types/dashboard";
 import type { Participant } from "@/lib/types/participant";
@@ -42,6 +43,10 @@ interface PersonalAggregateRow {
 	owed_expense_count: number;
 	paid_by_me_minor: number;
 }
+interface PersonalDebtRow extends ParticipantRow {
+	amount_due_to_me_minor: number;
+	amount_owed_minor: number;
+}
 
 export interface DashboardContext {
 	currentParticipantId?: string | null;
@@ -56,7 +61,7 @@ async function getPersonalSummary(
 	participantId: string,
 	database: D1Database,
 ): Promise<PersonalDashboardSummary> {
-	const [aggregate, recentResult] = await Promise.all([
+	const [aggregate, debtResult, recentResult] = await Promise.all([
 		database
 			.prepare(
 				`SELECT
@@ -100,6 +105,26 @@ async function getPersonalSummary(
 				participantId,
 			)
 			.first<PersonalAggregateRow>(),
+		database
+			.prepare(
+				`SELECT p.id, p.name, p.slug, p.sort_order,
+				        COALESCE(SUM(CASE WHEN s.participant_id = ? THEN s.share_amount_minor ELSE 0 END), 0)
+				          AS amount_owed_minor,
+				        COALESCE(SUM(CASE WHEN s.paid_to_participant_id = ? THEN s.share_amount_minor ELSE 0 END), 0)
+				          AS amount_due_to_me_minor
+				 FROM expense_shares s
+				 JOIN expenses e ON e.id = s.expense_id AND e.deleted_at IS NULL
+				 JOIN participants p ON p.id = CASE
+				   WHEN s.participant_id = ? THEN s.paid_to_participant_id
+				   ELSE s.participant_id
+				 END
+				 WHERE s.status = 'pending'
+				   AND (s.participant_id = ? OR s.paid_to_participant_id = ?)
+				 GROUP BY p.id, p.name, p.slug, p.sort_order
+				 ORDER BY amount_owed_minor + amount_due_to_me_minor DESC, p.sort_order ASC, p.id ASC`,
+			)
+			.bind(participantId, participantId, participantId, participantId, participantId)
+			.all<PersonalDebtRow>(),
 		listExpenses({ page: 1, pageSize: 5 }, { database, participantScopeId: participantId }),
 	]);
 	if (recentResult.err) throw recentResult.val.cause;
@@ -116,6 +141,11 @@ async function getPersonalSummary(
 	return {
 		amountDueToMeMinor: values.amount_due_to_me_minor,
 		amountOwedMinor: values.amount_owed_minor,
+		debtsByParticipant: debtResult.results.map((row): PersonalDebtByParticipant => ({
+			amountDueToMeMinor: row.amount_due_to_me_minor,
+			amountOwedMinor: row.amount_owed_minor,
+			participant: mapParticipant(row),
+		})),
 		dueToMeExpenseCount: values.due_to_me_expense_count,
 		expectedSpendMinor: values.expected_spend_minor,
 		owedExpenseCount: values.owed_expense_count,
