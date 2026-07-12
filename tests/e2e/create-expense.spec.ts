@@ -27,7 +27,7 @@ test("creates an exact expense and shows it in detail and history", async ({ pag
 	await expect(page.getByText("$5.000")).toHaveCount(2);
 	await expect(page.getByText("Reembolsado", { exact: true })).toBeVisible();
 	await expect(page.getByText("Sin comprobante de pago", { exact: true })).toBeVisible();
-	await page.goto("/expenses");
+	await page.goto("/expenses?pending=all");
 	await expect(page.getByText(name)).toBeVisible();
 });
 
