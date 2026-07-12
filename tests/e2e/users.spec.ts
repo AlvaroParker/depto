@@ -49,7 +49,12 @@ test("lets managers add, edit, and remove participant bank details", async ({ pa
 	await page.getByLabel("Correo", { exact: true }).fill(`${username}@example.com`);
 	await page.getByLabel("Contraseña inicial").fill(password);
 	await page.getByRole("button", { name: "Crear acceso" }).click();
-	await page.getByRole("button", { name: `Administrar datos bancarios de ${displayName}` }).click();
+	const userCard = page
+		.locator("article")
+		.filter({ has: page.getByRole("heading", { exact: true, name: displayName }) });
+	await userCard
+		.getByRole("button", { name: `Administrar datos bancarios de ${displayName}` })
+		.click();
 
 	let dialog = page.getByRole("dialog", { name: "Datos bancarios" });
 	await dialog.getByLabel("RUT").fill("189726317");
@@ -60,23 +65,27 @@ test("lets managers add, edit, and remove participant bank details", async ({ pa
 	await expect(page.getByRole("status")).toContainText(
 		`Datos bancarios de ${displayName} actualizados`,
 	);
-	await expect(page.getByText("Banco inicial · Cuenta Vista", { exact: true })).toBeVisible();
+	await expect(userCard.getByText("Banco inicial · Cuenta Vista", { exact: true })).toBeVisible();
 
-	await page.getByRole("button", { name: `Administrar datos bancarios de ${displayName}` }).click();
+	await userCard
+		.getByRole("button", { name: `Administrar datos bancarios de ${displayName}` })
+		.click();
 	dialog = page.getByRole("dialog", { name: "Datos bancarios" });
 	await expect(dialog.getByLabel("RUT")).toHaveValue("18.972.631-7");
 	await dialog.getByLabel("Tipo de cuenta").selectOption("Cuenta Corriente");
 	await dialog.getByLabel("Banco").fill("Banco actualizado");
 	await dialog.getByRole("button", { name: "Guardar datos" }).click();
 	await expect(
-		page.getByText("Banco actualizado · Cuenta Corriente", { exact: true }),
+		userCard.getByText("Banco actualizado · Cuenta Corriente", { exact: true }),
 	).toBeVisible();
 
-	await page.getByRole("button", { name: `Administrar datos bancarios de ${displayName}` }).click();
+	await userCard
+		.getByRole("button", { name: `Administrar datos bancarios de ${displayName}` })
+		.click();
 	await page.getByRole("button", { name: "Eliminar datos", exact: true }).click();
 	const removal = page.getByRole("dialog", { name: "Eliminar datos bancarios" });
 	await removal.getByRole("button", { name: "Eliminar datos" }).click();
-	await expect(page.getByText("Datos bancarios pendientes", { exact: true })).toBeVisible();
+	await expect(userCard.getByText("Datos bancarios pendientes", { exact: true })).toBeVisible();
 });
 
 test("lets root and admin update regular-user names, usernames, and passwords", async ({
