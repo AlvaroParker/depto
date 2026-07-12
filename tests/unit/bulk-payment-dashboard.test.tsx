@@ -20,10 +20,39 @@ const debt = {
 	participant: { id: "participant_camila", name: "Camila", slug: "camila", sortOrder: 2 },
 };
 
+const bankTransferDetails = {
+	accountNumber: "001234567",
+	accountType: "Cuenta Vista" as const,
+	bankName: "Banco Estado",
+	email: "camila@example.com",
+	name: "Camila",
+	participantId: "participant_camila",
+	rut: "18.972.631-7",
+};
+
 describe("bulk payment dashboard", () => {
 	beforeEach(() => {
 		mocks.payAllDebt.mockReset();
 		mocks.refresh.mockReset();
+		vi.restoreAllMocks();
+	});
+
+	it("copies the selected payment recipient's bank details", async () => {
+		const user = userEvent.setup();
+		const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
+		render(
+			<PersonalDebtOverview
+				bankTransferDetailsByParticipantId={{ participant_camila: bankTransferDetails }}
+				debts={[debt]}
+			/>,
+		);
+
+		await user.click(screen.getByRole("button", { name: /Pagar todo lo que debes/ }));
+		await user.click(screen.getByRole("button", { name: "Copiar datos bancarios" }));
+
+		expect(writeText).toHaveBeenCalledWith(
+			"Camila\n18.972.631-7\nCuenta Vista\n001234567\nBanco Estado\ncamila@example.com",
+		);
 	});
 	afterEach(cleanup);
 

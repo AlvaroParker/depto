@@ -12,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { PaymentProofViewer } from "@/components/expenses/payment-proof-viewer";
+import { BankAccountCopyAction } from "@/components/payments/bank-account-copy-action";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -22,6 +23,7 @@ import {
 import { apiRequest } from "@/lib/api/client";
 import { uploadPaymentProof } from "@/lib/api/payment-proofs";
 import type { UserRole } from "@/lib/const/roles";
+import type { BankTransferDetails } from "@/lib/types/bank-account";
 import type { ExpenseShare, ExpenseSplitMode, OpenShareAmountResponse } from "@/lib/types/expense";
 import { formatDateTime, formatMoney } from "@/lib/util/format";
 
@@ -30,6 +32,7 @@ interface ReimbursementListProps {
 	currency: string;
 	currentUser: { participantId: string | null; role: UserRole };
 	initialShares: ExpenseShare[];
+	payeeBankTransferDetails: BankTransferDetails | null;
 	payeeName: string;
 	splitMode: ExpenseSplitMode;
 }
@@ -50,6 +53,7 @@ export function ReimbursementList({
 	currency,
 	currentUser,
 	initialShares,
+	payeeBankTransferDetails,
 	payeeName,
 	splitMode,
 }: ReimbursementListProps) {
@@ -334,6 +338,7 @@ export function ReimbursementList({
 				title={paymentShare?.status === "paid" ? "Comprobante de pago" : "Registrar pago"}
 			>
 				<div className="grid gap-5">
+					<BankAccountCopyAction details={payeeBankTransferDetails} />
 					<label className="grid gap-2 text-sm font-semibold" htmlFor="payment-proof">
 						<span>Comprobante de pago (opcional)</span>
 						<input

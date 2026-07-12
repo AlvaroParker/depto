@@ -8,6 +8,7 @@ import { PersonalSummaryCards } from "@/components/dashboard/personal-summary-ca
 import { SummaryCards } from "@/components/dashboard/summary-cards";
 import { ExpenseList } from "@/components/expenses/expense-list";
 import { getDashboardSummary } from "@/lib/db/dashboard";
+import { findBankTransferDetailsByParticipantIds } from "@/lib/db/bank-accounts";
 import type { ExpenseSummary } from "@/lib/types/expense";
 
 function RecentExpenses({
@@ -49,6 +50,15 @@ export default async function DashboardPage() {
 	});
 	if (result.err) throw new Error("Could not load dashboard.");
 	const dashboard = result.val;
+	const bankTransferDetails =
+		dashboard.view === "personal"
+			? await findBankTransferDetailsByParticipantIds(
+					dashboard.debtsByParticipant
+						.filter(({ amountOwedMinor }) => amountOwedMinor > 0)
+						.map(({ participant }) => participant.id),
+				)
+			: null;
+	if (bankTransferDetails?.err) throw new Error("Could not load bank transfer details.");
 	return (
 		<main className="px-4 py-7 sm:px-7 lg:px-12 lg:py-11">
 			<div className="mx-auto max-w-6xl">
@@ -62,7 +72,10 @@ export default async function DashboardPage() {
 							Lo que debes, lo que te deben y cuánto has gastado hasta ahora.
 						</p>
 						<PersonalObligations summary={dashboard} />
-						<PersonalDebtOverview debts={dashboard.debtsByParticipant} />
+						<PersonalDebtOverview
+							bankTransferDetailsByParticipantId={bankTransferDetails?.val}
+							debts={dashboard.debtsByParticipant}
+						/>
 						<PersonalSummaryCards summary={dashboard} />
 						<RecentExpenses
 							expenses={dashboard.recentExpenses}
