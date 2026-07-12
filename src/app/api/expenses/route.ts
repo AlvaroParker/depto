@@ -58,28 +58,30 @@ export async function POST(request: Request): Promise<NextResponse> {
 	const result = await createExpense(parsed.data, session.user.id);
 	if (result.err) return databaseErrorResponse();
 
-	const recipients = await findExpenseNotificationRecipients(result.val.id);
-	if (recipients.err) {
-		console.error("Could not load expense notification recipients.", {
-			expenseId: result.val.id,
-		});
-	} else {
-		const bindings = getBindings();
-		const delivery = await sendExpenseCreatedEmails(
-			result.val,
-			recipients.val,
-			session.user.displayName,
-			{
-				apiKey: bindings.RESEND_API_KEY,
-				appBaseUrl: bindings.APP_BASE_URL || "https://depto.parker.ci",
-				from: bindings.RESEND_FROM_EMAIL || "La cuenta <info@depto.parker.ci>",
-			},
-		);
-		if (delivery.kind === "failed") {
-			console.error("Could not send expense notification emails.", {
+	if (parsed.data.sendEmailNotifications) {
+		const recipients = await findExpenseNotificationRecipients(result.val.id);
+		if (recipients.err) {
+			console.error("Could not load expense notification recipients.", {
 				expenseId: result.val.id,
-				status: delivery.status,
 			});
+		} else {
+			const bindings = getBindings();
+			const delivery = await sendExpenseCreatedEmails(
+				result.val,
+				recipients.val,
+				session.user.displayName,
+				{
+					apiKey: bindings.RESEND_API_KEY,
+					appBaseUrl: bindings.APP_BASE_URL || "https://depto.parker.ci",
+					from: bindings.RESEND_FROM_EMAIL || "La cuenta <info@depto.parker.ci>",
+				},
+			);
+			if (delivery.kind === "failed") {
+				console.error("Could not send expense notification emails.", {
+					expenseId: result.val.id,
+					status: delivery.status,
+				});
+			}
 		}
 	}
 	return NextResponse.json(result.val, { status: 201 });

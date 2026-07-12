@@ -6,6 +6,7 @@ import {
 	Check,
 	Equal,
 	HandCoins,
+	Mail,
 	Save,
 	SlidersHorizontal,
 	UsersRound,
@@ -227,7 +228,10 @@ export function ExpenseForm({
 						...input,
 						...(expense
 							? { resetPaidReimbursements: formData.get("resetPaidReimbursements") === "on" }
-							: { initialPaidParticipantIds }),
+							: {
+									initialPaidParticipantIds,
+									sendEmailNotifications: formData.get("sendEmailNotifications") === "on",
+								}),
 					}),
 					method: expense ? "PATCH" : "POST",
 				},
@@ -601,6 +605,31 @@ export function ExpenseForm({
 						placeholder="Agrega un detalle que ayude a reconocerlo"
 					/>
 				</div>
+				{!expense ? (
+					<label className="border-line bg-paper-strong/55 focus-within:ring-accent/20 flex cursor-pointer items-center justify-between gap-4 rounded-2xl border p-4 transition focus-within:ring-3 sm:col-span-2">
+						<span className="flex min-w-0 items-start gap-3">
+							<span className="bg-accent/10 text-accent mt-0.5 grid size-9 shrink-0 place-items-center rounded-full">
+								<Mail aria-hidden size={17} />
+							</span>
+							<span>
+								<strong className="block text-sm">Enviar notificaciones por correo</strong>
+								<span className="text-ink-muted mt-1 block text-xs leading-5">
+									Avisa a las personas participantes cuando guardes el gasto.
+								</span>
+							</span>
+						</span>
+						<span className="relative inline-flex shrink-0">
+							<input
+								className="peer absolute inset-0 z-10 cursor-pointer opacity-0"
+								defaultChecked
+								name="sendEmailNotifications"
+								role="switch"
+								type="checkbox"
+							/>
+							<span className="bg-line-strong peer-checked:bg-accent peer-focus-visible:outline-accent pointer-events-none relative h-7 w-12 rounded-full transition-colors duration-200 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 after:absolute after:top-1 after:left-1 after:size-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform after:duration-200 peer-checked:after:translate-x-5" />
+						</span>
+					</label>
+				) : null}
 			</div>
 
 			<div className="border-line bg-paper-strong/55 rounded-2xl border p-4 text-sm">

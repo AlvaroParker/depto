@@ -12,6 +12,16 @@ const validExpense = {
 };
 
 describe("expense creation input", () => {
+	it("enables email notifications by default and accepts opting out", () => {
+		expect(ExpenseCreateInputSchema.parse(validExpense).sendEmailNotifications).toBe(true);
+		expect(
+			ExpenseCreateInputSchema.parse({
+				...validExpense,
+				sendEmailNotifications: false,
+			}).sendEmailNotifications,
+		).toBe(false);
+	});
+
 	it("accepts exact custom and open allocations, including zero shares", () => {
 		const allocations = [
 			{ participantId: "participant_alvaro", shareAmountMinor: 6_000 },
