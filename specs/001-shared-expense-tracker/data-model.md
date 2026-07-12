@@ -126,6 +126,7 @@ Represents one participant's exact portion and reimbursement state for one expen
 | `paid_to_participant_id` | text    | Null for payer; expense payer for non-payers                          |
 | `paid_at`                | text    | Required only for `paid`; null otherwise                              |
 | `marked_by_user_id`      | text    | Required only for `paid`; null otherwise                              |
+| `bulk_payment_id`        | text    | Opaque operation ID for shares paid together; otherwise null          |
 | `created_at`             | text    | Required UTC timestamp                                                |
 | `updated_at`             | text    | Required UTC timestamp                                                |
 

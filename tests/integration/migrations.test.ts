@@ -166,5 +166,13 @@ describe("production user-participant migration", () => {
 			"oauth_rate_limits",
 			"oauth_refresh_tokens",
 		]);
+
+		await applyMigrations(bindings.database, ["0011_allow_shared_payment_proof_objects.sql"]);
+		const bulkPaymentColumn = await bindings.database
+			.prepare(
+				"SELECT name FROM pragma_table_info('expense_shares') WHERE name = 'bulk_payment_id'",
+			)
+			.first<{ name: string }>();
+		expect(bulkPaymentColumn?.name).toBe("bulk_payment_id");
 	});
 });

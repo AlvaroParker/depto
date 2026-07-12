@@ -5,7 +5,7 @@ import {
 	updateOpenShareAmount,
 	updateShareStatus,
 } from "@/lib/db/expense-shares";
-import { getBindings } from "@/lib/db/bindings";
+import { deletePaymentProofObjectIfUnreferenced } from "@/lib/services/files";
 import type { UserRole } from "@/lib/const/roles";
 
 export interface ReimbursementActor {
@@ -31,11 +31,7 @@ export async function setActorPaymentStatus(
 		role: actor.role,
 	});
 	if (updated.ok && updated.val.kind === "updated" && updated.val.removedProofObjectKey) {
-		try {
-			await getBindings().RECEIPTS.delete(updated.val.removedProofObjectKey);
-		} catch {
-			// The financial transition is authoritative; object cleanup is best effort.
-		}
+		await deletePaymentProofObjectIfUnreferenced(updated.val.removedProofObjectKey);
 	}
 	return updated;
 }

@@ -183,6 +183,19 @@ export async function findSharePaymentProof(
 	});
 }
 
+export async function countPaymentProofObjectReferences(
+	objectKey: string,
+	database: D1Database = getDatabase(),
+): Promise<Result<number, DbError>> {
+	return safeDbCall(async () => {
+		const row = await database
+			.prepare("SELECT COUNT(*) AS total FROM expense_share_payment_proofs WHERE object_key = ?")
+			.bind(objectKey)
+			.first<{ total: number }>();
+		return row?.total ?? 0;
+	});
+}
+
 export async function findShareByExpenseAndParticipant(
 	expenseId: string,
 	participantId: string,
@@ -241,7 +254,8 @@ export async function updateShareStatus(
 			database
 				.prepare(
 					`UPDATE expense_shares
-					 SET status = ?, paid_at = ?, marked_by_user_id = ?, updated_at = ?
+					 SET status = ?, paid_at = ?, marked_by_user_id = ?, updated_at = ?,
+					     bulk_payment_id = NULL
 					 WHERE id = ? AND status != 'settled'`,
 				)
 				.bind(
@@ -369,6 +383,7 @@ export async function attachSharePaymentProof(
 					 SET status = 'paid',
 					     paid_at = CASE WHEN status = 'paid' THEN paid_at ELSE ? END,
 					     marked_by_user_id = CASE WHEN status = 'paid' THEN marked_by_user_id ELSE ? END,
+					     bulk_payment_id = CASE WHEN status = 'paid' THEN bulk_payment_id ELSE NULL END,
 					     updated_at = ?
 					 WHERE id = ? AND status != 'settled'`,
 				)

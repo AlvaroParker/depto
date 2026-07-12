@@ -7,9 +7,9 @@ import {
 	validationErrorResponse,
 } from "@/lib/api/server";
 import { findExpenseKindById } from "@/lib/db/expense-kinds";
-import { getBindings } from "@/lib/db/bindings";
 import { softDeleteExpense, updateExpense } from "@/lib/db/expenses";
 import { getExpenseForActor } from "@/lib/services/expenses";
+import { deletePaymentProofObjectsIfUnreferenced } from "@/lib/services/files";
 import { ExpensePatchSchema } from "@/lib/types/expense";
 
 interface ExpenseRouteContext {
@@ -61,11 +61,7 @@ export async function PATCH(request: Request, { params }: ExpenseRouteContext) {
 		);
 	if (result.val.kind === "forbidden") return forbiddenResponse();
 	if (result.val.removedPaymentProofObjectKeys.length > 0) {
-		try {
-			await getBindings().RECEIPTS.delete(result.val.removedPaymentProofObjectKeys);
-		} catch (error) {
-			console.error("R2 payment proof cleanup failed after expense recalculation.", error);
-		}
+		await deletePaymentProofObjectsIfUnreferenced(result.val.removedPaymentProofObjectKeys);
 	}
 	return NextResponse.json(result.val.expense);
 }
