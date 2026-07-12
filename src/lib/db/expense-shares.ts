@@ -183,6 +183,37 @@ export async function findSharePaymentProof(
 	});
 }
 
+export async function findShareByExpenseAndParticipant(
+	expenseId: string,
+	participantId: string,
+	database: D1Database = getDatabase(),
+): Promise<Result<ExpenseShare | null, DbError>> {
+	return safeDbCall(async () => {
+		const row = await database
+			.prepare(`${SHARE_SELECT} WHERE s.expense_id = ? AND s.participant_id = ?`)
+			.bind(expenseId, participantId)
+			.first<ShareRow>();
+		return row ? mapShare(row) : null;
+	});
+}
+
+export async function findExpenseIdForShare(
+	shareId: string,
+	database: D1Database = getDatabase(),
+): Promise<Result<string | null, DbError>> {
+	return safeDbCall(async () => {
+		const row = await database
+			.prepare(
+				`SELECT s.expense_id FROM expense_shares s
+				 JOIN expenses e ON e.id = s.expense_id AND e.deleted_at IS NULL
+				 WHERE s.id = ?`,
+			)
+			.bind(shareId)
+			.first<{ expense_id: string }>();
+		return row?.expense_id ?? null;
+	});
+}
+
 export async function updateShareStatus(
 	id: string,
 	status: "pending" | "paid",

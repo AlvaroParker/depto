@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read
-`specs/001-shared-expense-tracker/plan.md`.
+`specs/002-mcp-expense-integration/plan.md`.
 <!-- SPECKIT END -->
 
 ## Git commits

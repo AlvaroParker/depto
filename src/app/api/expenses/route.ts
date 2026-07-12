@@ -1,37 +1,35 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { authenticateRequestActor } from "@/lib/auth/actor";
 import {
+	actorAuthenticationErrorResponse,
 	databaseErrorResponse,
 	forbiddenResponse,
-	unauthorizedResponse,
 	validationErrorResponse,
 } from "@/lib/api/server";
-import { findExpenseKindById } from "@/lib/db/expense-kinds";
-import { createExpense, listExpenses } from "@/lib/db/expenses";
-import { getBindings } from "@/lib/db/bindings";
-import { findExpenseNotificationRecipients } from "@/lib/db/participants";
-import { sendExpenseCreatedEmails } from "@/lib/email/expense-created";
+import { createExpenseForActor, listExpensesForActor } from "@/lib/services/expenses";
 import { ExpenseCreateInputSchema, ExpenseQuerySchema } from "@/lib/types/expense";
 
 export async function GET(request: Request): Promise<NextResponse> {
-	const session = await auth();
-	if (!session?.user) return unauthorizedResponse();
+	const authenticated = await authenticateRequestActor(request, { requiredScope: "expenses:read" });
+	if (authenticated.kind !== "authenticated")
+		return actorAuthenticationErrorResponse(authenticated, request);
 	const url = new URL(request.url);
 	const parsed = ExpenseQuerySchema.safeParse(Object.fromEntries(url.searchParams));
 	if (!parsed.success) return validationErrorResponse(parsed.error);
-	if (parsed.data.pending === "mine" && !session.user.participantId) {
+	if (parsed.data.pending === "mine" && !authenticated.actor.participantId) {
 		return forbiddenResponse();
 	}
-	const result = await listExpenses(parsed.data, {
-		currentParticipantId: session.user.participantId,
-	});
+	const result = await listExpensesForActor(parsed.data, authenticated.actor);
 	if (result.err) return databaseErrorResponse();
 	return NextResponse.json(result.val);
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-	const session = await auth();
-	if (!session?.user) return unauthorizedResponse();
+	const authenticated = await authenticateRequestActor(request, {
+		requiredScope: "expenses:write",
+	});
+	if (authenticated.kind !== "authenticated")
+		return actorAuthenticationErrorResponse(authenticated, request);
 	let body: unknown;
 	try {
 		body = await request.json();
@@ -43,9 +41,9 @@ export async function POST(request: Request): Promise<NextResponse> {
 	}
 	const parsed = ExpenseCreateInputSchema.safeParse(body);
 	if (!parsed.success) return validationErrorResponse(parsed.error);
-	const expenseKind = await findExpenseKindById(parsed.data.kindId);
-	if (expenseKind.err) return databaseErrorResponse();
-	if (!expenseKind.val) {
+	const result = await createExpenseForActor(parsed.data, authenticated.actor);
+	if (result.kind === "storage_error") return databaseErrorResponse();
+	if (result.kind === "invalid_kind") {
 		return NextResponse.json(
 			{
 				code: "VALIDATION_ERROR",
@@ -55,34 +53,5 @@ export async function POST(request: Request): Promise<NextResponse> {
 			{ status: 400 },
 		);
 	}
-	const result = await createExpense(parsed.data, session.user.id);
-	if (result.err) return databaseErrorResponse();
-
-	if (parsed.data.sendEmailNotifications) {
-		const recipients = await findExpenseNotificationRecipients(result.val.id);
-		if (recipients.err) {
-			console.error("Could not load expense notification recipients.", {
-				expenseId: result.val.id,
-			});
-		} else {
-			const bindings = getBindings();
-			const delivery = await sendExpenseCreatedEmails(
-				result.val,
-				recipients.val,
-				session.user.displayName,
-				{
-					apiKey: bindings.RESEND_API_KEY,
-					appBaseUrl: bindings.APP_BASE_URL || "https://depto.parker.ci",
-					from: bindings.RESEND_FROM_EMAIL || "La cuenta <info@depto.parker.ci>",
-				},
-			);
-			if (delivery.kind === "failed") {
-				console.error("Could not send expense notification emails.", {
-					expenseId: result.val.id,
-					status: delivery.status,
-				});
-			}
-		}
-	}
-	return NextResponse.json(result.val, { status: 201 });
+	return NextResponse.json(result.expense, { status: 201 });
 }

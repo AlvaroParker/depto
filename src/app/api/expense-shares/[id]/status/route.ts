@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { authenticateRequestActor } from "@/lib/auth/actor";
 import {
+	actorAuthenticationErrorResponse,
 	databaseErrorResponse,
 	forbiddenResponse,
-	unauthorizedResponse,
 	validationErrorResponse,
 } from "@/lib/api/server";
 import { getBindings } from "@/lib/db/bindings";
@@ -15,8 +15,11 @@ interface ShareRouteContext {
 }
 
 export async function PATCH(request: Request, { params }: ShareRouteContext) {
-	const session = await auth();
-	if (!session?.user) return unauthorizedResponse();
+	const authenticated = await authenticateRequestActor(request, {
+		requiredScope: "reimbursements:write",
+	});
+	if (authenticated.kind !== "authenticated")
+		return actorAuthenticationErrorResponse(authenticated, request);
 	let body: unknown;
 	try {
 		body = await request.json();
@@ -29,9 +32,9 @@ export async function PATCH(request: Request, { params }: ShareRouteContext) {
 	const parsed = ShareStatusInputSchema.safeParse(body);
 	if (!parsed.success) return validationErrorResponse(parsed.error);
 	const result = await updateShareStatus((await params).id, parsed.data.status, {
-		id: session.user.id,
-		participantId: session.user.participantId,
-		role: session.user.role,
+		id: authenticated.actor.userId,
+		participantId: authenticated.actor.participantId,
+		role: authenticated.actor.role,
 	});
 	if (result.err) return databaseErrorResponse();
 	if (result.val.kind === "not_found")

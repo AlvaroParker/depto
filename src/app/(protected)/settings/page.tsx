@@ -1,11 +1,15 @@
 import { KeyRound, Tags } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@/auth";
+import { ConnectedApplications } from "@/components/settings/connected-applications";
 import { canManageUsers } from "@/lib/const/roles";
+import { listOAuthGrantsForUser } from "@/lib/db/oauth";
 
 export default async function SettingsPage() {
 	const session = await auth();
 	const canManage = session?.user ? canManageUsers(session.user.role) : false;
+	const grants =
+		session?.user.role === "user" ? await listOAuthGrantsForUser(session.user.id) : null;
 	return (
 		<main className="px-5 py-8 sm:px-8 lg:px-12 lg:py-11">
 			<div className="mx-auto max-w-3xl">
@@ -45,6 +49,9 @@ export default async function SettingsPage() {
 							</span>
 						</Link>
 					</div>
+				) : null}
+				{session?.user.role === "user" ? (
+					<ConnectedApplications initialGrants={grants?.ok ? grants.val : []} />
 				) : null}
 			</div>
 		</main>
