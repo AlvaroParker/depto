@@ -31,6 +31,9 @@ test("pays every pending expense owed to one person from the dashboard", async (
 		await selectExpenseParticipants(page, ["Alvaro", "Camila"]);
 		await page.getByLabel("¿Quién pagó?").selectOption({ label: "Camila" });
 		await page.getByRole("button", { name: "Guardar gasto" }).click();
+		await page.waitForURL(
+			(url) => url.pathname.startsWith("/expenses/") && url.pathname !== "/expenses/new",
+		);
 		expenseUrls.push(page.url());
 	}
 

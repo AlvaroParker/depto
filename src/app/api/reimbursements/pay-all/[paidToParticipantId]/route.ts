@@ -28,17 +28,28 @@ export async function POST(
 	}
 
 	let proofFile: BulkPaymentProofFile | null = null;
-	if (request.body) {
+	const declaredFilename = request.headers.get("x-receipt-filename");
+	const declaredSize = request.headers.get("x-receipt-size");
+	const contentType = request.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
+	const hasProof =
+		declaredFilename !== null ||
+		declaredSize !== null ||
+		(Number(request.headers.get("content-length")) || 0) > 0 ||
+		contentType.startsWith("image/");
+	if (hasProof) {
 		let metadata;
 		try {
 			metadata = validatePaymentProofMetadata({
-				contentType: request.headers.get("content-type")?.split(";")[0]?.trim() ?? "",
-				filename: decodeURIComponent(request.headers.get("x-receipt-filename") ?? ""),
-				sizeBytes: Number(request.headers.get("x-receipt-size")),
+				contentType,
+				filename: decodeURIComponent(declaredFilename ?? ""),
+				sizeBytes: Number(declaredSize),
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "El comprobante no es válido.";
 			return NextResponse.json({ message }, { status: message.includes("10 MB") ? 413 : 400 });
+		}
+		if (!request.body) {
+			return NextResponse.json({ message: "El comprobante está vacío." }, { status: 400 });
 		}
 		const bytes = new Uint8Array(await request.arrayBuffer());
 		if (bytes.byteLength !== metadata.sizeBytes) {
