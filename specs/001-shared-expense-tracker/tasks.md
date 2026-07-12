@@ -373,3 +373,13 @@ receipts, edit/delete, dashboard/UI, tests, and documentation.
 - [x] T116 [US10] Extend the mobile-first expense form and detail reimbursement list with split-mode selection, allocation feedback, and open-share editing in `src/components/expenses/`
 - [x] T117 [US10] Update open-expense notification wording and pending aggregate behavior in `src/lib/email/`, `src/lib/db/dashboard.ts`, and expense list queries
 - [x] T118 Run formatting, lint, typecheck, unit/integration/browser tests, Next.js build, and OpenNext Cloudflare build
+
+## Household-information extension
+
+- [x] T119 [P] [US11] Specify household-wide visibility, manager permissions, open fields, and API contracts in `specs/001-shared-expense-tracker/`
+- [x] T120 [US11] Add typed common information and ordered custom-field storage in `migrations/0009_add_household_information.sql`
+- [x] T121 [US11] Add atomic D1 persistence, Zod contracts, and authenticated manager-gated APIs under `src/lib/` and `src/app/api/household-information/`
+- [x] T122 [US11] Build the responsive Casa directory, copy/payment actions, editor presets, archive confirmation, and route states under `src/app/(protected)/household/` and `src/components/household/`
+- [x] T123 [US11] Add Casa to desktop and phone navigation while retaining the central expense action in `src/components/layout/app-shell.tsx`
+- [x] T124 [P] [US11] Add validation, D1 transaction, security, manager/user browser, and mobile overflow coverage in `tests/`
+- [x] T125 Run formatting, lint, typecheck, unit/integration/browser tests, Next.js build, and OpenNext Cloudflare build

@@ -127,6 +127,53 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 60 }
         iconKey: { $ref: "#/components/schemas/ExpenseKind/properties/iconKey" }
+    HouseholdInformationFieldInput:
+      type: object
+      required: [label, value, displayType]
+      properties:
+        label: { type: string, minLength: 1, maxLength: 60 }
+        value: { type: string, minLength: 1, maxLength: 500 }
+        displayType: { type: string, enum: [text, link] }
+    HouseholdInformationField:
+      allOf:
+        - { $ref: "#/components/schemas/HouseholdInformationFieldInput" }
+        - type: object
+          required: [id, sortOrder]
+          properties:
+            id: { type: string }
+            sortOrder: { type: integer, minimum: 1 }
+    HouseholdInformationInput:
+      type: object
+      required: [title, iconKey, fields]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 80 }
+        iconKey: { $ref: "#/components/schemas/ExpenseKind/properties/iconKey" }
+        providerName: { type: string, minLength: 1, maxLength: 120 }
+        customerReference: { type: string, minLength: 1, maxLength: 120 }
+        paymentUrl: { type: string, format: uri, pattern: "^https?://", maxLength: 2048 }
+        notes: { type: string, minLength: 1, maxLength: 2000 }
+        fields:
+          type: array
+          maxItems: 12
+          items: { $ref: "#/components/schemas/HouseholdInformationFieldInput" }
+    HouseholdInformationItem:
+      allOf:
+        - { $ref: "#/components/schemas/HouseholdInformationInput" }
+        - type: object
+          required:
+            [id, sortOrder, createdByUserId, updatedByUserId, updatedByName, createdAt, updatedAt]
+          properties:
+            id: { type: string }
+            sortOrder: { type: integer, minimum: 1 }
+            createdByUserId: { type: string }
+            updatedByUserId: { type: string }
+            updatedByName: { type: string }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            fields:
+              type: array
+              maxItems: 12
+              items: { $ref: "#/components/schemas/HouseholdInformationField" }
     Share:
       type: object
       required: [id, participant, shareAmountMinor, status]
@@ -261,6 +308,61 @@ components:
           type: array
           items: { $ref: "#/components/schemas/ExpenseSummary" }
 paths:
+  /household-information:
+    get:
+      operationId: listHouseholdInformation
+      summary: List active household information for any authenticated user
+      responses:
+        "200":
+          description: Ordered active household information
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/HouseholdInformationItem" }
+        "401": { description: Unauthenticated }
+    post:
+      operationId: createHouseholdInformation
+      summary: Create household information as root or admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HouseholdInformationInput" }
+      responses:
+        "201": { description: Household information created }
+        "400": { description: Validation failed }
+        "401": { description: Unauthenticated }
+        "403": { description: Insufficient role }
+  /household-information/{itemId}:
+    parameters:
+      - { in: path, name: itemId, required: true, schema: { type: string } }
+    patch:
+      operationId: updateHouseholdInformation
+      summary: Replace household information and its open fields as root or admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HouseholdInformationInput" }
+      responses:
+        "200": { description: Household information updated }
+        "400": { description: Validation failed }
+        "401": { description: Unauthenticated }
+        "403": { description: Insufficient role }
+        "404": { description: Item not found or archived }
+    delete:
+      operationId: archiveHouseholdInformation
+      summary: Archive household information as root or admin
+      responses:
+        "204": { description: Household information archived }
+        "401": { description: Unauthenticated }
+        "403": { description: Insufficient role }
+        "404": { description: Item not found or archived }
   /bootstrap:
     get:
       operationId: getBootstrapStatus

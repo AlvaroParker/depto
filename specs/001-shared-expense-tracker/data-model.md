@@ -180,6 +180,47 @@ Custom and open creation validate one allocation per selected participant and th
 invariant. For an open mutation, a non-payer amount cannot exceed `expense amount - other non-payer
 shares`; the payer share is recalculated from that remainder in the same D1 batch.
 
+## Household Information Item
+
+Represents one useful household service or reference card. Stable common attributes remain typed,
+while uncommon display data is stored in ordered child rows rather than an unrestricted JSON blob.
+
+| Field                | Type    | Rules                                                     |
+| -------------------- | ------- | --------------------------------------------------------- |
+| `id`                 | text    | Primary key                                               |
+| `title`              | text    | Required; 1–80 characters                                 |
+| `icon_key`           | text    | Required key from the application semantic icon registry  |
+| `provider_name`      | text    | Nullable; 1–120 characters when present                   |
+| `customer_reference` | text    | Nullable; stored as text to preserve leading zeroes       |
+| `payment_url`        | text    | Nullable HTTP/HTTPS URL; at most 2,048 characters         |
+| `notes`              | text    | Nullable plain text; at most 2,000 characters             |
+| `sort_order`         | integer | Required and unique; new active or archived items append  |
+| `created_by_user_id` | text    | Required application-user foreign key                     |
+| `updated_by_user_id` | text    | Required application-user foreign key                     |
+| `created_at`         | text    | Required UTC timestamp                                    |
+| `updated_at`         | text    | Required UTC timestamp                                    |
+| `archived_at`        | text    | Nullable UTC timestamp; excludes the item from normal use |
+
+No rows are seeded because provider and customer information cannot be inferred. Agua, Luz, Gas,
+Gastos comunes, and Otro are editor presets only, and multiple cards may use the same preset.
+
+## Household Information Field
+
+Represents an ordered, non-secret custom field belonging to one household information item.
+
+| Field          | Type    | Rules                                              |
+| -------------- | ------- | -------------------------------------------------- |
+| `id`           | text    | Primary key                                        |
+| `item_id`      | text    | Required parent foreign key; maintenance cascade   |
+| `label`        | text    | Required; 1–60 characters; unique per parent       |
+| `value`        | text    | Required plain text; 1–500 characters              |
+| `display_type` | text    | Exactly `text` or `link`; links require HTTP/HTTPS |
+| `sort_order`   | integer | Required; unique within the parent                 |
+
+Create and update use one D1 `batch()` for the parent and complete child collection. Updates replace
+the child set atomically. Files and secret values are deliberately unsupported because every card is
+readable by every authenticated user.
+
 ## Derived dashboard model
 
 - `total_expenses`: count of non-deleted expenses.

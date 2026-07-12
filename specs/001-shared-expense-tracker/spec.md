@@ -260,6 +260,29 @@ open pending share as its owner, and verify the payer remainder and all dashboar
 5. **Given** a zero allocation, **When** expense state is summarized, **Then** the participant stays
    associated but the share is not counted as pending and cannot be marked paid.
 
+### User Story 11 - Keep useful household information together (Priority: P2)
+
+As a household user, I view service references and payment links in one protected directory so that
+I can handle common bills without asking an administrator where the information is stored.
+
+**Independent Test**: Create and edit a water-service card as root/admin, view it as a regular user,
+then archive it and verify it no longer appears in normal reads.
+
+**Acceptance Scenarios**:
+
+1. **Given** an authenticated household user, **When** they open Casa, **Then** active information
+   cards show their provider, customer reference, payment link, notes, and ordered custom fields.
+2. **Given** root or admin, **When** a preset or custom card is submitted, **Then** its common data
+   and additional fields are validated and written atomically.
+3. **Given** a regular user, **When** they attempt any household-information mutation, **Then** the
+   interface offers no management controls and the API returns forbidden.
+4. **Given** a configured customer reference or payment URL, **When** a user activates its action,
+   **Then** the reference can be copied and only an HTTP/HTTPS external link can be opened.
+5. **Given** multiple cards with the same service type, **When** Casa is opened, **Then** all remain
+   available in stable administrator-created order.
+6. **Given** an archived card, **When** any normal page or API read occurs, **Then** it is excluded
+   while its data and updater audit fields remain stored.
+
 ### Edge Cases
 
 - Amounts smaller than the selected participant count still produce non-negative shares whose sum is exact.
@@ -285,6 +308,9 @@ open pending share as its owner, and verify the payer remainder and all dashboar
 - Retrying delivery for the same expense does not create duplicate email batches.
 - Concurrent open-share updates cannot produce negative payer shares or a total different from the expense.
 - A regular user cannot bypass open-share ownership by changing the expense's financial structure.
+- Duplicate custom labels within one household-information card are rejected case-insensitively.
+- A failed additional-field insert leaves no partial household-information item or partial update.
+- Unsafe link protocols and cards with no useful information beyond a title are rejected.
 
 ## Requirements _(mandatory)_
 
@@ -390,6 +416,17 @@ open pending share as its owner, and verify the payer remainder and all dashboar
   remain associated and editable, but MUST NOT be payable or included in pending counts and balances.
 - **FR-034**: Only root/admin MAY change the total, payer, participant set, allocations, or split
   mode of an existing open expense. Other authenticated users MAY retain existing descriptive edits.
+- **FR-035**: Every authenticated user MUST be able to view active household-information cards from
+  a dedicated Casa page; unauthenticated requests MUST reveal no card data.
+- **FR-036**: Root and admin MUST be able to create, edit, and archive household-information cards,
+  while regular users MUST be denied all mutations at both interface and API boundaries.
+- **FR-037**: A card MUST store a typed name, semantic icon, optional provider, customer reference,
+  HTTP/HTTPS payment URL, notes, stable order, and creator/updater audit fields. Multiple cards with
+  the same service preset MUST be allowed.
+- **FR-038**: A card MAY contain ordered custom text or link fields with unique case-insensitive
+  labels. Parent and custom-field writes MUST be atomic and reject partial state.
+- **FR-039**: Household information MUST NOT accept files, passwords, access codes, API keys, or
+  other secrets; all accepted values are visible to every authenticated household user.
 
 ### Key Entities
 
@@ -410,6 +447,8 @@ open pending share as its owner, and verify the payer remainder and all dashboar
   reference; binary content is separate from financial records.
 - **Login Attempt Window**: Failed-attempt counters grouped by normalized username and client
   address with an expiry used to enforce temporary sign-in limits.
+- **Household Information Item**: One active or archived household reference card with typed common
+  service data, ordered open fields, display order, and creator/updater audit information.
 
 ## Success Criteria _(mandatory)_
 
@@ -447,6 +486,8 @@ open pending share as its owner, and verify the payer remainder and all dashboar
   pending aggregates and filters.
 - **SC-014**: Automated tests prove custom and open allocations remain non-negative and exact across
   creation, owner/admin open updates, zero allocations, paid locking, concurrent writes, and mode conversion.
+- **SC-015**: Automated tests prove authenticated household-wide reads, root/admin-only atomic
+  management, multiple same-service cards, safe links, stable ordering, and archive exclusion.
 
 ## Assumptions
 
@@ -462,6 +503,8 @@ open pending share as its owner, and verify the payer remainder and all dashboar
 - Payment proofs are optional evidence tied to the stored share amount. They are not parsed, OCRed,
   amount-verified, or subject to a separate payer approval state.
 - The household has ordinary internet connectivity; offline entry and installation are future enhancements.
+- Household information is non-secret reference data entered through forms; files and encrypted
+  credential storage require a separate future security design.
 
 ## Out of Scope
 
@@ -469,3 +512,4 @@ open pending share as its owner, and verify the payer remainder and all dashboar
 - Public registration, password reset email, or push notifications.
 - Multi-currency conversion, bank integration, settlement optimization, or accounting exports.
 - Receipt OCR, parsing, image enhancement, and offline-first or installable application behavior.
+- Household document uploads, secret storage, archive restoration, and manual card reordering.

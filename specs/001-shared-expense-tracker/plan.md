@@ -146,6 +146,17 @@ _GATE: Passed before research and re-checked after design._
 - Async route segments include `loading.tsx` and `error.tsx`; root metadata and Spanish locale are
   declared through Next.js metadata and layout APIs.
 
+### Household information
+
+- `/household` is a first-class protected Casa destination. Server-side D1 reads feed a responsive
+  card directory, while clipboard and root/admin management remain leaf client interactions.
+- Common bill attributes use typed D1 columns. Ordered `text` or `link` child rows provide controlled
+  extensibility without utility-specific migrations or an unrestricted JSON metadata document.
+- Agua, Luz, Gas, Gastos comunes, and Otro are UI presets rather than seeded data. Multiple cards may
+  share a preset; new cards append in stable order.
+- Root/admin create and replacement updates batch the parent and custom fields atomically. Archive is
+  soft, ordinary reads exclude archived cards, and all stored values are visible to authenticated users.
+
 ## Project Structure
 
 ### Documentation (this feature)
@@ -172,7 +183,8 @@ migrations/
 ├── 0005_add_expense_kinds.sql
 ├── 0006_add_payment_proofs.sql
 ├── 0007_add_participant_emails.sql
-└── 0008_add_expense_split_modes.sql
+├── 0008_add_expense_split_modes.sql
+└── 0009_add_household_information.sql
 
 src/
 ├── app/
@@ -182,6 +194,7 @@ src/
 │   │   ├── expenses/[id]/
 │   │   ├── expenses/new/
 │   │   ├── expenses/
+│   │   ├── household/
 │   │   ├── settings/
 │   │   └── page.tsx
 │   ├── api/
@@ -227,6 +240,7 @@ and Next.js skill conventions. Tests are separated by boundary rather than dupli
 5. Implement private receipt upload/view and compensating cleanup.
 6. Build the Spanish dashboard, responsive expense flows, filters, and accessibility states.
 7. Complete unit, binding integration, and browser flows; verify Next build and Workers preview.
+8. Add the authenticated Casa directory with atomic root/admin management and open display fields.
 
 ## Complexity Tracking
 

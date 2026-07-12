@@ -137,5 +137,16 @@ describe("production user-participant migration", () => {
 				.prepare("UPDATE expenses SET split_mode = 'invalid' WHERE id = 'legacy-expense'")
 				.run(),
 		).rejects.toThrow(/check constraint/i);
+
+		await applyMigrations(bindings.database, ["0009_add_household_information.sql"]);
+		const householdTables = await bindings.database
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'household_information_%' ORDER BY name",
+			)
+			.all<{ name: string }>();
+		expect(householdTables.results.map(({ name }) => name)).toEqual([
+			"household_information_fields",
+			"household_information_items",
+		]);
 	});
 });

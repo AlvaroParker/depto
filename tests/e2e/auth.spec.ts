@@ -30,6 +30,7 @@ test("returns no household data from unauthenticated APIs", async ({ request }) 
 		"/api/expenses",
 		"/api/participants",
 		"/api/admin/expense-kinds",
+		"/api/household-information",
 	]) {
 		const response = await request.get(path);
 		expect(response.status()).toBe(401);

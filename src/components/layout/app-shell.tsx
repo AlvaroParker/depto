@@ -1,4 +1,13 @@
-import { CircleDollarSign, House, Plus, ReceiptText, Settings, Tags, Users } from "lucide-react";
+import {
+	BookOpenText,
+	CircleDollarSign,
+	House,
+	Plus,
+	ReceiptText,
+	Settings,
+	Tags,
+	Users,
+} from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SessionUser } from "@/lib/types/user";
@@ -9,6 +18,7 @@ import { canManageUsers, ROLE_LABELS } from "@/lib/const/roles";
 const baseNavigation = [
 	{ href: "/", icon: House, label: "Resumen" },
 	{ href: "/expenses", icon: ReceiptText, label: "Gastos" },
+	{ href: "/household", icon: BookOpenText, label: "Casa" },
 	{ href: "/settings", icon: Settings, label: "Ajustes" },
 ] as const;
 
@@ -77,7 +87,7 @@ export function AppShell({ children, user }: AppShellProps) {
 			<div className="min-w-0 pb-24 lg:pb-0">{children}</div>
 			<nav
 				aria-label="Principal"
-				className="border-line bg-paper/94 fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-2xl border p-1.5 shadow-[0_18px_50px_-22px_rgba(40,40,34,0.65)] backdrop-blur lg:hidden"
+				className="border-line bg-paper/94 fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-2xl border p-1.5 shadow-[0_18px_50px_-22px_rgba(40,40,34,0.65)] backdrop-blur lg:hidden"
 			>
 				{baseNavigation.slice(0, 2).map(({ href, icon: Icon, label }) => (
 					<ActiveNavigationLink
@@ -96,14 +106,17 @@ export function AppShell({ children, user }: AppShellProps) {
 				>
 					<Plus aria-hidden size={19} /> Agregar
 				</Link>
-				<ActiveNavigationLink
-					activeClassName="bg-accent/10 text-accent-strong"
-					className="text-ink-muted grid min-h-12 place-items-center gap-0.5 rounded-xl text-[0.65rem] font-semibold transition"
-					href="/settings"
-					navigationHrefs={mobileNavigationHrefs}
-				>
-					<Settings aria-hidden size={19} /> Ajustes
-				</ActiveNavigationLink>
+				{baseNavigation.slice(2).map(({ href, icon: Icon, label }) => (
+					<ActiveNavigationLink
+						activeClassName="bg-accent/10 text-accent-strong"
+						className="text-ink-muted grid min-h-12 place-items-center gap-0.5 rounded-xl text-[0.62rem] font-semibold transition"
+						href={href}
+						key={href}
+						navigationHrefs={mobileNavigationHrefs}
+					>
+						<Icon aria-hidden size={19} /> {label}
+					</ActiveNavigationLink>
+				))}
 			</nav>
 		</div>
 	);
