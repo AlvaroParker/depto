@@ -23,6 +23,12 @@ function accessErrorResponse(access: Exclude<ShareMutationAccess, { kind: "allow
 		return NextResponse.json({ message: "No encontramos ese reembolso." }, { status: 404 });
 	}
 	if (access.kind === "forbidden") return forbiddenResponse();
+	if (access.kind === "zero_amount") {
+		return NextResponse.json(
+			{ message: "Un monto de $0 no puede tener comprobante de pago." },
+			{ status: 400 },
+		);
+	}
 	return NextResponse.json(
 		{ message: "La parte de quien pagó no puede tener comprobante." },
 		{ status: 400 },

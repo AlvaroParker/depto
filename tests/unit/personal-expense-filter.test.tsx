@@ -40,6 +40,7 @@ const expense: ExpenseSummary = {
 			status: "settled",
 		},
 	],
+	splitMode: "equal",
 };
 
 describe("personal expense filter", () => {

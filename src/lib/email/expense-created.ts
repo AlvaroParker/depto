@@ -33,6 +33,17 @@ function buildMessage(
 	const expenseUrl = `${config.appBaseUrl.replace(/\/$/, "")}/expenses/${encodeURIComponent(expense.id)}`;
 	const total = formatMoney(expense.amountMinor, expense.currency);
 	const share = formatMoney(recipient.shareAmountMinor, expense.currency);
+	const recipientShare = expense.shares.find(
+		(expenseShare) => expenseShare.participant.id === recipient.participantId,
+	);
+	const shareLabel =
+		expense.splitMode === "open"
+			? recipientShare?.status === "settled"
+				? "Tu parte resultante"
+				: recipientShare?.status === "paid"
+					? "Tu monto registrado como pagado"
+					: "Tu monto inicial sugerido"
+			: "Tu parte";
 	const date = formatExpenseDate(expense.expenseDate);
 	const subject = `Nuevo gasto compartido: ${expense.name}`;
 	const text = [
@@ -41,9 +52,12 @@ function buildMessage(
 		`${creatorName} registró un nuevo gasto compartido contigo.`,
 		`Gasto: ${expense.name}`,
 		`Total: ${total}`,
-		`Tu parte: ${share}`,
+		`${shareLabel}: ${share}`,
 		`Pagó: ${expense.payer.name}`,
 		`Fecha: ${date}`,
+		...(expense.splitMode === "open" && recipientShare?.status === "pending"
+			? ["Puedes ajustar tu monto pendiente desde el detalle de la cuenta."]
+			: []),
 		"",
 		`Revisa el detalle: ${expenseUrl}`,
 	].join("\n");
@@ -54,10 +68,15 @@ function buildMessage(
 			<div style="background:#f7f1e7;border:1px solid #e6d9c8;border-radius:16px;padding:20px;margin:20px 0">
 				<h1 style="font-size:22px;margin:0 0 12px">${escapeHtml(expense.name)}</h1>
 				<p style="margin:4px 0">Total: <strong>${escapeHtml(total)}</strong></p>
-				<p style="margin:4px 0">Tu parte: <strong>${escapeHtml(share)}</strong></p>
+				<p style="margin:4px 0">${escapeHtml(shareLabel)}: <strong>${escapeHtml(share)}</strong></p>
 				<p style="margin:4px 0">Pagó: ${escapeHtml(expense.payer.name)}</p>
 				<p style="margin:4px 0">Fecha: ${escapeHtml(date)}</p>
 			</div>
+			${
+				expense.splitMode === "open" && recipientShare?.status === "pending"
+					? "<p>Puedes ajustar tu monto pendiente desde el detalle de la cuenta.</p>"
+					: ""
+			}
 			<p><a href="${escapeHtml(expenseUrl)}" style="background:#a94f35;color:#fff;text-decoration:none;border-radius:10px;padding:11px 16px;display:inline-block">Ver gasto</a></p>
 		</div>`;
 

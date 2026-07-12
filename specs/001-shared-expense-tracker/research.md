@@ -156,3 +156,19 @@ the financial record. Logs include only expense ID and provider status, never ke
 **Sources**: [Send batch emails](https://resend.com/docs/api-reference/emails/send-batch-emails),
 [Idempotency keys](https://resend.com/docs/dashboard/emails/idempotency-keys),
 [Cloudflare Workers](https://resend.com/docs/knowledge-base/cloudflare)
+
+## Open split balancing
+
+**Decision**: Keep every open bill financially active and exact by making the payer's settled share
+the residual after all non-payer allocations. Owners may change only their pending shares; root and
+admin may correct any pending non-payer share.
+
+**Rationale**: A residual payer share avoids draft or temporarily unbalanced expenses, so existing
+dashboard and reimbursement queries remain valid after every write. Conditional SQL plus a D1 batch
+prevents concurrent updates from producing a negative remainder or total drift.
+
+**Alternatives considered**:
+
+- Temporarily unbalanced drafts: rejected because they require excluding incomplete expenses from every aggregate.
+- Creator approval/finalization: rejected because the requested open mode leaves the decision to participants.
+- Redistributing changes across other participants: rejected because one participant must not silently alter another's choice.

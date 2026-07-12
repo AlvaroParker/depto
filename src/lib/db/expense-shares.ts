@@ -4,11 +4,14 @@ import type { Result } from "ts-results";
 import type { UserRole } from "@/lib/const/roles";
 import { getDatabase } from "@/lib/db/bindings";
 import { type DbError, safeDbCall } from "@/lib/db/safe-db-call";
-import type { ExpenseShare, ShareStatus } from "@/lib/types/expense";
+import type { ExpenseShare, ExpenseSplitMode, ShareStatus } from "@/lib/types/expense";
 import type { PaymentProofStorageMetadata, StoredPaymentProof } from "@/lib/types/payment-proof";
 
 interface ShareRow {
+	expense_amount_minor: number;
 	expense_id: string;
+	expense_payer_id: string;
+	expense_split_mode: ExpenseSplitMode;
 	id: string;
 	marked_by_user_id: string | null;
 	paid_at: string | null;
@@ -41,6 +44,7 @@ export type ShareMutation =
 	  }
 	| { kind: "not_found" }
 	| { kind: "payer_immutable" }
+	| { kind: "zero_amount" }
 	| { kind: "forbidden" };
 
 export type PaymentProofMutation =
@@ -51,10 +55,24 @@ export type PaymentProofMutation =
 	  }
 	| { kind: "not_found" }
 	| { kind: "payer_immutable" }
+	| { kind: "zero_amount" }
 	| { kind: "forbidden" };
 
 export type ShareMutationAccess =
-	{ kind: "allowed" } | { kind: "not_found" } | { kind: "payer_immutable" } | { kind: "forbidden" };
+	| { kind: "allowed" }
+	| { kind: "not_found" }
+	| { kind: "payer_immutable" }
+	| { kind: "zero_amount" }
+	| { kind: "forbidden" };
+
+export type OpenShareAmountMutation =
+	| { kind: "updated"; shares: ExpenseShare[] }
+	| { kind: "not_found" }
+	| { kind: "not_open" }
+	| { kind: "payer_immutable" }
+	| { kind: "paid_locked" }
+	| { kind: "amount_exceeds_total" }
+	| { kind: "forbidden" };
 
 const SHARE_SELECT = `
 	SELECT s.id, s.expense_id, s.share_amount_minor, s.status, s.paid_to_participant_id,
@@ -64,7 +82,10 @@ const SHARE_SELECT = `
 	       proof.object_key AS proof_object_key, proof.filename AS proof_filename,
 	       proof.content_type AS proof_content_type, proof.size_bytes AS proof_size_bytes,
 	       proof.uploaded_by_user_id AS proof_uploaded_by_user_id,
-	       proof.uploaded_at AS proof_uploaded_at
+	       proof.uploaded_at AS proof_uploaded_at,
+	       e.amount_minor AS expense_amount_minor,
+	       e.paid_by_participant_id AS expense_payer_id,
+	       e.split_mode AS expense_split_mode
 	FROM expense_shares s
 	JOIN expenses e ON e.id = s.expense_id AND e.deleted_at IS NULL
 	JOIN participants p ON p.id = s.participant_id
@@ -72,6 +93,14 @@ const SHARE_SELECT = `
 
 async function readShare(database: D1Database, id: string): Promise<ShareRow | null> {
 	return database.prepare(`${SHARE_SELECT} WHERE s.id = ?`).bind(id).first<ShareRow>();
+}
+
+async function readExpenseShares(database: D1Database, expenseId: string): Promise<ShareRow[]> {
+	const result = await database
+		.prepare(`${SHARE_SELECT} WHERE s.expense_id = ? ORDER BY p.sort_order ASC`)
+		.bind(expenseId)
+		.all<ShareRow>();
+	return result.results;
 }
 
 function mapStoredProof(row: ShareRow): StoredPaymentProof | null {
@@ -132,6 +161,7 @@ function accessFor(row: ShareRow | null, actor: ShareMutationActor): ShareMutati
 	if (!row) return { kind: "not_found" };
 	if (row.status === "settled") return { kind: "payer_immutable" };
 	if (!canMutateShare(row, actor)) return { kind: "forbidden" };
+	if (row.share_amount_minor === 0) return { kind: "zero_amount" };
 	return { kind: "allowed" };
 }
 
@@ -198,6 +228,91 @@ export async function updateShareStatus(
 			kind: "updated",
 			removedProofObjectKey: status === "pending" ? (proof?.objectKey ?? null) : null,
 			share: mapShare(updated),
+		};
+	});
+}
+
+export async function updateOpenShareAmount(
+	id: string,
+	shareAmountMinor: number,
+	actor: ShareMutationActor,
+	database: D1Database = getDatabase(),
+	now: Date = new Date(),
+): Promise<Result<OpenShareAmountMutation, DbError>> {
+	return safeDbCall(async () => {
+		const existing = await readShare(database, id);
+		if (!existing) return { kind: "not_found" };
+		if (existing.expense_split_mode !== "open") return { kind: "not_open" };
+		if (existing.participant_id === existing.expense_payer_id) return { kind: "payer_immutable" };
+		if (!canMutateShare(existing, actor)) return { kind: "forbidden" };
+		if (existing.status === "paid") return { kind: "paid_locked" };
+		if (!Number.isSafeInteger(shareAmountMinor) || shareAmountMinor < 0) {
+			throw new Error("Open share amounts must be non-negative safe integers.");
+		}
+
+		const shares = await readExpenseShares(database, existing.expense_id);
+		const otherNonPayerTotal = shares.reduce(
+			(sum, share) =>
+				share.participant_id !== existing.expense_payer_id && share.id !== id
+					? sum + share.share_amount_minor
+					: sum,
+			0,
+		);
+		if (shareAmountMinor > existing.expense_amount_minor - otherNonPayerTotal) {
+			return { kind: "amount_exceeds_total" };
+		}
+
+		const timestamp = now.toISOString();
+		await database.batch([
+			database
+				.prepare(
+					`UPDATE expense_shares
+					 SET share_amount_minor = ?, updated_at = ?
+					 WHERE id = ? AND status = 'pending'
+					   AND EXISTS (
+					     SELECT 1 FROM expenses e
+					     WHERE e.id = expense_shares.expense_id
+					       AND e.deleted_at IS NULL AND e.split_mode = 'open'
+					   )
+					   AND ? <= (
+					     SELECT e.amount_minor - COALESCE(SUM(other.share_amount_minor), 0)
+					     FROM expenses e
+					     LEFT JOIN expense_shares other
+					       ON other.expense_id = e.id
+					      AND other.participant_id != e.paid_by_participant_id
+					      AND other.id != expense_shares.id
+					     WHERE e.id = expense_shares.expense_id
+					   )`,
+				)
+				.bind(shareAmountMinor, timestamp, id, shareAmountMinor),
+			database
+				.prepare(
+					`UPDATE expense_shares
+					 SET share_amount_minor = (
+					       SELECT e.amount_minor - COALESCE(SUM(other.share_amount_minor), 0)
+					       FROM expenses e
+					       LEFT JOIN expense_shares other
+					         ON other.expense_id = e.id
+					        AND other.participant_id != e.paid_by_participant_id
+					       WHERE e.id = expense_shares.expense_id
+					     ),
+					     updated_at = ?
+					 WHERE expense_id = ? AND participant_id = ?`,
+				)
+				.bind(timestamp, existing.expense_id, existing.expense_payer_id),
+			database
+				.prepare("UPDATE expenses SET updated_at = ? WHERE id = ? AND deleted_at IS NULL")
+				.bind(timestamp, existing.expense_id),
+		]);
+
+		const updated = await readShare(database, id);
+		if (!updated) return { kind: "not_found" };
+		if (updated.expense_split_mode !== "open") return { kind: "not_open" };
+		if (updated.status === "paid") return { kind: "paid_locked" };
+		if (updated.share_amount_minor !== shareAmountMinor) return { kind: "amount_exceeds_total" };
+		return {
+			kind: "updated",
+			shares: (await readExpenseShares(database, existing.expense_id)).map(mapShare),
 		};
 	});
 }

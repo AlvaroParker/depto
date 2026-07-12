@@ -362,3 +362,14 @@ receipts, edit/delete, dashboard/UI, tests, and documentation.
 - [x] T108 [US2] Add create-only initial-paid validation and atomic paid-share persistence in `src/lib/types/expense.ts`, `src/app/api/expenses/route.ts`, and `src/lib/db/expenses.ts`
 - [x] T109 [US2] Add the responsive, creation-only paid-participant selector in `src/components/expenses/expense-form.tsx`
 - [x] T110 Run formatting, lint, typecheck, unit/integration/browser tests, Next.js build, and OpenNext Cloudflare build
+
+## Expense split-mode extension
+
+- [x] T111 [P] [US10] Specify equal, custom, and open split behavior, exactness, permissions, and API contracts in `specs/001-shared-expense-tracker/`
+- [x] T112 [P] [US10] Add schema, persistence, notification, dashboard, and browser coverage in `tests/unit/`, `tests/integration/`, and `tests/e2e/split-modes.spec.ts`
+- [x] T113 [US10] Add the backward-compatible split-mode migration and Miniflare fixture in `migrations/0008_add_expense_split_modes.sql` and `tests/fixtures/miniflare.ts`
+- [x] T114 [US10] Add exact allocation schemas, expense mapping, atomic custom/open creation, and protected mode conversion in `src/lib/types/expense.ts` and `src/lib/db/expenses.ts`
+- [x] T115 [US10] Add owner/root/admin open-amount updates, payer residual balancing, and zero-share rules in `src/lib/db/expense-shares.ts` and the share routes
+- [x] T116 [US10] Extend the mobile-first expense form and detail reimbursement list with split-mode selection, allocation feedback, and open-share editing in `src/components/expenses/`
+- [x] T117 [US10] Update open-expense notification wording and pending aggregate behavior in `src/lib/email/`, `src/lib/db/dashboard.ts`, and expense list queries
+- [x] T118 Run formatting, lint, typecheck, unit/integration/browser tests, Next.js build, and OpenNext Cloudflare build

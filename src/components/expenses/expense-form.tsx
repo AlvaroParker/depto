@@ -1,27 +1,97 @@
 "use client";
 
-import { BadgeCheck, CalendarDays, Check, Save, UsersRound } from "lucide-react";
+import {
+	BadgeCheck,
+	CalendarDays,
+	Check,
+	Equal,
+	HandCoins,
+	Save,
+	SlidersHorizontal,
+	UsersRound,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Button } from "@/components/ui/button";
 import { ExpenseKindIcon } from "@/components/expenses/expense-kind-icon";
+import { Button } from "@/components/ui/button";
 import { Field, TextareaField } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api/client";
 import { uploadReceipt } from "@/lib/api/receipts";
-import { MAX_RECEIPT_SIZE_BYTES, RECEIPT_CONTENT_TYPES } from "@/lib/const/receipts";
 import { DEFAULT_EXPENSE_KIND_ID } from "@/lib/const/expense-kinds";
-import type { ExpenseDetail, ExpenseInput } from "@/lib/types/expense";
+import { MAX_RECEIPT_SIZE_BYTES, RECEIPT_CONTENT_TYPES } from "@/lib/const/receipts";
+import type {
+	ExpenseDetail,
+	ExpenseInput,
+	ExpenseShareAllocation,
+	ExpenseSplitMode,
+} from "@/lib/types/expense";
 import type { ExpenseKind } from "@/lib/types/expense-kind";
 import type { Participant } from "@/lib/types/participant";
+import { formatMoney } from "@/lib/util/format";
+import { splitAmount } from "@/lib/util/split-amount";
 
 interface ExpenseFormProps {
+	canEditFinancials?: boolean;
 	defaultDate: string;
 	expense?: ExpenseDetail;
 	expenseKinds: ExpenseKind[];
 	participants: Participant[];
 }
 
+const splitModeOptions: Array<{
+	description: string;
+	icon: typeof Equal;
+	label: string;
+	value: ExpenseSplitMode;
+}> = [
+	{
+		description: "Calculamos partes iguales y distribuimos cualquier peso restante.",
+		icon: Equal,
+		label: "Partes iguales",
+		value: "equal",
+	},
+	{
+		description: "Define un monto exacto para cada persona antes de guardar.",
+		icon: SlidersHorizontal,
+		label: "Montos específicos",
+		value: "custom",
+	},
+	{
+		description: "Cada persona puede ajustar su parte pendiente; quien pagó cubre el resto.",
+		icon: HandCoins,
+		label: "Cuenta abierta",
+		value: "open",
+	},
+];
+
+function parseAmount(value: string): number {
+	const normalized = value.replaceAll(/[^0-9]/g, "");
+	return normalized ? Number(normalized) : 0;
+}
+
+function equalAllocationMap(amountMinor: number, participantIds: string[]): Record<string, number> {
+	if (amountMinor <= 0 || participantIds.length === 0) {
+		return Object.fromEntries(participantIds.map((participantId) => [participantId, 0]));
+	}
+	const amounts = splitAmount(amountMinor, participantIds.length);
+	return Object.fromEntries(
+		participantIds.map((participantId, index) => [participantId, amounts[index]]),
+	);
+}
+
+function matchesEqualAllocation(
+	allocations: Record<string, number>,
+	amountMinor: number,
+	participantIds: string[],
+): boolean {
+	const equal = equalAllocationMap(amountMinor, participantIds);
+	return participantIds.every(
+		(participantId) => allocations[participantId] === equal[participantId],
+	);
+}
+
 export function ExpenseForm({
+	canEditFinancials = true,
 	defaultDate,
 	expense,
 	expenseKinds,
@@ -33,6 +103,15 @@ export function ExpenseForm({
 		: participants.map((participant) => participant.id);
 	const [participantIds, setParticipantIds] = useState(initialParticipantIds);
 	const [payerId, setPayerId] = useState(expense?.payer.id ?? "");
+	const [amountValue, setAmountValue] = useState(expense ? String(expense.amountMinor) : "");
+	const [splitMode, setSplitMode] = useState<ExpenseSplitMode>(expense?.splitMode ?? "equal");
+	const [shareAmounts, setShareAmounts] = useState<Record<string, number>>(() =>
+		expense
+			? Object.fromEntries(
+					expense.shares.map((share) => [share.participant.id, share.shareAmountMinor]),
+				)
+			: Object.fromEntries(participants.map((participant) => [participant.id, 0])),
+	);
 	const [initialPaidParticipantIds, setInitialPaidParticipantIds] = useState<string[]>([]);
 	const [kindId, setKindId] = useState(
 		expense?.kind.id ??
@@ -45,14 +124,79 @@ export function ExpenseForm({
 	const [receiptProgress, setReceiptProgress] = useState<number | null>(null);
 	const [savedId, setSavedId] = useState<string | null>(null);
 	const [pending, startTransition] = useTransition();
-	const eligibleInitialPaidParticipants = participants.filter(
-		(participant) => participantIds.includes(participant.id) && participant.id !== payerId,
+
+	const amountMinor = parseAmount(amountValue);
+	const selectedParticipants = participants.filter((participant) =>
+		participantIds.includes(participant.id),
 	);
+	const selectedParticipantIds = selectedParticipants.map((participant) => participant.id);
+	const openNonPayerTotal = selectedParticipants.reduce(
+		(sum, participant) =>
+			participant.id === payerId ? sum : sum + (shareAmounts[participant.id] ?? 0),
+		0,
+	);
+	const openPayerAmount = Math.max(0, amountMinor - openNonPayerTotal);
+	const resolvedShareAmounts = (() => {
+		if (splitMode === "equal") return equalAllocationMap(amountMinor, selectedParticipantIds);
+		if (splitMode === "open" && payerId) {
+			return { ...shareAmounts, [payerId]: openPayerAmount };
+		}
+		return shareAmounts;
+	})();
+	const allocatedTotal = selectedParticipants.reduce(
+		(sum, participant) => sum + (resolvedShareAmounts[participant.id] ?? 0),
+		0,
+	);
+	const allocationDifference = amountMinor - allocatedTotal;
+	const manualAllocationInvalid =
+		splitMode !== "equal" &&
+		(amountMinor <= 0 || allocatedTotal !== amountMinor || openNonPayerTotal > amountMinor);
+	const eligibleInitialPaidParticipants = selectedParticipants.filter(
+		(participant) => participant.id !== payerId,
+	);
+	const financialFieldsLocked = Boolean(expense?.splitMode === "open" && !canEditFinancials);
+
+	function changeAmount(nextValue: string) {
+		const previousAmount = amountMinor;
+		const nextAmount = parseAmount(nextValue);
+		setAmountValue(nextValue);
+		if (
+			splitMode !== "equal" &&
+			matchesEqualAllocation(shareAmounts, previousAmount, selectedParticipantIds)
+		) {
+			setShareAmounts(equalAllocationMap(nextAmount, selectedParticipantIds));
+		}
+	}
+
+	function changeSplitMode(nextMode: ExpenseSplitMode) {
+		if (financialFieldsLocked) return;
+		if (splitMode === "equal" && nextMode !== "equal") {
+			setShareAmounts(equalAllocationMap(amountMinor, selectedParticipantIds));
+		}
+		setSplitMode(nextMode);
+	}
+
+	function buildShareAllocations(): ExpenseShareAllocation[] | undefined {
+		if (splitMode === "equal") return undefined;
+		return selectedParticipants.map((participant) => ({
+			participantId: participant.id,
+			shareAmountMinor: resolvedShareAmounts[participant.id] ?? 0,
+		}));
+	}
 
 	function submit(formData: FormData) {
 		setErrors({});
 		setFormError("");
-		const amountValue = String(formData.get("amountMinor") ?? "").replaceAll(/[^0-9]/g, "");
+		if (manualAllocationInvalid) {
+			setErrors({
+				shareAllocations: [
+					openNonPayerTotal > amountMinor
+						? "Los montos elegidos superan el total del gasto."
+						: "Los montos deben sumar exactamente el total del gasto.",
+				],
+			});
+			return;
+		}
 		const receipt = formData.get("receipt");
 		const file = receipt instanceof File && receipt.size > 0 ? receipt : null;
 		if (file && !RECEIPT_CONTENT_TYPES.includes(file.type as never)) {
@@ -64,7 +208,7 @@ export function ExpenseForm({
 			return;
 		}
 		const input: ExpenseInput = {
-			amountMinor: Number(amountValue),
+			amountMinor,
 			currency: "CLP",
 			description: String(formData.get("description") ?? "").trim() || null,
 			expenseDate: String(formData.get("expenseDate") ?? ""),
@@ -72,6 +216,8 @@ export function ExpenseForm({
 			name: String(formData.get("name") ?? ""),
 			paidByParticipantId: payerId,
 			participantIds,
+			shareAllocations: buildShareAllocations(),
+			splitMode,
 		};
 		startTransition(async () => {
 			const result = await apiRequest<ExpenseDetail>(
@@ -170,35 +316,31 @@ export function ExpenseForm({
 							name="receipt"
 							type="file"
 						/>
-						<span
-							className={
-								errors.receipt
-									? "text-danger text-xs font-normal"
-									: "text-ink-muted text-xs font-normal"
-							}
-						>
+						<span className={errors.receipt ? "text-danger text-xs" : "text-ink-muted text-xs"}>
 							{errors.receipt?.[0] ?? "JPG, PNG, WebP o PDF · máximo 10 MB"}
 						</span>
 					</label>
 				</div>
 				<Field
-					defaultValue={expense?.amountMinor}
+					disabled={financialFieldsLocked}
 					error={errors.amountMinor?.[0]}
 					hint="Monto entero en pesos chilenos"
 					id="amountMinor"
 					inputMode="numeric"
 					label="Monto (CLP)"
 					name="amountMinor"
+					onChange={(event) => changeAmount(event.target.value)}
 					pattern="[0-9. ]+"
 					placeholder="30000"
 					required
+					value={amountValue}
 				/>
 				<div className="grid gap-2 text-sm font-medium">
 					<label htmlFor="paidByParticipantId">¿Quién pagó?</label>
 					<select
 						aria-invalid={Boolean(errors.paidByParticipantId)}
-						className="border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 w-full rounded-xl border px-4 text-base outline-none focus:ring-3"
-						value={payerId}
+						className="border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 w-full rounded-xl border px-4 text-base outline-none focus:ring-3 disabled:opacity-60"
+						disabled={financialFieldsLocked}
 						id="paidByParticipantId"
 						name="paidByParticipantId"
 						onChange={(event) => {
@@ -209,26 +351,26 @@ export function ExpenseForm({
 							);
 						}}
 						required
+						value={payerId}
 					>
 						<option disabled value="">
 							Selecciona una persona
 						</option>
-						{participants
-							.filter((participant) => participantIds.includes(participant.id))
-							.map((participant) => (
-								<option key={participant.id} value={participant.id}>
-									{participant.name}
-								</option>
-							))}
+						{selectedParticipants.map((participant) => (
+							<option key={participant.id} value={participant.id}>
+								{participant.name}
+							</option>
+						))}
 					</select>
 					{errors.paidByParticipantId?.[0] ? (
-						<span className="text-danger text-xs font-normal">{errors.paidByParticipantId[0]}</span>
+						<span className="text-danger text-xs">{errors.paidByParticipantId[0]}</span>
 					) : null}
 				</div>
+
 				<fieldset className="border-line bg-paper-strong/45 grid gap-3 rounded-2xl border p-4 sm:col-span-2">
 					<legend className="px-1 text-sm font-semibold">¿Quiénes participan?</legend>
 					<p className="text-ink-muted flex items-center gap-2 text-xs leading-5">
-						<UsersRound aria-hidden size={16} /> El monto se divide solo entre las personas que
+						<UsersRound aria-hidden size={16} /> El gasto incluye solo a las personas que
 						selecciones.
 					</p>
 					<div className="grid gap-2 sm:grid-cols-2">
@@ -236,35 +378,34 @@ export function ExpenseForm({
 							const selected = participantIds.includes(participant.id);
 							return (
 								<label
-									className={`focus-within:ring-accent/20 relative flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors focus-within:ring-3 ${
+									className={`focus-within:ring-accent/20 relative flex min-h-12 items-center gap-3 rounded-xl border px-4 py-3 transition-colors focus-within:ring-3 ${
 										selected
 											? "border-accent/45 bg-accent/8 text-ink"
-											: "border-line bg-paper text-ink-muted hover:border-line-strong"
-									}`}
+											: "border-line bg-paper text-ink-muted"
+									} ${financialFieldsLocked ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
 									key={participant.id}
 								>
 									<input
 										checked={selected}
-										className="absolute inset-0 z-10 cursor-pointer opacity-0"
+										className="absolute inset-0 z-10 cursor-pointer opacity-0 disabled:cursor-not-allowed"
+										disabled={financialFieldsLocked}
 										onChange={(event) => {
 											const next = event.target.checked
 												? [...participantIds, participant.id]
 												: participantIds.filter((id) => id !== participant.id);
 											setParticipantIds(next);
+											if (event.target.checked) {
+												setShareAmounts((current) => ({ ...current, [participant.id]: 0 }));
+											}
 											setInitialPaidParticipantIds((current) =>
 												current.filter((participantId) => next.includes(participantId)),
 											);
 											if (!next.includes(payerId)) setPayerId("");
 										}}
 										type="checkbox"
-										value={participant.id}
 									/>
 									<span
-										className={`grid size-6 shrink-0 place-items-center rounded-full border ${
-											selected
-												? "border-accent bg-accent text-accent-foreground"
-												: "border-line-strong bg-paper"
-										}`}
+										className={`grid size-6 place-items-center rounded-full border ${selected ? "border-accent bg-accent text-accent-foreground" : "border-line-strong bg-paper"}`}
 									>
 										{selected ? <Check aria-hidden size={14} strokeWidth={3} /> : null}
 									</span>
@@ -274,67 +415,164 @@ export function ExpenseForm({
 						})}
 					</div>
 					{errors.participantIds?.[0] || participantIds.length === 0 ? (
-						<span className="text-danger text-xs font-normal">
+						<span className="text-danger text-xs">
 							{errors.participantIds?.[0] ?? "Selecciona al menos una persona."}
 						</span>
 					) : null}
 				</fieldset>
-				{!expense ? (
-					<fieldset className="border-positive/20 bg-positive/5 grid gap-3 rounded-2xl border p-4 sm:col-span-2">
-						<legend className="px-1 text-sm font-semibold">¿Quién ya pagó su parte?</legend>
-						<p className="text-ink-muted flex items-start gap-2 text-xs leading-5">
-							<BadgeCheck aria-hidden className="text-positive mt-0.5 shrink-0" size={16} />
-							{payerId
-								? `Marca a quienes ya le pagaron a ${participants.find((participant) => participant.id === payerId)?.name ?? "quien pagó"}. Podrán agregar un comprobante después.`
-								: "Selecciona primero quién pagó para registrar reembolsos ya recibidos."}
+
+				<fieldset className="border-line grid gap-3 rounded-2xl border p-4 sm:col-span-2">
+					<legend className="px-1 text-sm font-semibold">¿Cómo se divide?</legend>
+					<div className="grid gap-2 sm:grid-cols-3">
+						{splitModeOptions.map((option) => {
+							const selected = splitMode === option.value;
+							const Icon = option.icon;
+							return (
+								<label
+									className={`relative grid min-h-32 gap-2 rounded-xl border p-4 transition ${
+										selected ? "border-accent/50 bg-accent/8" : "border-line bg-paper"
+									} ${financialFieldsLocked ? "cursor-not-allowed opacity-60" : "hover:border-line-strong cursor-pointer"}`}
+									key={option.value}
+								>
+									<input
+										checked={selected}
+										className="absolute inset-0 opacity-0"
+										disabled={financialFieldsLocked}
+										name="splitMode"
+										onChange={() => changeSplitMode(option.value)}
+										type="radio"
+									/>
+									<Icon
+										aria-hidden
+										className={selected ? "text-accent" : "text-ink-faint"}
+										size={20}
+									/>
+									<strong className="text-sm">{option.label}</strong>
+									<span className="text-ink-muted text-xs leading-5">{option.description}</span>
+								</label>
+							);
+						})}
+					</div>
+					{financialFieldsLocked ? (
+						<p className="text-ink-muted text-xs leading-5">
+							Solo una persona administradora puede cambiar la estructura de una cuenta abierta.
 						</p>
-						{payerId ? (
-							eligibleInitialPaidParticipants.length > 0 ? (
-								<div className="grid gap-2 sm:grid-cols-2">
-									{eligibleInitialPaidParticipants.map((participant) => {
-										const paid = initialPaidParticipantIds.includes(participant.id);
-										return (
-											<label
-												className={`focus-within:ring-positive/20 flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors focus-within:ring-3 ${
-													paid
-														? "border-positive/40 bg-positive/10 text-ink"
-														: "border-line bg-paper text-ink-muted hover:border-line-strong"
-												}`}
-												key={participant.id}
-											>
-												<input
-													checked={paid}
-													className="accent-positive size-4 shrink-0"
-													onChange={(event) =>
-														setInitialPaidParticipantIds((current) =>
-															event.target.checked
-																? [...current, participant.id]
-																: current.filter((id) => id !== participant.id),
-														)
-													}
-													type="checkbox"
-												/>
-												<span className="font-medium">{participant.name}</span>
-												{paid ? (
-													<span className="text-positive-strong ml-auto text-xs font-semibold">
-														Ya pagó
-													</span>
-												) : null}
-											</label>
-										);
-									})}
-								</div>
-							) : (
-								<p className="text-ink-faint text-xs">No hay otras personas seleccionadas.</p>
-							)
-						) : null}
-						{errors.initialPaidParticipantIds?.[0] ? (
-							<span className="text-danger text-xs font-normal">
-								{errors.initialPaidParticipantIds[0]}
+					) : null}
+				</fieldset>
+
+				{splitMode !== "equal" ? (
+					<fieldset className="border-accent/20 bg-accent/5 grid gap-4 rounded-2xl border p-4 sm:col-span-2">
+						<legend className="px-1 text-sm font-semibold">
+							{splitMode === "custom" ? "Montos por persona" : "Montos iniciales"}
+						</legend>
+						<div className="grid gap-3">
+							{selectedParticipants.map((participant) => {
+								const isOpenPayer = splitMode === "open" && participant.id === payerId;
+								return (
+									<label
+										className="border-line bg-paper grid gap-2 rounded-xl border p-3 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center"
+										htmlFor={`share-${participant.id}`}
+										key={participant.id}
+									>
+										<span>
+											<strong className="block text-sm">{participant.name}</strong>
+											<span className="text-ink-muted text-xs">
+												{isOpenPayer ? "Cubre el saldo restante" : "Monto en CLP"}
+											</span>
+										</span>
+										<input
+											aria-label={`Monto de ${participant.name}`}
+											className="border-line-strong bg-paper-strong text-ink focus:border-accent focus:ring-accent/15 min-h-11 rounded-xl border px-3 text-right text-base font-semibold outline-none focus:ring-3 disabled:opacity-60"
+											disabled={financialFieldsLocked || isOpenPayer}
+											id={`share-${participant.id}`}
+											inputMode="numeric"
+											onChange={(event) => {
+												const nextAmount = parseAmount(event.target.value);
+												setShareAmounts((current) => ({
+													...current,
+													[participant.id]: nextAmount,
+												}));
+												if (nextAmount === 0) {
+													setInitialPaidParticipantIds((current) =>
+														current.filter((id) => id !== participant.id),
+													);
+												}
+											}}
+											pattern="[0-9. ]+"
+											value={resolvedShareAmounts[participant.id] ?? 0}
+										/>
+									</label>
+								);
+							})}
+						</div>
+						<div className="border-line flex flex-wrap items-center justify-between gap-2 border-t pt-3 text-sm">
+							<span className="text-ink-muted">
+								Asignado {formatMoney(allocatedTotal)} de {formatMoney(amountMinor)}
+							</span>
+							<strong className={manualAllocationInvalid ? "text-danger" : "text-positive-strong"}>
+								{openNonPayerTotal > amountMinor
+									? `Excede por ${formatMoney(openNonPayerTotal - amountMinor)}`
+									: allocationDifference === 0
+										? "Total completo"
+										: `Faltan ${formatMoney(allocationDifference)}`}
+							</strong>
+						</div>
+						{errors.shareAllocations?.[0] ? (
+							<span className="text-danger text-xs" role="alert">
+								{errors.shareAllocations[0]}
 							</span>
 						) : null}
 					</fieldset>
 				) : null}
+
+				{!expense ? (
+					<fieldset className="border-positive/20 bg-positive/5 grid gap-3 rounded-2xl border p-4 sm:col-span-2">
+						<legend className="px-1 text-sm font-semibold">¿Quién ya pagó su parte?</legend>
+						<p className="text-ink-muted flex items-start gap-2 text-xs leading-5">
+							<BadgeCheck aria-hidden className="text-positive mt-0.5" size={16} />
+							Marca reembolsos ya recibidos. En una cuenta abierta se guarda exactamente el monto
+							indicado arriba.
+						</p>
+						{payerId && eligibleInitialPaidParticipants.length > 0 ? (
+							<div className="grid gap-2 sm:grid-cols-2">
+								{eligibleInitialPaidParticipants.map((participant) => {
+									const paid = initialPaidParticipantIds.includes(participant.id);
+									const shareAmount = resolvedShareAmounts[participant.id] ?? 0;
+									return (
+										<label
+											className={`flex min-h-12 items-center gap-3 rounded-xl border px-4 py-3 ${
+												paid ? "border-positive/40 bg-positive/10" : "border-line bg-paper"
+											} ${shareAmount === 0 ? "cursor-not-allowed opacity-55" : "cursor-pointer"}`}
+											key={participant.id}
+										>
+											<input
+												checked={paid}
+												className="accent-positive size-4"
+												disabled={shareAmount === 0}
+												onChange={(event) =>
+													setInitialPaidParticipantIds((current) =>
+														event.target.checked
+															? [...current, participant.id]
+															: current.filter((id) => id !== participant.id),
+													)
+												}
+												type="checkbox"
+											/>
+											<span>
+												<strong className="block text-sm">{participant.name}</strong>
+												<span className="text-ink-muted text-xs">{formatMoney(shareAmount)}</span>
+											</span>
+										</label>
+									);
+								})}
+							</div>
+						) : null}
+						{errors.initialPaidParticipantIds?.[0] ? (
+							<span className="text-danger text-xs">{errors.initialPaidParticipantIds[0]}</span>
+						) : null}
+					</fieldset>
+				) : null}
+
 				<div className="relative">
 					<Field
 						className="pr-11"
@@ -366,21 +604,26 @@ export function ExpenseForm({
 			</div>
 
 			<div className="border-line bg-paper-strong/55 rounded-2xl border p-4 text-sm">
-				<p className="font-semibold">La división se calcula automáticamente</p>
+				<p className="font-semibold">
+					{splitMode === "equal"
+						? "La división se calcula automáticamente"
+						: splitMode === "custom"
+							? "La división queda fijada al guardar"
+							: "La cuenta permanece abierta"}
+				</p>
 				<p className="text-ink-muted mt-1 leading-6">
-					El monto se reparte en partes iguales entre {participantIds.length || "las"}{" "}
-					{participantIds.length === 1 ? "persona seleccionada" : "personas seleccionadas"}, sin
-					perder ningún peso.
+					{splitMode === "open"
+						? "Cada participante puede ajustar su monto pendiente. Las partes pagadas quedan bloqueadas y quien pagó absorbe el saldo restante."
+						: "Todos los montos se guardan en pesos enteros y siempre suman exactamente el total."}
 				</p>
 			</div>
-			{expense?.shares.some((share) => share.status === "paid") ? (
+			{expense?.shares.some((share) => share.status === "paid") && !financialFieldsLocked ? (
 				<label className="border-warning/25 bg-warning/8 grid grid-cols-[auto_1fr] gap-3 rounded-2xl border p-4 text-sm">
 					<input className="mt-1 size-4" name="resetPaidReimbursements" type="checkbox" />
 					<span>
 						<strong className="block">Confirmar recálculo financiero</strong>
 						<span className="text-ink-muted mt-1 block leading-6">
-							Si cambias el monto o quién pagó, se reiniciarán los reembolsos ya marcados como
-							pagados.
+							Los cambios financieros reiniciarán reembolsos pagados y eliminarán sus comprobantes.
 						</span>
 					</span>
 				</label>

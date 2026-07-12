@@ -6,6 +6,7 @@ import {
 	ImagePlus,
 	LoaderCircle,
 	LockKeyhole,
+	PencilLine,
 	Paperclip,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -21,14 +22,16 @@ import {
 import { apiRequest } from "@/lib/api/client";
 import { uploadPaymentProof } from "@/lib/api/payment-proofs";
 import type { UserRole } from "@/lib/const/roles";
-import type { ExpenseShare } from "@/lib/types/expense";
+import type { ExpenseShare, ExpenseSplitMode, OpenShareAmountResponse } from "@/lib/types/expense";
 import { formatDateTime, formatMoney } from "@/lib/util/format";
 
 interface ReimbursementListProps {
+	amountMinor: number;
 	currency: string;
 	currentUser: { participantId: string | null; role: UserRole };
 	initialShares: ExpenseShare[];
 	payeeName: string;
+	splitMode: ExpenseSplitMode;
 }
 
 function canManageShare(
@@ -43,15 +46,19 @@ function canManageShare(
 }
 
 export function ReimbursementList({
+	amountMinor,
 	currency,
 	currentUser,
 	initialShares,
 	payeeName,
+	splitMode,
 }: ReimbursementListProps) {
 	const router = useRouter();
 	const [shares, setShares] = useState(initialShares);
 	const [paymentShare, setPaymentShare] = useState<ExpenseShare | null>(null);
 	const [revertShare, setRevertShare] = useState<ExpenseShare | null>(null);
+	const [amountShare, setAmountShare] = useState<ExpenseShare | null>(null);
+	const [amountValue, setAmountValue] = useState("");
 	const [file, setFile] = useState<File | null>(null);
 	const [progress, setProgress] = useState<number | null>(null);
 	const [error, setError] = useState("");
@@ -67,6 +74,34 @@ export function ReimbursementList({
 		setFile(null);
 		setProgress(null);
 		setPaymentShare(share);
+	}
+
+	function openAmountDialog(share: ExpenseShare) {
+		setError("");
+		setAmountValue(String(share.shareAmountMinor));
+		setAmountShare(share);
+	}
+
+	function submitAmount() {
+		if (!amountShare) return;
+		const shareAmountMinor = Number(amountValue.replaceAll(/[^0-9]/g, ""));
+		setError("");
+		startTransition(async () => {
+			const result = await apiRequest<OpenShareAmountResponse>(
+				`/api/expense-shares/${amountShare.id}/amount`,
+				{
+					body: JSON.stringify({ shareAmountMinor }),
+					method: "PATCH",
+				},
+			);
+			if (result.err) {
+				setError(result.val.message);
+				return;
+			}
+			setShares(result.val.shares);
+			setAmountShare(null);
+			router.refresh();
+		});
 	}
 
 	function validateFile(candidate: File): string | null {
@@ -143,11 +178,19 @@ export function ReimbursementList({
 						Los comprobantes son privados para el hogar.
 					</p>
 				</div>
-				<span className="text-ink-muted text-xs">Exacta entre {shares.length}</span>
+				<span className="text-ink-muted text-xs">
+					{splitMode === "open"
+						? "Cuenta abierta"
+						: splitMode === "custom"
+							? "Montos específicos"
+							: `Exacta entre ${shares.length}`}
+				</span>
 			</div>
 			<div className="divide-line divide-y">
 				{shares.map((share) => {
-					const manageable = share.status !== "settled" && canManageShare(share, currentUser);
+					const ownsShare = canManageShare(share, currentUser);
+					const manageable = share.status !== "settled" && share.shareAmountMinor > 0 && ownsShare;
+					const amountEditable = splitMode === "open" && share.status === "pending" && ownsShare;
 					return (
 						<div className="grid min-h-20 gap-3 py-4" key={share.id}>
 							<div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
@@ -157,6 +200,8 @@ export function ReimbursementList({
 										<Badge tone="settled">
 											<LockKeyhole aria-hidden size={13} /> Pagó el gasto
 										</Badge>
+									) : share.shareAmountMinor === 0 ? (
+										<Badge tone="neutral">Sin monto asignado</Badge>
 									) : share.status === "paid" ? (
 										<Badge tone="paid">
 											<CheckCircle2 aria-hidden size={13} /> Reembolsado
@@ -185,9 +230,19 @@ export function ReimbursementList({
 								</p>
 							) : null}
 
-							{manageable ? (
+							{manageable || amountEditable ? (
 								<div className="flex flex-wrap justify-end gap-2">
-									{share.status === "paid" ? (
+									{amountEditable ? (
+										<Button
+											aria-label={`Cambiar monto: ${share.participant.name}`}
+											disabled={pending}
+											onClick={() => openAmountDialog(share)}
+											variant="secondary"
+										>
+											<PencilLine aria-hidden size={16} /> Cambiar monto
+										</Button>
+									) : null}
+									{manageable && share.status === "paid" ? (
 										<>
 											<Button
 												aria-label={`${share.paymentProof ? "Reemplazar" : "Agregar"} comprobante: ${share.participant.name}`}
@@ -209,7 +264,7 @@ export function ReimbursementList({
 												Marcar pendiente
 											</Button>
 										</>
-									) : (
+									) : manageable ? (
 										<Button
 											aria-label={`Marcar pagado: ${share.participant.name}`}
 											disabled={pending}
@@ -217,13 +272,56 @@ export function ReimbursementList({
 										>
 											Marcar pagado
 										</Button>
-									)}
+									) : null}
 								</div>
 							) : null}
 						</div>
 					);
 				})}
 			</div>
+
+			<Dialog
+				description={
+					amountShare
+						? `El saldo que no asigne ${amountShare.participant.name} quedará en la parte de ${payeeName}. Total: ${formatMoney(amountMinor, currency)}.`
+						: undefined
+				}
+				onClose={() => !pending && setAmountShare(null)}
+				open={Boolean(amountShare)}
+				title="Ajustar monto abierto"
+			>
+				<div className="grid gap-5">
+					<label className="grid gap-2 text-sm font-semibold" htmlFor="open-share-amount">
+						<span>Monto que pagará</span>
+						<input
+							className="border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 rounded-xl border px-4 text-base outline-none focus:ring-3"
+							disabled={pending}
+							id="open-share-amount"
+							inputMode="numeric"
+							onChange={(event) => setAmountValue(event.target.value)}
+							pattern="[0-9. ]+"
+							value={amountValue}
+						/>
+						<span className="text-ink-muted text-xs font-normal">
+							Puede ser $0; nunca puede superar el saldo disponible.
+						</span>
+					</label>
+					{error ? (
+						<p className="text-danger text-sm" role="alert">
+							{error}
+						</p>
+					) : null}
+					<div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+						<Button disabled={pending} onClick={() => setAmountShare(null)} variant="ghost">
+							Cancelar
+						</Button>
+						<Button disabled={pending || !amountValue.trim()} onClick={submitAmount}>
+							{pending ? <LoaderCircle aria-hidden className="animate-spin" size={16} /> : null}
+							Guardar monto
+						</Button>
+					</div>
+				</div>
+			</Dialog>
 
 			<Dialog
 				description={

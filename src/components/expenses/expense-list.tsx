@@ -52,7 +52,9 @@ export function ExpenseList({
 	return (
 		<div className="grid gap-3">
 			{expenses.map((expense) => {
-				const pending = expense.shares.filter((share) => share.status === "pending").length;
+				const pending = expense.shares.filter(
+					(share) => share.status === "pending" && share.shareAmountMinor > 0,
+				).length;
 				const personalShare = personalParticipantId
 					? expense.shares.find((share) => share.participant.id === personalParticipantId)
 					: undefined;
@@ -76,11 +78,25 @@ export function ExpenseList({
 								<p className="text-ink-muted mt-1 truncate text-sm">
 									{expense.kind.name} · {formatExpenseDate(expense.expenseDate)} · Pagó{" "}
 									{expense.payer.name}
+									{expense.splitMode === "open"
+										? " · Cuenta abierta"
+										: expense.splitMode === "custom"
+											? " · División específica"
+											: ""}
 								</p>
 							</div>
 						</div>
 						<div className="flex items-center justify-between gap-3 sm:block sm:text-right">
-							{personalShare?.status === "pending" ? (
+							{personalShare?.shareAmountMinor === 0 ? (
+								<div>
+									<strong className="font-display text-xl">
+										{formatMoney(expense.amountMinor, expense.currency)}
+									</strong>
+									<div className="mt-1">
+										<Badge tone="neutral">Sin monto asignado</Badge>
+									</div>
+								</div>
+							) : personalShare?.status === "pending" ? (
 								<div>
 									<p className="text-pending-strong flex items-center gap-1.5 text-xs font-bold tracking-wide uppercase sm:justify-end">
 										<WalletCards aria-hidden size={14} /> Debes

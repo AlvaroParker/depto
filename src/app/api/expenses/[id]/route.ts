@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import {
 	databaseErrorResponse,
+	forbiddenResponse,
 	unauthorizedResponse,
 	validationErrorResponse,
 } from "@/lib/api/server";
@@ -40,7 +41,9 @@ export async function PATCH(request: Request, { params }: ExpenseRouteContext) {
 			{ status: 400 },
 		);
 	}
-	const result = await updateExpense((await params).id, parsed.data);
+	const result = await updateExpense((await params).id, parsed.data, undefined, undefined, {
+		role: session.user.role,
+	});
 	if (result.err) return databaseErrorResponse();
 	if (result.val.kind === "not_found")
 		return NextResponse.json({ message: "No encontramos ese gasto." }, { status: 404 });
@@ -52,6 +55,7 @@ export async function PATCH(request: Request, { params }: ExpenseRouteContext) {
 			},
 			{ status: 409 },
 		);
+	if (result.val.kind === "forbidden") return forbiddenResponse();
 	if (result.val.removedPaymentProofObjectKeys.length > 0) {
 		try {
 			await getBindings().RECEIPTS.delete(result.val.removedPaymentProofObjectKeys);

@@ -80,6 +80,7 @@ Represents a shared household cost.
 | `expense_date`           | text    | Required valid `YYYY-MM-DD` date                         |
 | `kind_id`                | text    | Required foreign key to an expense kind                  |
 | `paid_by_participant_id` | text    | Required foreign key to active participant               |
+| `split_mode`             | text    | `equal`, `custom`, or `open`; defaults to `equal`        |
 | `receipt_object_key`     | text    | Nullable private R2 key; never client supplied           |
 | `receipt_filename`       | text    | Nullable sanitized original name; at most 255 characters |
 | `receipt_content_type`   | text    | Nullable supported MIME type                             |
@@ -141,6 +142,9 @@ Non-payer:  pending ↔ paid
 - `pending → paid` sets `paid_at`, `marked_by_user_id`, and `updated_at` together.
 - `paid → pending` clears `paid_at` and `marked_by_user_id` and updates `updated_at`.
 - Amount, payer, or participant-set recalculation replaces selected shares only after required confirmation.
+- Custom shares persist creator-entered exact amounts. Open pending non-payer shares are owner/root/admin
+  editable; each update atomically assigns the remaining total to the payer share.
+- A zero share remains associated but is excluded from pending counts and cannot transition to paid.
 
 ## Expense Share Payment Proof
 
@@ -171,6 +175,10 @@ Given positive integer `amount` and participants sorted ascending:
 2. `remainder = amount % participantCount`
 3. Participant at zero-based position `i` receives `base + (i < remainder ? 1 : 0)`
 4. All outputs are non-negative and sum exactly to `amount`
+
+Custom and open creation validate one allocation per selected participant and the same exact-sum
+invariant. For an open mutation, a non-payer amount cannot exceed `expense amount - other non-payer
+shares`; the payer share is recalculated from that remainder in the same D1 batch.
 
 ## Derived dashboard model
 
