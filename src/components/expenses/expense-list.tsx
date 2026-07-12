@@ -22,7 +22,7 @@ export function ExpenseList({
 					action={
 						<Link
 							className="border-line-strong bg-paper inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-semibold"
-							href="/expenses"
+							href="/expenses?pending=all"
 						>
 							Ver todos los gastos
 						</Link>

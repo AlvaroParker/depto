@@ -46,6 +46,7 @@ const expense: ExpenseSummary = {
 describe("personal expense filter", () => {
 	it("parses the personal pending query value", () => {
 		expect(ExpenseQuerySchema.parse({ pending: "mine" }).pending).toBe("mine");
+		expect(ExpenseQuerySchema.parse({ pending: "all" }).pending).toBeUndefined();
 	});
 
 	it("offers the personal state only to users with a participant", () => {
@@ -116,7 +117,7 @@ describe("personal expense filter", () => {
 		);
 
 		expect(markup).toContain("No tienes pagos pendientes");
-		expect(markup).toContain("Ver todos los gastos");
+		expect(markup).toContain("/expenses?pending=all");
 	});
 
 	it("keeps the household empty state when personal status is used on the dashboard", () => {
