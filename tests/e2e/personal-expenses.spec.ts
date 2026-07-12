@@ -12,13 +12,15 @@ test("filters and settles the signed-in user's pending expense shares", async ({
 	await page.getByRole("button", { name: "Guardar gasto" }).click();
 
 	await page.goto("/expenses");
-	await page.getByLabel("Filtrar por estado").selectOption({ label: "Mis pagos pendientes" });
-	await expect(page).toHaveURL(/pending=mine/);
 	await expect(page.getByText("Estado: Mis pagos pendientes", { exact: true })).toBeVisible();
 	const expenseCard = page.getByRole("link", { name: new RegExp(expenseName) });
 	await expect(expenseCard.getByText("Debes", { exact: true })).toBeVisible();
 	await expect(expenseCard.getByText("$4.000", { exact: true })).toBeVisible();
 	await expect(expenseCard.getByText("Total $12.000", { exact: true })).toBeVisible();
+	await page.getByRole("button", { name: "Quitar Estado: Mis pagos pendientes" }).click();
+	await expect(page).toHaveURL(/pending=all/);
+	await expect(page.getByText(expenseName, { exact: true })).toBeVisible();
+	await page.getByLabel("Filtrar por estado").selectOption({ label: "Mis pagos pendientes" });
 	await expenseCard.click();
 
 	await page.getByRole("button", { name: "Marcar pagado: Alvaro" }).click();

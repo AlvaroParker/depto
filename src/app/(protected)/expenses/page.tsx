@@ -30,7 +30,7 @@ function pageHref(
 	if (query.q) values.set("q", query.q);
 	if (query.kind) values.set("kind", query.kind);
 	if (query.payer) values.set("payer", query.payer);
-	if (query.pending !== undefined) values.set("pending", String(query.pending));
+	values.set("pending", query.pending === undefined ? "all" : String(query.pending));
 	values.set("page", String(page));
 	values.set("pageSize", String(query.pageSize));
 	return `/expenses?${values}`;
@@ -46,7 +46,11 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
 		),
 	);
 	const parsed = ExpenseQuerySchema.safeParse(flat);
-	const query = parsed.success ? parsed.data : ExpenseQuerySchema.parse({});
+	const parsedQuery = parsed.success ? parsed.data : ExpenseQuerySchema.parse({});
+	const query =
+		flat.pending === undefined && session.user.participantId
+			? { ...parsedQuery, pending: "mine" as const }
+			: parsedQuery;
 	if (query.pending === "mine" && !session.user.participantId) redirect("/expenses");
 	const [result, participants, expenseKinds] = await Promise.all([
 		listExpenses(query, { currentParticipantId: session.user.participantId }),

@@ -76,7 +76,7 @@ export function ExpenseFilters({
 		if (search) params.set("q", search);
 		if (nextValues.kind) params.set("kind", nextValues.kind);
 		if (nextValues.payer) params.set("payer", nextValues.payer);
-		if (nextValues.pending) params.set("pending", nextValues.pending);
+		params.set("pending", nextValues.pending || "all");
 		if (query.pageSize !== 25) params.set("pageSize", String(query.pageSize));
 		const href = params.size ? `/expenses?${params}` : "/expenses";
 		startTransition(() => router.replace(href, { scroll: false }));

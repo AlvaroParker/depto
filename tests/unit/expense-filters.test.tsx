@@ -48,9 +48,10 @@ describe("expense filters", () => {
 			target: { value: "kind-water" },
 		});
 
-		expect(replace).toHaveBeenCalledWith("/expenses?q=cuenta&kind=kind-water&pageSize=50", {
-			scroll: false,
-		});
+		expect(replace).toHaveBeenCalledWith(
+			"/expenses?q=cuenta&kind=kind-water&pending=all&pageSize=50",
+			{ scroll: false },
+		);
 		expect(screen.queryByRole("button", { name: "Filtrar" })).not.toBeInTheDocument();
 		expect(screen.getByText("Categoría: Agua")).toBeInTheDocument();
 	});
@@ -64,12 +65,14 @@ describe("expense filters", () => {
 		act(() => vi.advanceTimersByTime(349));
 		expect(replace).not.toHaveBeenCalled();
 		act(() => vi.advanceTimersByTime(1));
-		expect(replace).toHaveBeenLastCalledWith("/expenses?q=luz", { scroll: false });
+		expect(replace).toHaveBeenLastCalledWith("/expenses?q=luz&pending=all", { scroll: false });
 
 		replace.mockClear();
 		fireEvent.change(search, { target: { value: "internet" } });
 		fireEvent.submit(container.querySelector("form")!);
-		expect(replace).toHaveBeenLastCalledWith("/expenses?q=internet", { scroll: false });
+		expect(replace).toHaveBeenLastCalledWith("/expenses?q=internet&pending=all", {
+			scroll: false,
+		});
 	});
 
 	it("renders human-readable chips and removes one filter at a time", () => {
@@ -97,7 +100,7 @@ describe("expense filters", () => {
 
 		fireEvent.click(screen.getByRole("button", { name: "Limpiar todos" }));
 
-		expect(replace).toHaveBeenLastCalledWith("/expenses", { scroll: false });
+		expect(replace).toHaveBeenLastCalledWith("/expenses?pending=all", { scroll: false });
 		expect(screen.queryByText("Filtros activos")).not.toBeInTheDocument();
 	});
 });
