@@ -327,7 +327,7 @@ receipts, edit/delete, dashboard/UI, tests, and documentation.
 
 ## Validation
 
-- 88 tasks use the required checkbox and sequential `T###` identifier format.
+- 110 tasks use the required checkbox and sequential `T###` identifier format.
 - Every user-story task includes its `[US#]` label and exact file path.
 - Setup, Foundational, and Polish tasks intentionally have no story label.
 - Test tasks precede implementation tasks within every story.
@@ -354,3 +354,11 @@ receipts, edit/delete, dashboard/UI, tests, and documentation.
 - [x] T103 [US9] Trigger best-effort participant notifications after committed expense creation in `src/app/api/expenses/route.ts`
 - [x] T104 Configure Resend secrets, sender, application URL, generated binding types, and deployment guidance in `wrangler.jsonc`, `.dev.vars.example`, `README.md`, and `quickstart.md`
 - [x] T105 Run formatting, lint, typecheck, unit/integration/browser tests, Next.js build, and OpenNext Cloudflare build
+
+## Initial-paid participant extension
+
+- [x] T106 [P] [US2] Specify creation-time paid selection, audit, authorization, and API contracts in `specs/001-shared-expense-tracker/`
+- [x] T107 [P] [US2] Add create-schema, atomic persistence, aggregate, and browser coverage in `tests/unit/expense-input.test.ts`, `tests/integration/`, and `tests/e2e/create-expense.spec.ts`
+- [x] T108 [US2] Add create-only initial-paid validation and atomic paid-share persistence in `src/lib/types/expense.ts`, `src/app/api/expenses/route.ts`, and `src/lib/db/expenses.ts`
+- [x] T109 [US2] Add the responsive, creation-only paid-participant selector in `src/components/expenses/expense-form.tsx`
+- [x] T110 Run formatting, lint, typecheck, unit/integration/browser tests, Next.js build, and OpenNext Cloudflare build

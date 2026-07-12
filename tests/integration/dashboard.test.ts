@@ -34,6 +34,7 @@ describe("dashboard aggregates", () => {
 				currency: "CLP",
 				kindId: "kind-other",
 				expenseDate: "2026-07-08",
+				initialPaidParticipantIds: ["participant_camila"],
 				name: "Gas",
 				paidByParticipantId: "participant_alvaro",
 				participantIds: ["participant_alvaro", "participant_camila", "participant_trinidad"],
@@ -57,14 +58,6 @@ describe("dashboard aggregates", () => {
 			new Date(NOW.getTime() + 1000),
 		);
 		if (first.err || second.err) throw new Error("fixture failed");
-		await updateShareStatus(
-			first.val.shares[1].id,
-			"paid",
-			{ id: "user_alvaro", participantId: "participant_alvaro", role: "admin" },
-			bindings.database,
-			NOW,
-		);
-
 		const result = await getDashboardSummary({ database: bindings.database });
 		expect(result.ok).toBe(true);
 		if (result.err) return;

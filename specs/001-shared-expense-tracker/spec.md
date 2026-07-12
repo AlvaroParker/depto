@@ -57,6 +57,9 @@ and detail to verify the stored expense and exactly one share per selected parti
    **Then** nothing is created and visible field-specific errors explain what must be corrected.
 4. **Given** recorded expenses, **When** the expense list is opened, **Then** each item shows date,
    name, amount, payer, receipt presence, reimbursement state, and view/edit/delete actions.
+5. **Given** selected non-payers who already reimbursed the payer, **When** the creator marks them
+   paid while creating the expense, **Then** their shares start paid with the creator and creation
+   time recorded while every unchecked non-payer starts pending.
 
 ---
 
@@ -276,13 +279,16 @@ Resend batch request, and verify one private message per selected participant wi
 - **FR-003**: The system MUST provide a mobile-usable list of all non-deleted expenses showing
   date, name, amount, payer, receipt presence, reimbursement state, and view/edit/delete actions.
 - **FR-004**: An authenticated user MUST be able to create an expense with required name, positive
-  amount, currency, date, payer, and one or more selected participants plus optional description and
-  receipt. The payer MUST be selected. Creation MUST atomically create one share for each selected
-  participant. Integer remainder units MUST be assigned by participant
+  amount, currency, date, payer, and one or more selected participants plus optional description,
+  receipt, and a unique subset of selected non-payers who already reimbursed the payer. The payer
+  MUST be selected and MUST NOT appear in the initially paid subset. Creation MUST atomically create
+  one share for each selected participant. Integer remainder units MUST be assigned by participant
   order so that shares always sum exactly to the original amount.
-- **FR-005**: The system MUST mark the payer's share settled automatically, start each non-payer
-  share pending, allow non-payer shares to change between pending and paid, record payment time and
-  marking user for paid state, and clear those fields when reverting to pending.
+- **FR-005**: The system MUST mark the payer's share settled automatically, start checked non-payer
+  shares paid and unchecked non-payer shares pending, allow non-payer shares to change between
+  pending and paid, record the expense creator and creation time for initially paid shares, record
+  the payment time and marking user for every later paid transition, and clear those fields when
+  reverting to pending.
 - **FR-006**: Authenticated users MUST be able to upload JPEG, PNG, WebP, and PDF receipts up to
   and including 10 MB. Only receipt metadata and an opaque object reference may be associated with
   the expense. Receipt content and object listings MUST never be publicly accessible.
@@ -325,8 +331,10 @@ Resend batch request, and verify one private message per selected participant wi
   case-insensitively, and categories referenced by history MUST NOT be deleted.
 - **FR-021**: Expense history MUST support a category filter combinable with search, payer, pending
   state, sorting, and pagination.
-- **FR-022**: A regular user MUST be able to mark only their own non-payer share paid or pending.
-  Root and admin MAY update any non-payer share. Other authenticated users MUST be denied.
+- **FR-022**: During atomic expense creation, any authenticated creator MAY initialize any selected
+  non-payer share as paid. After creation, a regular user MUST be able to mark only their own
+  non-payer share paid or pending. Root and admin MAY update any non-payer share. Other
+  authenticated users MUST be denied.
 - **FR-023**: The share owner, root, or admin MUST be able to optionally upload one current JPEG,
   PNG, or WebP payment proof up to and including 10 MB while marking a share paid, or add or replace
   it later without changing the original payment audit fields.
@@ -396,6 +404,9 @@ Resend batch request, and verify one private message per selected participant wi
 - **SC-012**: Automated tests prove selected participants receive isolated messages containing
   their exact shares, non-selected or email-less participants receive none, and provider failure
   leaves the successfully created expense intact.
+- **SC-013**: Automated tests prove multiple selected non-payers can start paid with exact creator
+  audit data, invalid initial selections write nothing, and initial paid shares are excluded from
+  pending aggregates and filters.
 
 ## Assumptions
 

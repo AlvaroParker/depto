@@ -135,7 +135,9 @@ Payer:      settled (terminal)
 Non-payer:  pending ↔ paid
 ```
 
-- Creation sets exactly one payer share to `settled` and selected non-payer shares to `pending`.
+- Creation sets exactly one payer share to `settled`, creator-checked non-payer shares to `paid`,
+  and unchecked non-payer shares to `pending`. Initially paid shares use the expense creation time
+  for `paid_at` and the expense creator for `marked_by_user_id`.
 - `pending → paid` sets `paid_at`, `marked_by_user_id`, and `updated_at` together.
 - `paid → pending` clears `paid_at` and `marked_by_user_id` and updates `updated_at`.
 - Amount, payer, or participant-set recalculation replaces selected shares only after required confirmation.

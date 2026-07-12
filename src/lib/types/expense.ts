@@ -15,27 +15,66 @@ function isCalendarDate(value: string): boolean {
 	);
 }
 
-export const ExpenseInputSchema = z
-	.object({
-		amountMinor: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
-		currency: z.enum(SUPPORTED_CURRENCIES).default(DEFAULT_CURRENCY),
-		description: z.string().trim().max(2000).nullable().optional(),
-		expenseDate: z.string().refine(isCalendarDate, "La fecha no es válida."),
-		kindId: z.string().trim().min(1, "Selecciona una categoría."),
-		name: z.string().trim().min(1, "El nombre es obligatorio.").max(120),
-		paidByParticipantId: z.string().trim().min(1, "Selecciona quién pagó."),
-		participantIds: z
-			.array(z.string().trim().min(1))
-			.min(1, "Selecciona al menos una persona.")
-			.refine((ids) => new Set(ids).size === ids.length, "No repitas participantes."),
-	})
-	.refine((input) => input.participantIds.includes(input.paidByParticipantId), {
+const ExpenseFieldsSchema = z.object({
+	amountMinor: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+	currency: z.enum(SUPPORTED_CURRENCIES).default(DEFAULT_CURRENCY),
+	description: z.string().trim().max(2000).nullable().optional(),
+	expenseDate: z.string().refine(isCalendarDate, "La fecha no es válida."),
+	kindId: z.string().trim().min(1, "Selecciona una categoría."),
+	name: z.string().trim().min(1, "El nombre es obligatorio.").max(120),
+	paidByParticipantId: z.string().trim().min(1, "Selecciona quién pagó."),
+	participantIds: z
+		.array(z.string().trim().min(1))
+		.min(1, "Selecciona al menos una persona.")
+		.refine((ids) => new Set(ids).size === ids.length, "No repitas participantes."),
+});
+
+export const ExpenseInputSchema = ExpenseFieldsSchema.refine(
+	(input) => input.participantIds.includes(input.paidByParticipantId),
+	{
 		message: "Quien pagó debe participar en el gasto.",
 		path: ["paidByParticipantId"],
-	});
+	},
+);
 
-export const ExpensePatchSchema = ExpenseInputSchema.extend({
+export const ExpenseCreateInputSchema = ExpenseFieldsSchema.extend({
+	initialPaidParticipantIds: z
+		.array(z.string().trim().min(1))
+		.refine((ids) => new Set(ids).size === ids.length, "No repitas participantes pagados.")
+		.optional(),
+}).superRefine((input, context) => {
+	if (!input.participantIds.includes(input.paidByParticipantId)) {
+		context.addIssue({
+			code: "custom",
+			message: "Quien pagó debe participar en el gasto.",
+			path: ["paidByParticipantId"],
+		});
+	}
+	if (input.initialPaidParticipantIds?.includes(input.paidByParticipantId)) {
+		context.addIssue({
+			code: "custom",
+			message: "Quien pagó no puede marcarse como reembolsado.",
+			path: ["initialPaidParticipantIds"],
+		});
+	}
+	if (
+		input.initialPaidParticipantIds?.some(
+			(participantId) => !input.participantIds.includes(participantId),
+		)
+	) {
+		context.addIssue({
+			code: "custom",
+			message: "Cada persona marcada como pagada debe participar en el gasto.",
+			path: ["initialPaidParticipantIds"],
+		});
+	}
+});
+
+export const ExpensePatchSchema = ExpenseFieldsSchema.extend({
 	resetPaidReimbursements: z.boolean().default(false),
+}).refine((input) => input.participantIds.includes(input.paidByParticipantId), {
+	message: "Quien pagó debe participar en el gasto.",
+	path: ["paidByParticipantId"],
 });
 
 export const ExpenseQuerySchema = z.object({
@@ -55,6 +94,7 @@ export const ShareStatusInputSchema = z.object({
 });
 
 export type ExpenseInput = z.infer<typeof ExpenseInputSchema>;
+export type ExpenseCreateInput = z.infer<typeof ExpenseCreateInputSchema>;
 export type ExpensePatch = z.infer<typeof ExpensePatchSchema>;
 export type ExpenseQuery = z.infer<typeof ExpenseQuerySchema>;
 

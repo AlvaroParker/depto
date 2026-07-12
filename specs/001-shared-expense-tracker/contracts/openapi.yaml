@@ -196,6 +196,17 @@ components:
           minItems: 1
           uniqueItems: true
           items: { type: string }
+    ExpenseCreateInput:
+      allOf:
+        - { $ref: "#/components/schemas/ExpenseInput" }
+        - type: object
+          properties:
+            initialPaidParticipantIds:
+              type: array
+              uniqueItems: true
+              default: []
+              description: Selected non-payers whose shares start paid; the payer is not allowed.
+              items: { type: string }
     Dashboard:
       type: object
       required:
@@ -447,7 +458,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/ExpenseInput" }
+            schema: { $ref: "#/components/schemas/ExpenseCreateInput" }
       responses:
         "201":
           description: Expense created
