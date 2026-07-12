@@ -1,24 +1,22 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { databaseErrorResponse, unauthorizedResponse } from "@/lib/api/server";
+import { authenticateRequestActor } from "@/lib/auth/actor";
+import { actorAuthenticationErrorResponse, databaseErrorResponse } from "@/lib/api/server";
 import { getBindings } from "@/lib/db/bindings";
-import { attachExpenseReceipt, findExpenseReceipt } from "@/lib/db/receipts";
-import {
-	createReceiptObjectKey,
-	receiptContentDisposition,
-	validateReceiptMetadata,
-} from "@/lib/util/receipts";
+import { detachExpenseReceipt, findExpenseReceipt } from "@/lib/db/receipts";
+import { attachMcpReceipt } from "@/lib/services/files";
+import { receiptContentDisposition, validateReceiptMetadata } from "@/lib/util/receipts";
 
 interface ReceiptRouteContext {
 	params: Promise<{ id: string }>;
 }
 
 export async function PUT(request: Request, { params }: ReceiptRouteContext) {
-	const session = await auth();
-	if (!session?.user) return unauthorizedResponse();
+	const authenticated = await authenticateRequestActor(request, {
+		requiredScope: "expenses:write",
+	});
+	if (authenticated.kind !== "authenticated")
+		return actorAuthenticationErrorResponse(authenticated, request);
 	const expenseId = (await params).id;
-	const existing = await findExpenseReceipt(expenseId);
-	if (existing.err) return databaseErrorResponse();
 	let metadata;
 	try {
 		metadata = validateReceiptMetadata({
@@ -32,56 +30,32 @@ export async function PUT(request: Request, { params }: ReceiptRouteContext) {
 	}
 	if (!request.body)
 		return NextResponse.json({ message: "El comprobante está vacío." }, { status: 400 });
-	const { RECEIPTS } = getBindings();
-	const objectKey = createReceiptObjectKey(expenseId, metadata.contentType);
-	let object: R2Object;
-	try {
-		if (typeof FixedLengthStream === "undefined") {
-			object = await RECEIPTS.put(objectKey, await request.arrayBuffer(), {
-				httpMetadata: { contentType: metadata.contentType },
-			});
-		} else {
-			const fixedLengthBody = new FixedLengthStream(metadata.sizeBytes);
-			const [stored] = await Promise.all([
-				RECEIPTS.put(objectKey, fixedLengthBody.readable, {
-					httpMetadata: { contentType: metadata.contentType },
-				}),
-				request.body.pipeTo(fixedLengthBody.writable),
-			]);
-			object = stored;
-		}
-	} catch (error) {
-		console.error("R2 receipt upload failed.", error);
-		return NextResponse.json(
-			{ message: "No pudimos guardar el comprobante. Inténtalo nuevamente." },
-			{ status: 503 },
-		);
-	}
-	if (object.size !== metadata.sizeBytes) {
-		await RECEIPTS.delete(objectKey);
+	const bytes = new Uint8Array(await request.arrayBuffer());
+	if (bytes.byteLength !== metadata.sizeBytes) {
 		return NextResponse.json(
 			{ message: "El tamaño recibido no coincide con el archivo." },
 			{ status: 400 },
 		);
 	}
-	const attached = await attachExpenseReceipt(expenseId, { ...metadata, objectKey });
-	if (attached.err || !attached.val.attached) {
-		await RECEIPTS.delete(objectKey);
-		return attached.err
-			? databaseErrorResponse()
-			: NextResponse.json({ message: "No encontramos ese gasto." }, { status: 404 });
+	if (
+		!(await attachMcpReceipt(expenseId, {
+			bytes,
+			contentType: metadata.contentType,
+			filename: metadata.filename,
+		}))
+	) {
+		return NextResponse.json({ message: "No pudimos guardar el comprobante." }, { status: 503 });
 	}
-	if (attached.val.previousObjectKey && attached.val.previousObjectKey !== objectKey)
-		await RECEIPTS.delete(attached.val.previousObjectKey);
 	const { findExpenseById } = await import("@/lib/db/expenses");
 	const expense = await findExpenseById(expenseId);
 	if (expense.err || !expense.val) return databaseErrorResponse();
 	return NextResponse.json(expense.val);
 }
 
-export async function GET(_request: Request, { params }: ReceiptRouteContext) {
-	const session = await auth();
-	if (!session?.user) return unauthorizedResponse();
+export async function GET(request: Request, { params }: ReceiptRouteContext) {
+	const authenticated = await authenticateRequestActor(request, { requiredScope: "expenses:read" });
+	if (authenticated.kind !== "authenticated")
+		return actorAuthenticationErrorResponse(authenticated, request);
 	const receipt = await findExpenseReceipt((await params).id);
 	if (receipt.err) return databaseErrorResponse();
 	if (!receipt.val)
@@ -98,4 +72,25 @@ export async function GET(_request: Request, { params }: ReceiptRouteContext) {
 			"x-content-type-options": "nosniff",
 		},
 	});
+}
+
+export async function DELETE(request: Request, { params }: ReceiptRouteContext) {
+	const authenticated = await authenticateRequestActor(request, {
+		requiredScope: "expenses:write",
+	});
+	if (authenticated.kind !== "authenticated")
+		return actorAuthenticationErrorResponse(authenticated, request);
+	const detached = await detachExpenseReceipt((await params).id);
+	if (detached.err) return databaseErrorResponse();
+	if (!detached.val.found) {
+		return NextResponse.json({ message: "No encontramos ese gasto." }, { status: 404 });
+	}
+	if (detached.val.objectKey) {
+		try {
+			await getBindings().RECEIPTS.delete(detached.val.objectKey);
+		} catch {
+			// Metadata removal is authoritative; object cleanup is best effort.
+		}
+	}
+	return new Response(null, { status: 204 });
 }

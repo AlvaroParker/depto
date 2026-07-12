@@ -6,6 +6,7 @@
 AGENTS.md
 cloudflare-env.d.ts
 coverage/
+dist/
 node_modules/
 playwright-report/
 pnpm-lock.yaml

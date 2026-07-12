@@ -79,3 +79,26 @@ export async function attachExpenseReceipt(
 		return { attached: update.meta.changes === 1, previousObjectKey: previous.receipt_object_key };
 	});
 }
+
+export async function detachExpenseReceipt(
+	expenseId: string,
+	database: D1Database = getDatabase(),
+	now: Date = new Date(),
+): Promise<Result<{ found: boolean; objectKey: string | null }, DbError>> {
+	return safeDbCall(async () => {
+		const existing = await database
+			.prepare("SELECT receipt_object_key FROM expenses WHERE id = ? AND deleted_at IS NULL")
+			.bind(expenseId)
+			.first<{ receipt_object_key: string | null }>();
+		if (!existing) return { found: false, objectKey: null };
+		await database
+			.prepare(
+				`UPDATE expenses SET receipt_object_key = NULL, receipt_filename = NULL,
+				 receipt_content_type = NULL, receipt_size_bytes = NULL, updated_at = ?
+				 WHERE id = ? AND deleted_at IS NULL`,
+			)
+			.bind(now.toISOString(), expenseId)
+			.run();
+		return { found: true, objectKey: existing.receipt_object_key };
+	});
+}

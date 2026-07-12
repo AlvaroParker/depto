@@ -148,5 +148,23 @@ describe("production user-participant migration", () => {
 			"household_information_fields",
 			"household_information_items",
 		]);
+
+		await applyMigrations(bindings.database, ["0010_add_oauth_mcp.sql"]);
+		const oauthTables = await bindings.database
+			.prepare(
+				`SELECT name FROM sqlite_master
+				 WHERE type = 'table' AND (name LIKE 'oauth_%' OR name = 'mcp_idempotency_records')
+				 ORDER BY name`,
+			)
+			.all<{ name: string }>();
+		expect(oauthTables.results.map(({ name }) => name)).toEqual([
+			"mcp_idempotency_records",
+			"oauth_access_tokens",
+			"oauth_authorization_codes",
+			"oauth_clients",
+			"oauth_grants",
+			"oauth_rate_limits",
+			"oauth_refresh_tokens",
+		]);
 	});
 });

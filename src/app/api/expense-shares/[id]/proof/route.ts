@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { databaseErrorResponse, forbiddenResponse, unauthorizedResponse } from "@/lib/api/server";
+import { authenticateRequestActor } from "@/lib/auth/actor";
+import {
+	actorAuthenticationErrorResponse,
+	databaseErrorResponse,
+	forbiddenResponse,
+} from "@/lib/api/server";
 import { getBindings } from "@/lib/db/bindings";
 import {
-	attachSharePaymentProof,
 	authorizeSharePaymentProofUpload,
 	findSharePaymentProof,
 	type ShareMutationAccess,
 } from "@/lib/db/expense-shares";
+import { attachPaymentProofToShare } from "@/lib/services/files";
 import { receiptContentDisposition } from "@/lib/util/receipts";
-import {
-	createPaymentProofObjectKey,
-	validatePaymentProofMetadata,
-} from "@/lib/util/payment-proofs";
+import { validatePaymentProofMetadata } from "@/lib/util/payment-proofs";
 
 interface ProofRouteContext {
 	params: Promise<{ id: string }>;
@@ -36,13 +37,16 @@ function accessErrorResponse(access: Exclude<ShareMutationAccess, { kind: "allow
 }
 
 export async function PUT(request: Request, { params }: ProofRouteContext): Promise<Response> {
-	const session = await auth();
-	if (!session?.user) return unauthorizedResponse();
+	const authenticated = await authenticateRequestActor(request, {
+		requiredScope: "reimbursements:write",
+	});
+	if (authenticated.kind !== "authenticated")
+		return actorAuthenticationErrorResponse(authenticated, request);
 	const shareId = (await params).id;
 	const actor = {
-		id: session.user.id,
-		participantId: session.user.participantId,
-		role: session.user.role,
+		id: authenticated.actor.userId,
+		participantId: authenticated.actor.participantId,
+		role: authenticated.actor.role,
 	};
 	const access = await authorizeSharePaymentProofUpload(shareId, actor);
 	if (access.err) return databaseErrorResponse();
@@ -63,61 +67,31 @@ export async function PUT(request: Request, { params }: ProofRouteContext): Prom
 		return NextResponse.json({ message: "El comprobante está vacío." }, { status: 400 });
 	}
 
-	const { RECEIPTS } = getBindings();
-	const objectKey = createPaymentProofObjectKey(shareId, metadata.contentType);
-	let object: R2Object;
-	try {
-		if (typeof FixedLengthStream === "undefined") {
-			object = await RECEIPTS.put(objectKey, await request.arrayBuffer(), {
-				httpMetadata: { contentType: metadata.contentType },
-			});
-		} else {
-			const fixedLengthBody = new FixedLengthStream(metadata.sizeBytes);
-			const [stored] = await Promise.all([
-				RECEIPTS.put(objectKey, fixedLengthBody.readable, {
-					httpMetadata: { contentType: metadata.contentType },
-				}),
-				request.body.pipeTo(fixedLengthBody.writable),
-			]);
-			object = stored;
-		}
-	} catch (error) {
-		console.error("R2 payment proof upload failed.", error);
-		return NextResponse.json(
-			{ message: "No pudimos guardar el comprobante. Inténtalo nuevamente." },
-			{ status: 503 },
-		);
-	}
-	if (object.size !== metadata.sizeBytes) {
-		await RECEIPTS.delete(objectKey);
+	const bytes = new Uint8Array(await request.arrayBuffer());
+	if (bytes.byteLength !== metadata.sizeBytes) {
 		return NextResponse.json(
 			{ message: "El tamaño recibido no coincide con el archivo." },
 			{ status: 400 },
 		);
 	}
-
-	const attached = await attachSharePaymentProof(shareId, { ...metadata, objectKey }, actor);
-	if (attached.err) {
-		await RECEIPTS.delete(objectKey);
-		return databaseErrorResponse();
+	const attached = await attachPaymentProofToShare(
+		shareId,
+		{ bytes, contentType: metadata.contentType, filename: metadata.filename },
+		{ participantId: actor.participantId, role: actor.role, userId: actor.id },
+	);
+	if (!attached) {
+		return NextResponse.json(
+			{ message: "No pudimos guardar el comprobante. Inténtalo nuevamente." },
+			{ status: 503 },
+		);
 	}
-	if (attached.val.kind !== "updated") {
-		await RECEIPTS.delete(objectKey);
-		return accessErrorResponse(attached.val);
-	}
-	if (attached.val.previousObjectKey && attached.val.previousObjectKey !== objectKey) {
-		try {
-			await RECEIPTS.delete(attached.val.previousObjectKey);
-		} catch (error) {
-			console.error("R2 replaced payment proof cleanup failed.", error);
-		}
-	}
-	return NextResponse.json(attached.val.share);
+	return NextResponse.json(attached);
 }
 
-export async function GET(_request: Request, { params }: ProofRouteContext): Promise<Response> {
-	const session = await auth();
-	if (!session?.user) return unauthorizedResponse();
+export async function GET(request: Request, { params }: ProofRouteContext): Promise<Response> {
+	const authenticated = await authenticateRequestActor(request, { requiredScope: "expenses:read" });
+	if (authenticated.kind !== "authenticated")
+		return actorAuthenticationErrorResponse(authenticated, request);
 	const proof = await findSharePaymentProof((await params).id);
 	if (proof.err) return databaseErrorResponse();
 	if (!proof.val) {

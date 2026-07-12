@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { authenticateRequestActor } from "@/lib/auth/actor";
 import {
+	actorAuthenticationErrorResponse,
 	databaseErrorResponse,
 	forbiddenResponse,
-	unauthorizedResponse,
 	validationErrorResponse,
 } from "@/lib/api/server";
 import { findExpenseKindById } from "@/lib/db/expense-kinds";
 import { getBindings } from "@/lib/db/bindings";
-import { findExpenseById, softDeleteExpense, updateExpense } from "@/lib/db/expenses";
+import { softDeleteExpense, updateExpense } from "@/lib/db/expenses";
+import { getExpenseForActor } from "@/lib/services/expenses";
 import { ExpensePatchSchema } from "@/lib/types/expense";
 
 interface ExpenseRouteContext {
@@ -16,8 +17,11 @@ interface ExpenseRouteContext {
 }
 
 export async function PATCH(request: Request, { params }: ExpenseRouteContext) {
-	const session = await auth();
-	if (!session?.user) return unauthorizedResponse();
+	const authenticated = await authenticateRequestActor(request, {
+		requiredScope: "expenses:write",
+	});
+	if (authenticated.kind !== "authenticated")
+		return actorAuthenticationErrorResponse(authenticated, request);
 	let body: unknown;
 	try {
 		body = await request.json();
@@ -42,7 +46,7 @@ export async function PATCH(request: Request, { params }: ExpenseRouteContext) {
 		);
 	}
 	const result = await updateExpense((await params).id, parsed.data, undefined, undefined, {
-		role: session.user.role,
+		role: authenticated.actor.role,
 	});
 	if (result.err) return databaseErrorResponse();
 	if (result.val.kind === "not_found")
@@ -66,9 +70,12 @@ export async function PATCH(request: Request, { params }: ExpenseRouteContext) {
 	return NextResponse.json(result.val.expense);
 }
 
-export async function DELETE(_request: Request, { params }: ExpenseRouteContext) {
-	const session = await auth();
-	if (!session?.user) return unauthorizedResponse();
+export async function DELETE(request: Request, { params }: ExpenseRouteContext) {
+	const authenticated = await authenticateRequestActor(request, {
+		requiredScope: "expenses:write",
+	});
+	if (authenticated.kind !== "authenticated")
+		return actorAuthenticationErrorResponse(authenticated, request);
 	const result = await softDeleteExpense((await params).id);
 	if (result.err) return databaseErrorResponse();
 	if (!result.val)
@@ -76,11 +83,12 @@ export async function DELETE(_request: Request, { params }: ExpenseRouteContext)
 	return new Response(null, { status: 204 });
 }
 
-export async function GET(_request: Request, { params }: ExpenseRouteContext) {
-	const session = await auth();
-	if (!session?.user) return unauthorizedResponse();
+export async function GET(request: Request, { params }: ExpenseRouteContext) {
+	const authenticated = await authenticateRequestActor(request, { requiredScope: "expenses:read" });
+	if (authenticated.kind !== "authenticated")
+		return actorAuthenticationErrorResponse(authenticated, request);
 	const { id } = await params;
-	const result = await findExpenseById(id);
+	const result = await getExpenseForActor(id);
 	if (result.err) return databaseErrorResponse();
 	if (!result.val) {
 		return NextResponse.json({ message: "No encontramos ese gasto." }, { status: 404 });

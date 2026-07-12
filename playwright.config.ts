@@ -32,6 +32,7 @@ export default defineConfig({
 	webServer: {
 		command: "pnpm db:reset:local && pnpm dev",
 		env: {
+			APP_BASE_URL: "http://127.0.0.1:3000",
 			AUTH_SECRET: randomBytes(32).toString("base64url"),
 			E2E_PASSWORD: e2ePassword,
 		},

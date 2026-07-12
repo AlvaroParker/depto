@@ -23,6 +23,8 @@
 
 # production
 /build
+/dist
+*.log
 
 # misc
 .DS_Store

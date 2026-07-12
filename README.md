@@ -6,6 +6,8 @@ Aplicación privada y móvil para que un hogar registre gastos compartidos, elij
 
 - Next.js 16 App Router, React 19, TypeScript y Tailwind CSS 4
 - Auth.js v5 Credentials con sesiones JWT
+- OAuth 2.1 con PKCE, tokens opacos de corta duración y refresh rotativo
+- MCP Streamable HTTP en `/mcp` con ocho herramientas autorizadas por OAuth
 - RBAC con roles `root`, `admin` y `user`
 - Cloudflare D1 para usuarios, gastos, partes y estados
 - Cloudflare R2 privado para JPG, PNG, WebP y PDF de hasta 10 MB
@@ -41,6 +43,23 @@ Abre `http://localhost:3000`. En una base nueva, la aplicación redirige a `/set
 Cada cuenta creada con rol `user` requiere un correo y genera automáticamente su participante. Las
 cuentas `root` y `admin` administran accesos, pero no participan en gastos. Si `RESEND_API_KEY` está
 vacío en desarrollo, el gasto se crea normalmente y el envío se omite.
+
+## OAuth y MCP
+
+Los usuarios regulares pueden conectar aplicaciones sin crear ni copiar claves personales. El servidor
+publica discovery OAuth, registro dinámico, consentimiento en español, intercambio y revocación. Los
+access tokens duran una hora; `offline_access` entrega refresh tokens rotativos con vencimiento móvil de
+90 días. **Ajustes → Aplicaciones conectadas** permite revisar permisos y desconectar una aplicación de
+inmediato.
+
+`APP_BASE_URL` es el issuer y recurso OAuth exacto. `http://localhost:3000` se admite solamente en
+desarrollo local; MCP Inspector, ChatGPT y Claude requieren una URL HTTPS pública de preview o túnel.
+Configura el conector con `https://tu-origen.example/mcp`. El mismo token, según sus scopes, puede usar
+`/mcp` y las rutas financieras no administrativas bajo `/api`.
+
+Las rutas de discovery son `/.well-known/oauth-protected-resource`,
+`/.well-known/oauth-protected-resource/mcp` y `/.well-known/oauth-authorization-server`. Consulta el flujo
+completo en [`specs/002-mcp-expense-integration/quickstart.md`](specs/002-mcp-expense-integration/quickstart.md).
 
 ## Comandos
 
@@ -98,4 +117,4 @@ elimina su comprobante; la eliminación lógica del gasto lo conserva de forma i
 
 Los montos se almacenan como enteros CLP. Cada gasto crea una parte por participante seleccionado dentro de un `D1.batch()`: base `floor(monto / cantidad)` y los pesos restantes se asignan en el orden estable de participantes. Agregar un usuario no modifica las partes de gastos anteriores. Cambiar monto, pagador o participantes reinicia estados pagados solamente después de confirmación explícita.
 
-La especificación, modelo, contrato OpenAPI y plan ejecutable están en [`specs/001-shared-expense-tracker`](specs/001-shared-expense-tracker/).
+La especificación OAuth/MCP y su plan ejecutable están en [`specs/002-mcp-expense-integration`](specs/002-mcp-expense-integration/).

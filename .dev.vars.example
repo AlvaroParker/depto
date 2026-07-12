@@ -2,6 +2,8 @@ NEXTJS_ENV=development
 # Generate a value with `pnpm auth:secret`.
 AUTH_SECRET=
 AUTH_TRUST_HOST=true
+# OAuth/MCP uses this exact origin as issuer, resource, host, and audience.
+# Use an HTTPS tunnel/preview origin for external connector testing.
 APP_BASE_URL=http://localhost:3000
 RESEND_FROM_EMAIL=La cuenta <info@depto.parker.ci>
 # Leave empty to skip email delivery in local development.
