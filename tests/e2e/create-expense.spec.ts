@@ -9,6 +9,11 @@ test("creates an exact expense and shows it in detail and history", async ({ pag
 	await page.getByLabel("Monto (CLP)").fill("10000");
 	await selectExpenseParticipants(page, ["Alvaro", "Camila"]);
 	await page.getByLabel("¿Quién pagó?").selectOption({ label: "Alvaro" });
+	const notificationSwitch = page.getByRole("switch", {
+		name: "Enviar notificaciones por correo",
+	});
+	await expect(notificationSwitch).toBeChecked();
+	await notificationSwitch.uncheck();
 	const participantGroup = page.getByRole("group", { name: "¿Quiénes participan?" });
 	const paidGroup = page.getByRole("group", { name: "¿Quién ya pagó su parte?" });
 	await paidGroup.getByRole("checkbox", { name: /Camila/ }).check();
@@ -21,7 +26,11 @@ test("creates an exact expense and shows it in detail and history", async ({ pag
 	await page.getByLabel("¿Quién pagó?").selectOption({ label: "Alvaro" });
 	await expect(paidGroup.getByRole("checkbox", { name: /Camila/ })).not.toBeChecked();
 	await paidGroup.getByRole("checkbox", { name: /Camila/ }).check();
+	const createRequest = page.waitForRequest(
+		(request) => request.url().endsWith("/api/expenses") && request.method() === "POST",
+	);
 	await page.getByRole("button", { name: "Guardar gasto" }).click();
+	expect((await createRequest).postDataJSON()).toMatchObject({ sendEmailNotifications: false });
 	await expect(page).toHaveURL(/\/expenses\/[0-9a-f-]+$/);
 	await expect(page.getByRole("heading", { name })).toBeVisible();
 	await expect(page.getByText("$5.000")).toHaveCount(2);

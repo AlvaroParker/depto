@@ -102,6 +102,7 @@ export const ExpenseCreateInputSchema = ExpenseFieldsSchema.extend({
 		.array(z.string().trim().min(1))
 		.refine((ids) => new Set(ids).size === ids.length, "No repitas participantes pagados.")
 		.optional(),
+	sendEmailNotifications: z.boolean().default(true),
 }).superRefine((input, context) => {
 	validateSplitConfiguration(input, context);
 	if (!input.participantIds.includes(input.paidByParticipantId)) {
@@ -184,7 +185,7 @@ export const OpenShareAmountInputSchema = z.object({
 });
 
 export type ExpenseInput = z.infer<typeof ExpenseInputSchema>;
-export type ExpenseCreateInput = z.infer<typeof ExpenseCreateInputSchema>;
+export type ExpenseCreateInput = z.input<typeof ExpenseCreateInputSchema>;
 export type ExpensePatch = z.infer<typeof ExpensePatchSchema>;
 export type ExpenseQuery = z.infer<typeof ExpenseQuerySchema>;
 
