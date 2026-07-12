@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { selectExpenseParticipants, signIn, uniqueName } from "./helpers";
 
 test("marks a reimbursement paid and updates the dashboard", async ({ page }) => {
+	await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
 	const expenseName = uniqueName("Reembolso");
 	await signIn(page, "camila");
 	await page.goto("/expenses/new");
@@ -13,6 +14,10 @@ test("marks a reimbursement paid and updates the dashboard", async ({ page }) =>
 	const paidButton = page.getByRole("button", { name: "Marcar pagado: Camila" });
 	await expect(paidButton).toBeVisible();
 	await paidButton.click();
+	await page.getByRole("button", { name: "Copiar datos bancarios" }).click();
+	expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+		"Alvaro\n18.972.631-7\nCuenta Corriente\n001234567\nBanco de Chile\nalvaro@example.com",
+	);
 	await page.getByRole("button", { name: "Marcar pagado sin comprobante" }).click();
 	await expect(page.getByText("Reembolsado")).toBeVisible();
 	await page.goto("/");
@@ -22,6 +27,7 @@ test("marks a reimbursement paid and updates the dashboard", async ({ page }) =>
 });
 
 test("pays every pending expense owed to one person from the dashboard", async ({ page }) => {
+	await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
 	await signIn(page, "alvaro");
 	const expenseUrls: string[] = [];
 	for (const amount of [6000, 12000]) {
@@ -41,6 +47,10 @@ test("pays every pending expense owed to one person from the dashboard", async (
 	await page.getByRole("button", { name: /^Pagar todo lo que debes a Camila:/ }).click();
 	const dialog = page.getByRole("dialog", { name: "Pagar deuda a Camila" });
 	await expect(dialog.getByText(/gastos por un total/)).toBeVisible();
+	await dialog.getByRole("button", { name: "Copiar datos bancarios" }).click();
+	expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+		"Camila\n9.068.826-K\nCuenta Vista\n009068826\nBanco Estado\ncamila@example.com",
+	);
 	await dialog.getByRole("button", { name: /^Pagar \$/ }).click();
 	await expect(page.getByRole("status")).toContainText("Pago registrado");
 

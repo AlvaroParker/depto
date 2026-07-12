@@ -15,8 +15,68 @@ test("blocks regular users from account administration", async ({ page }) => {
 		).status;
 	});
 	expect(patchStatus).toBe(403);
+	const bankAccountStatus = await page.evaluate(async () => {
+		return (
+			await fetch("/api/admin/participants/participant_camila/bank-account", {
+				body: JSON.stringify({
+					accountNumber: "123",
+					accountType: "Cuenta Vista",
+					bankName: "Banco",
+					rut: "18.972.631-7",
+				}),
+				headers: { "content-type": "application/json" },
+				method: "PUT",
+			})
+		).status;
+	});
+	expect(bankAccountStatus).toBe(403);
 	await page.goto("/settings/users");
 	await expect(page).toHaveURL(/\/settings$/);
+});
+
+test("lets managers add, edit, and remove participant bank details", async ({ page }) => {
+	const suffix = `${Date.now()}-${Math.round(Math.random() * 10_000)}`;
+	const username = `bank-${suffix}`;
+	const displayName = `Cuenta bancaria ${suffix}`;
+	const password = process.env.E2E_PASSWORD;
+	if (!password) throw new Error("E2E_PASSWORD was not configured.");
+
+	await signIn(page, "root-e2e");
+	await page.goto("/settings/users");
+	await page.getByLabel("Nombre").fill(displayName);
+	await page.getByLabel("Usuario", { exact: true }).fill(username);
+	await page.getByLabel("Rol", { exact: true }).selectOption("user");
+	await page.getByLabel("Correo", { exact: true }).fill(`${username}@example.com`);
+	await page.getByLabel("Contraseña inicial").fill(password);
+	await page.getByRole("button", { name: "Crear acceso" }).click();
+	await page.getByRole("button", { name: `Administrar datos bancarios de ${displayName}` }).click();
+
+	let dialog = page.getByRole("dialog", { name: "Datos bancarios" });
+	await dialog.getByLabel("RUT").fill("189726317");
+	await dialog.getByLabel("Tipo de cuenta").selectOption("Cuenta Vista");
+	await dialog.getByLabel("Número de cuenta").fill("001234");
+	await dialog.getByLabel("Banco").fill("Banco inicial");
+	await dialog.getByRole("button", { name: "Guardar datos" }).click();
+	await expect(page.getByRole("status")).toContainText(
+		`Datos bancarios de ${displayName} actualizados`,
+	);
+	await expect(page.getByText("Banco inicial · Cuenta Vista", { exact: true })).toBeVisible();
+
+	await page.getByRole("button", { name: `Administrar datos bancarios de ${displayName}` }).click();
+	dialog = page.getByRole("dialog", { name: "Datos bancarios" });
+	await expect(dialog.getByLabel("RUT")).toHaveValue("18.972.631-7");
+	await dialog.getByLabel("Tipo de cuenta").selectOption("Cuenta Corriente");
+	await dialog.getByLabel("Banco").fill("Banco actualizado");
+	await dialog.getByRole("button", { name: "Guardar datos" }).click();
+	await expect(
+		page.getByText("Banco actualizado · Cuenta Corriente", { exact: true }),
+	).toBeVisible();
+
+	await page.getByRole("button", { name: `Administrar datos bancarios de ${displayName}` }).click();
+	await page.getByRole("button", { name: "Eliminar datos", exact: true }).click();
+	const removal = page.getByRole("dialog", { name: "Eliminar datos bancarios" });
+	await removal.getByRole("button", { name: "Eliminar datos" }).click();
+	await expect(page.getByText("Datos bancarios pendientes", { exact: true })).toBeVisible();
 });
 
 test("lets root and admin update regular-user names, usernames, and passwords", async ({
