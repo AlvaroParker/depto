@@ -222,6 +222,15 @@ components:
         sizeBytes: { type: integer, minimum: 1, maximum: 10485760 }
         uploadedAt: { type: string, format: date-time }
         uploadedByUserId: { type: string }
+    BulkPaymentResponse:
+      type: object
+      required: [paidToParticipant, paidExpenseCount, amountPaidMinor, paidAt, proofAttached]
+      properties:
+        paidToParticipant: { $ref: "#/components/schemas/Participant" }
+        paidExpenseCount: { type: integer, minimum: 1 }
+        amountPaidMinor: { type: integer, minimum: 1 }
+        paidAt: { type: string, format: date-time }
+        proofAttached: { type: boolean }
     ExpenseSummary:
       type: object
       required:
@@ -764,6 +773,41 @@ paths:
         "401": { description: Unauthenticated }
         "403": { description: Only the share owner or root/admin may mutate it }
         "404": { description: Share not found }
+  /reimbursements/pay-all/{paidToParticipantId}:
+    post:
+      operationId: payAllReimbursementsToParticipant
+      summary: Atomically pay every pending outgoing share owed to one participant
+      security:
+        - sessionCookie: []
+        - expenseOAuth: [reimbursements:write]
+      parameters:
+        - { in: path, name: paidToParticipantId, required: true, schema: { type: string } }
+        - { in: header, name: x-receipt-filename, required: false, schema: { type: string } }
+        - {
+            in: header,
+            name: x-receipt-size,
+            required: false,
+            schema: { type: integer, maximum: 10485760 },
+          }
+      requestBody:
+        required: false
+        content:
+          image/jpeg: { schema: { type: string, contentEncoding: binary } }
+          image/png: { schema: { type: string, contentEncoding: binary } }
+          image/webp: { schema: { type: string, contentEncoding: binary } }
+      responses:
+        "200":
+          description: Bulk payment aggregate after all qualifying shares are paid
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BulkPaymentResponse" }
+        "400": { description: Invalid target or proof }
+        "401": { description: Unauthenticated }
+        "403": { description: Actor lacks a participant or required OAuth scope }
+        "404": { description: Target participant not found }
+        "409": { description: No qualifying debt remains }
+        "413": { description: Proof exceeds 10 MB }
+        "503": { description: Proof storage unavailable }
   /expense-shares/{shareId}/amount:
     patch:
       operationId: updateOpenExpenseShareAmount

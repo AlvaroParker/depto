@@ -153,7 +153,7 @@ Represents the one current private deposit screenshot attached to a paid non-pay
 | Field                 | Type    | Rules                                                        |
 | --------------------- | ------- | ------------------------------------------------------------ |
 | `share_id`            | text    | Primary key and foreign key to expense share; cascade delete |
-| `object_key`          | text    | Required unique opaque R2 key; never returned publicly       |
+| `object_key`          | text    | Required opaque R2 key; never returned publicly              |
 | `filename`            | text    | Required sanitized basename; maximum 255 characters          |
 | `content_type`        | text    | `image/jpeg`, `image/png`, or `image/webp`                   |
 | `size_bytes`          | integer | Required; 1 through 10,485,760                               |
@@ -166,6 +166,9 @@ Represents the one current private deposit screenshot attached to a paid non-pay
 - Reversion deletes the association before changing the share to `pending` and clearing audit data.
 - Financial recalculation cascades metadata deletion and performs compensating R2 cleanup. Soft
   expense deletion retains both the share and proof for inaccessible audit history.
+- Bulk payment writes one association per affected paid share while every association references the
+  same newly uploaded R2 object. Individual replacement or reversion removes only that association;
+  the shared object is deleted after its final database reference is removed.
 
 ## Exact split algorithm
 

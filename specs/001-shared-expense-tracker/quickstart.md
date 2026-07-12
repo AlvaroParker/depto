@@ -104,6 +104,15 @@ screen. Never commit `.env`, `.dev.vars`, uploaded receipts, or the local
 Root and admin can perform the same mutations for any non-payer share. Other regular users can view
 current proof but cannot change another participant's status or attachment.
 
+## Bulk-payment smoke test
+
+1. Sign in as a participant who owes the same person through at least two pending expenses.
+2. In **Deudas por persona**, select **Pagar todo** for that person and verify the dialog shows the
+   exact expense count and total. If debt also exists in reverse, verify it is explicitly excluded.
+3. Optionally choose one JPG, PNG, or WebP up to 10 MB, confirm, and verify the outgoing debt clears.
+4. Open every affected expense and verify it is paid and exposes the same uploaded proof.
+5. Revert one share to pending and confirm the remaining paid expenses can still open their proof.
+
 ## Email-notification smoke test
 
 1. Give two regular users distinct inboxes in **Ajustes → Administrar usuarios**.

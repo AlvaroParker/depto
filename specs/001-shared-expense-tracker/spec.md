@@ -97,6 +97,13 @@ the detail plus all dashboard totals after each transition.
    and object are removed together with the paid audit fields.
 9. **Given** a stored payment proof, **When** any authenticated household user opens it,
    **Then** it is streamed privately; unauthenticated requests receive no content.
+10. **Given** the signed-in participant owes one person through multiple pending expense shares,
+    **When** they select “Pagar todo” and confirm, **Then** every positive pending share owed by
+    that participant to that person is marked paid with one audit time and actor.
+11. **Given** a bulk payment includes an optional valid payment proof, **When** it succeeds,
+    **Then** the proof is visible from every affected expense share while the bytes are stored once.
+12. **Given** two participants owe each other through different expenses, **When** one uses
+    “Pagar todo,” **Then** only their outgoing shares are paid and the opposite debt is unchanged.
 
 ---
 
@@ -427,6 +434,14 @@ then archive it and verify it no longer appears in normal reads.
   labels. Parent and custom-field writes MUST be atomic and reject partial state.
 - **FR-039**: Household information MUST NOT accept files, passwords, access codes, API keys, or
   other secrets; all accepted values are visible to every authenticated household user.
+- **FR-040**: A participant-linked actor MUST be able to atomically mark every positive pending
+  share they owe to one selected participant as paid, without netting or mutating debts in the
+  opposite direction, already-paid shares, zero shares, settled shares, or deleted expenses.
+- **FR-041**: The personal dashboard MUST expose “Pagar todo” only for outgoing debt, identify the
+  affected expense count and total before confirmation, and explain any simultaneous opposite debt.
+- **FR-042**: A bulk payment MAY include one valid payment proof. The system MUST associate that
+  proof with every affected share, store its private bytes once, and retain the object until its final
+  proof association is replaced or removed.
 
 ### Key Entities
 
@@ -441,8 +456,9 @@ then archive it and verify it no longer appears in normal reads.
   and timestamps. It is editable by root/admin and retained for historical references.
 - **Expense Share**: One participant's exact portion of an expense, its settled/pending/paid state,
   payment recipient, optional payment time and marking user, and timestamps.
-- **Payment Proof**: One optional private image associated with a paid expense share, including safe
-  filename, image media type, size, uploader, upload time, and an opaque R2 reference.
+- **Payment Proof**: One optional private image association on a paid expense share, including safe
+  filename, image media type, size, uploader, upload time, and an opaque R2 reference. Bulk-created
+  associations may reference one shared object while remaining independently replaceable.
 - **Receipt**: A private image or PDF object plus filename, media type, size, and opaque association
   reference; binary content is separate from financial records.
 - **Login Attempt Window**: Failed-attempt counters grouped by normalized username and client
