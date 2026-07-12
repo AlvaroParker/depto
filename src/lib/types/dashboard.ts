@@ -42,6 +42,8 @@ export interface PersonalDebtByParticipant {
 	participant: Participant;
 	amountOwedMinor: number;
 	amountDueToMeMinor: number;
+	amountOwedExpenseCount: number;
+	amountDueToMeExpenseCount: number;
 }
 
 export type DashboardSummary = HouseholdDashboardSummary | PersonalDashboardSummary;

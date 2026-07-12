@@ -1,9 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PersonalDebtOverview } from "@/components/dashboard/personal-debt-overview";
 import { PersonalObligations } from "@/components/dashboard/personal-obligations";
 import { PersonalSummaryCards } from "@/components/dashboard/personal-summary-cards";
 import type { PersonalDashboardSummary } from "@/lib/types/dashboard";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const summary: PersonalDashboardSummary = {
 	amountDueToMeMinor: 3_000,
@@ -12,12 +14,16 @@ const summary: PersonalDashboardSummary = {
 	debtsByParticipant: [
 		{
 			amountDueToMeMinor: 3_000,
+			amountDueToMeExpenseCount: 1,
 			amountOwedMinor: 0,
+			amountOwedExpenseCount: 0,
 			participant: { id: "participant_trinidad", name: "Trinidad", slug: "trinidad", sortOrder: 3 },
 		},
 		{
 			amountDueToMeMinor: 0,
+			amountDueToMeExpenseCount: 0,
 			amountOwedMinor: 2_000,
+			amountOwedExpenseCount: 2,
 			participant: { id: "participant_camila", name: "Camila", slug: "camila", sortOrder: 2 },
 		},
 	],
@@ -59,7 +65,9 @@ describe("personal dashboard", () => {
 					...summary.debtsByParticipant,
 					{
 						amountDueToMeMinor: 1_000,
+						amountDueToMeExpenseCount: 1,
 						amountOwedMinor: 500,
+						amountOwedExpenseCount: 1,
 						participant: { id: "participant_dual", name: "Dual", slug: "dual", sortOrder: 4 },
 					},
 				]}
@@ -69,6 +77,8 @@ describe("personal dashboard", () => {
 		expect(markup).toContain("Deudas por persona");
 		expect(markup.indexOf("Trinidad")).toBeLessThan(markup.indexOf("Camila"));
 		expect(markup).toContain("Debes $2.000");
+		expect(markup).toContain("2 gastos pendientes");
+		expect(markup).toContain("Pagar todo");
 		expect(markup).toContain("Te debe $3.000");
 		expect(markup).toContain("Debes $500");
 		expect(markup).toContain("Te debe $1.000");

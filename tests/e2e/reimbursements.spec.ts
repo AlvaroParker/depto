@@ -20,3 +20,29 @@ test("marks a reimbursement paid and updates the dashboard", async ({ page }) =>
 	const recentExpenseCard = page.getByRole("link", { name: new RegExp(expenseName) });
 	await expect(recentExpenseCard.getByText("Tu parte pagada", { exact: true })).toBeVisible();
 });
+
+test("pays every pending expense owed to one person from the dashboard", async ({ page }) => {
+	await signIn(page, "alvaro");
+	const expenseUrls: string[] = [];
+	for (const amount of [6000, 12000]) {
+		await page.goto("/expenses/new");
+		await page.getByLabel("Nombre del gasto").fill(uniqueName("Pago agrupado"));
+		await page.getByLabel("Monto (CLP)").fill(String(amount));
+		await selectExpenseParticipants(page, ["Alvaro", "Camila"]);
+		await page.getByLabel("¿Quién pagó?").selectOption({ label: "Camila" });
+		await page.getByRole("button", { name: "Guardar gasto" }).click();
+		expenseUrls.push(page.url());
+	}
+
+	await page.goto("/");
+	await page.getByRole("button", { name: /^Pagar todo lo que debes a Camila:/ }).click();
+	const dialog = page.getByRole("dialog", { name: "Pagar deuda a Camila" });
+	await expect(dialog.getByText(/gastos por un total/)).toBeVisible();
+	await dialog.getByRole("button", { name: /^Pagar \$/ }).click();
+	await expect(page.getByRole("status")).toContainText("Pago registrado");
+
+	for (const url of expenseUrls) {
+		await page.goto(url);
+		await expect(page.getByText("Reembolsado")).toBeVisible();
+	}
+});
