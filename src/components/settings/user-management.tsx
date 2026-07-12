@@ -2,6 +2,7 @@
 
 import {
 	LockKeyhole,
+	Landmark,
 	Mail,
 	Pencil,
 	Save,
@@ -16,9 +17,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, SelectField } from "@/components/ui/field";
+import { ParticipantBankAccountDialog } from "@/components/settings/participant-bank-account-dialog";
 import { createUser, deleteUser, updateUser } from "@/lib/api/users";
 import { ROLE_LABELS } from "@/lib/const/roles";
 import type { ManagedUser } from "@/lib/types/user";
+import type { ParticipantBankAccount } from "@/lib/types/bank-account";
 
 interface UserManagementProps {
 	currentUserId: string;
@@ -40,6 +43,7 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 	const [createRole, setCreateRole] = useState<"admin" | "user">("user");
 	const [deletingUser, setDeletingUser] = useState<ManagedUser | null>(null);
 	const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
+	const [bankUser, setBankUser] = useState<ManagedUser | null>(null);
 	const [formError, setFormError] = useState("");
 	const [fieldErrors, setFieldErrors] = useState<Record<string, string[] | undefined>>({});
 	const [editError, setEditError] = useState("");
@@ -141,6 +145,24 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 			setNotice(`El acceso de ${result.val.user.displayName} fue actualizado.`);
 			closeEditor();
 		});
+	}
+
+	function saveBankAccount(bankAccount: ParticipantBankAccount) {
+		if (!bankUser) return;
+		setUsers((current) =>
+			current.map((user) => (user.id === bankUser.id ? { ...user, bankAccount } : user)),
+		);
+		setNotice(`Datos bancarios de ${bankUser.displayName} actualizados.`);
+		setBankUser(null);
+	}
+
+	function removeBankAccount() {
+		if (!bankUser) return;
+		setUsers((current) =>
+			current.map((user) => (user.id === bankUser.id ? { ...user, bankAccount: null } : user)),
+		);
+		setNotice(`Datos bancarios de ${bankUser.displayName} eliminados.`);
+		setBankUser(null);
 	}
 
 	return (
@@ -285,22 +307,44 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 									</div>
 									<p className="text-ink-muted mt-1 truncate text-xs">@{user.username}</p>
 									{user.role === "user" ? (
-										<p className="text-ink-muted mt-1 flex items-center gap-1.5 truncate text-xs">
-											<Mail aria-hidden size={13} /> {user.email ?? "Correo pendiente"}
-										</p>
+										<>
+											<p className="text-ink-muted mt-1 flex items-center gap-1.5 truncate text-xs">
+												<Mail aria-hidden size={13} /> {user.email ?? "Correo pendiente"}
+											</p>
+											<p className="text-ink-muted mt-1 flex items-center gap-1.5 truncate text-xs">
+												<Landmark aria-hidden size={13} />{" "}
+												{user.bankAccount
+													? `${user.bankAccount.bankName} · ${user.bankAccount.accountType}`
+													: "Datos bancarios pendientes"}
+											</p>
+										</>
 									) : null}
 								</div>
 								<div className="border-line col-span-2 flex w-full shrink-0 items-center justify-end gap-1 border-t pt-2 sm:w-auto sm:border-0 sm:pt-0">
 									{user.role === "user" ? (
-										<Button
-											aria-label={`Editar a ${user.displayName}`}
-											className="size-11 shrink-0 p-0"
-											disabled={pending}
-											onClick={() => openEditor(user)}
-											variant="ghost"
-										>
-											<Pencil aria-hidden size={17} />
-										</Button>
+										<>
+											<Button
+												aria-label={`Administrar datos bancarios de ${user.displayName}`}
+												className="size-11 shrink-0 p-0"
+												disabled={pending}
+												onClick={() => {
+													setNotice("");
+													setBankUser(user);
+												}}
+												variant="ghost"
+											>
+												<Landmark aria-hidden size={17} />
+											</Button>
+											<Button
+												aria-label={`Editar a ${user.displayName}`}
+												className="size-11 shrink-0 p-0"
+												disabled={pending}
+												onClick={() => openEditor(user)}
+												variant="ghost"
+											>
+												<Pencil aria-hidden size={17} />
+											</Button>
+										</>
 									) : null}
 									{isRoot ? (
 										<span
@@ -417,6 +461,15 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 					</form>
 				) : null}
 			</Dialog>
+
+			{bankUser ? (
+				<ParticipantBankAccountDialog
+					onClose={() => setBankUser(null)}
+					onRemoved={removeBankAccount}
+					onSaved={saveBankAccount}
+					user={bankUser}
+				/>
+			) : null}
 		</div>
 	);
 }

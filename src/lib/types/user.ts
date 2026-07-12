@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { UserRole } from "@/lib/const/roles";
+import type { ParticipantBankAccount } from "@/lib/types/bank-account";
 
 export interface AppUser {
 	id: string;
@@ -20,6 +21,7 @@ export interface SessionUser {
 }
 
 export interface ManagedUser {
+	bankAccount: ParticipantBankAccount | null;
 	createdAt: string;
 	disabledAt: string | null;
 	displayName: string;

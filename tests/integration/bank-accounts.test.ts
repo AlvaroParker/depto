@@ -1,4 +1,22 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const state = vi.hoisted(() => ({
+	auth: vi.fn(),
+	database: null as D1Database | null,
+}));
+
+vi.mock("@/auth", () => ({ auth: state.auth }));
+vi.mock("@/lib/db/bindings", () => ({
+	getDatabase: () => {
+		if (!state.database) throw new Error("Missing test database");
+		return state.database;
+	},
+}));
+
+import {
+	DELETE as deleteBankAccountRoute,
+	PUT as putBankAccountRoute,
+} from "@/app/api/admin/participants/[participantId]/bank-account/route";
 import {
 	deleteParticipantBankAccount,
 	findBankTransferDetails,
@@ -6,6 +24,7 @@ import {
 	findParticipantBankAccount,
 	upsertParticipantBankAccount,
 } from "@/lib/db/bank-accounts";
+import { listManagedUsers } from "@/lib/db/users";
 import { createTestBindings, type TestBindings } from "../fixtures/miniflare";
 
 const NOW = new Date("2026-07-12T15:00:00.000Z");
@@ -15,6 +34,17 @@ describe("participant bank accounts", () => {
 
 	beforeEach(async () => {
 		bindings = await createTestBindings();
+		state.database = bindings.database;
+		state.auth.mockReset();
+		state.auth.mockResolvedValue({
+			user: {
+				displayName: "Administradora",
+				id: "admin",
+				participantId: null,
+				role: "admin",
+				username: "admin",
+			},
+		});
 		await bindings.database.batch([
 			bindings.database
 				.prepare(
@@ -29,7 +59,10 @@ describe("participant bank accounts", () => {
 		]);
 	});
 
-	afterEach(async () => bindings.dispose());
+	afterEach(async () => {
+		state.database = null;
+		await bindings.dispose();
+	});
 
 	it("creates and replaces the participant's single bank account", async () => {
 		const created = await upsertParticipantBankAccount(
@@ -69,6 +102,13 @@ describe("participant bank accounts", () => {
 			.prepare("SELECT COUNT(*) AS count FROM participant_bank_accounts")
 			.first<{ count: number }>();
 		expect(count?.count).toBe(1);
+		const users = await listManagedUsers(bindings.database);
+		expect(users.ok && users.val.find(({ id }) => id === "user_camila")?.bankAccount).toMatchObject(
+			{
+				accountNumber: "998877",
+				bankName: "Banco de Chile",
+			},
+		);
 	});
 
 	it("resolves complete transfer details in single and batch reads", async () => {
@@ -130,5 +170,84 @@ describe("participant bank accounts", () => {
 		expect(deleted.ok && deleted.val.kind).toBe("deleted");
 		const after = await findParticipantBankAccount("participant_camila", bindings.database);
 		expect(after.ok && after.val).toBeNull();
+	});
+
+	it("protects the manager route and returns field validation errors", async () => {
+		state.auth.mockResolvedValueOnce({
+			user: {
+				displayName: "Camila",
+				id: "user_camila",
+				participantId: "participant_camila",
+				role: "user",
+				username: "camila",
+			},
+		});
+		const context = { params: Promise.resolve({ participantId: "participant_camila" }) };
+		const forbidden = await putBankAccountRoute(
+			new Request(
+				"https://expenses.example/api/admin/participants/participant_camila/bank-account",
+				{
+					body: JSON.stringify({}),
+					method: "PUT",
+				},
+			),
+			context,
+		);
+		expect(forbidden.status).toBe(403);
+
+		const invalid = await putBankAccountRoute(
+			new Request(
+				"https://expenses.example/api/admin/participants/participant_camila/bank-account",
+				{
+					body: JSON.stringify({
+						accountNumber: "123",
+						accountType: "Cuenta Vista",
+						bankName: "Banco Estado",
+						rut: "18.972.631-0",
+					}),
+					method: "PUT",
+				},
+			),
+			context,
+		);
+		expect(invalid.status).toBe(400);
+		expect(await invalid.json()).toMatchObject({ errors: { rut: ["Ingresa un RUT válido."] } });
+	});
+
+	it("creates and removes bank details through the manager route", async () => {
+		const context = { params: Promise.resolve({ participantId: "participant_camila" }) };
+		const saved = await putBankAccountRoute(
+			new Request(
+				"https://expenses.example/api/admin/participants/participant_camila/bank-account",
+				{
+					body: JSON.stringify({
+						accountNumber: "001234",
+						accountType: "Cuenta Vista",
+						bankName: "Banco Estado",
+						rut: "189726317",
+					}),
+					method: "PUT",
+				},
+			),
+			context,
+		);
+		expect(saved.status).toBe(200);
+		expect(await saved.json()).toMatchObject({
+			bankAccount: { accountNumber: "001234", rut: "18.972.631-7" },
+		});
+
+		const removed = await deleteBankAccountRoute(
+			new Request(
+				"https://expenses.example/api/admin/participants/participant_camila/bank-account",
+				{
+					method: "DELETE",
+				},
+			),
+			context,
+		);
+		expect(removed.status).toBe(204);
+		expect(
+			(await findParticipantBankAccount("participant_camila", bindings.database)).val,
+		).toBeNull();
 	});
 });
