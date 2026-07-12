@@ -1,5 +1,12 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+
+const mocks = vi.hoisted(() => ({ createExpenseTool: vi.fn() }));
+
+vi.mock("@/lib/mcp/tools", () => ({
+	createExpenseTool: mocks.createExpenseTool,
+}));
+
 import { createExpenseMcpServer } from "@/lib/mcp/server";
 import type { OAuthActor } from "@/lib/types/actor";
 
@@ -17,7 +24,10 @@ const actor: OAuthActor = {
 
 describe("MCP server definition", () => {
 	const closers: (() => Promise<void>)[] = [];
-	afterEach(async () => Promise.all(closers.splice(0).map((close) => close())));
+	afterEach(async () => {
+		mocks.createExpenseTool.mockReset();
+		await Promise.all(closers.splice(0).map((close) => close()));
+	});
 
 	async function request(body: unknown) {
 		const server = createExpenseMcpServer(actor);
@@ -81,5 +91,36 @@ describe("MCP server definition", () => {
 			idempotentHint: true,
 			readOnlyHint: true,
 		});
+	});
+
+	it.each([
+		["defaults email notifications on", undefined, true],
+		["allows email notifications to be disabled", false, false],
+	])("%s for expense creation", async (_case, sendEmailNotifications, expected) => {
+		mocks.createExpenseTool.mockResolvedValue({
+			content: [{ text: "Gasto creado correctamente.", type: "text" }],
+			structuredContent: { expense: {}, notification: "skipped", replayed: false },
+		});
+		const args = {
+			amountMinor: 10_000,
+			expenseDate: "2026-07-12",
+			idempotencyKey: crypto.randomUUID(),
+			kindId: "kind-other",
+			name: "Supermercado",
+			paidByParticipantId: "participant_alvaro",
+			participantIds: ["participant_alvaro", "participant_camila"],
+			...(sendEmailNotifications === undefined ? {} : { sendEmailNotifications }),
+		};
+		const response = await request({
+			id: 3,
+			jsonrpc: "2.0",
+			method: "tools/call",
+			params: { arguments: args, name: "create_expense" },
+		});
+		expect(response.status).toBe(200);
+		expect(mocks.createExpenseTool).toHaveBeenCalledWith(
+			expect.objectContaining({ sendEmailNotifications: expected }),
+			actor,
+		);
 	});
 });

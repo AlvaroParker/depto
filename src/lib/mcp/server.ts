@@ -102,6 +102,7 @@ export function createExpenseMcpServer(actor: OAuthActor): McpServer {
 				paidByParticipantId: z.string(),
 				participantIds: z.array(z.string()).min(1),
 				receipt: z.unknown().optional(),
+				sendEmailNotifications: z.boolean().default(true),
 				shareAllocations: z
 					.array(z.object({ participantId: z.string(), shareAmountMinor: z.number().int().min(0) }))
 					.optional(),

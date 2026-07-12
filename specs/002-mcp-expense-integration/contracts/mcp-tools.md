@@ -44,7 +44,7 @@ Every success returns concise Spanish `content` and typed `structuredContent`. E
 
 - Scope: `expenses:write`
 - Annotation: not read-only, non-destructive, idempotent
-- Input: every existing creation field; equal/custom/open split inputs; explicit allocations; initially paid participants; optional `receipt`; required `idempotencyKey`.
+- Input: every existing creation field; equal/custom/open split inputs; explicit allocations; initially paid participants; optional `sendEmailNotifications` (defaults to `true`); optional `receipt`; required `idempotencyKey`.
 - Output: created/original expense, `replayed`, notification status, and optional receipt warning.
 - File metadata: `_meta["openai/fileParams"]` declares `receipt` fields `download_url`, `file_id`, optional `mime_type`, and `filename`.
 
