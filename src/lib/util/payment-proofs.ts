@@ -41,3 +41,7 @@ export function createPaymentProofObjectKey(
 ): string {
 	return `payment-proofs/${encodeURIComponent(shareId)}/${createId()}.${PAYMENT_PROOF_EXTENSION_BY_TYPE[contentType]}`;
 }
+
+export function createBulkPaymentProofObjectKey(contentType: PaymentProofContentType): string {
+	return `payment-proofs/bulk/${createId()}.${PAYMENT_PROOF_EXTENSION_BY_TYPE[contentType]}`;
+}

@@ -1,7 +1,11 @@
 import "server-only";
 
 import { attachExpenseReceipt } from "@/lib/db/receipts";
-import { attachSharePaymentProof, findShareByExpenseAndParticipant } from "@/lib/db/expense-shares";
+import {
+	attachSharePaymentProof,
+	countPaymentProofObjectReferences,
+	findShareByExpenseAndParticipant,
+} from "@/lib/db/expense-shares";
 import { getBindings } from "@/lib/db/bindings";
 import type { AcquiredMcpFile } from "@/lib/mcp/files";
 import type { OAuthActor } from "@/lib/types/actor";
@@ -34,6 +38,20 @@ export async function attachMcpReceipt(expenseId: string, file: AcquiredMcpFile)
 		await bindings.RECEIPTS.delete(objectKey).catch(() => undefined);
 		return false;
 	}
+}
+
+export async function deletePaymentProofObjectIfUnreferenced(objectKey: string): Promise<void> {
+	const references = await countPaymentProofObjectReferences(objectKey);
+	if (references.err || references.val > 0) return;
+	try {
+		await getBindings().RECEIPTS.delete(objectKey);
+	} catch {
+		// The database association is authoritative; object cleanup is best effort.
+	}
+}
+
+export async function deletePaymentProofObjectsIfUnreferenced(objectKeys: string[]): Promise<void> {
+	await Promise.all([...new Set(objectKeys)].map(deletePaymentProofObjectIfUnreferenced));
 }
 
 export async function attachActorPaymentProof(
@@ -72,7 +90,9 @@ export async function attachPaymentProofToShare(
 			await bindings.RECEIPTS.delete(objectKey);
 			return null;
 		}
-		if (result.val.previousObjectKey) await bindings.RECEIPTS.delete(result.val.previousObjectKey);
+		if (result.val.previousObjectKey) {
+			await deletePaymentProofObjectIfUnreferenced(result.val.previousObjectKey);
+		}
 		return result.val.share;
 	} catch {
 		await bindings.RECEIPTS.delete(objectKey).catch(() => undefined);

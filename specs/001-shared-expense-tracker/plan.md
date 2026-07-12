@@ -20,8 +20,9 @@ open shares begin with equal suggestions and keep the payer's settled share as a
 remainder while each participant controls their own pending amount.
 
 Participant payment proofs reuse the private R2 binding with a separate key prefix and one-to-one
-D1 metadata per paid share. Share owners and root/admin users manage proof and status, while all
-authenticated household users may inspect current evidence.
+D1 metadata per paid share. Bulk payments may point several proof associations at one stored object;
+reference-aware cleanup preserves independent share management. Share owners and root/admin users
+manage proof and status, while all authenticated household users may inspect current evidence.
 
 New expense creation resolves the selected participant emails from D1 and sends isolated messages
 through Resend's batch REST API. Delivery uses an expense-scoped idempotency key and is best-effort
@@ -124,6 +125,12 @@ _GATE: Passed before research and re-checked after design._
   household-wide through a protected streaming route.
 - Reverting to pending deletes proof metadata before best-effort R2 cleanup. Financial share
   recalculation returns displaced keys for the route to clean up; soft deletion retains proof.
+- The personal dashboard offers a directional “Pagar todo” action. One D1 batch marks every eligible
+  outgoing share to the selected participant paid and creates per-share proof associations when an
+  optional image is supplied; reverse-direction debts are never netted.
+- Bulk proof bytes are uploaded once under `payment-proofs/bulk/`. Cleanup checks remaining metadata
+  references before deleting any proof object, so an individual expense can replace or remove its
+  association without invalidating the others.
 
 ### Email notifications
 

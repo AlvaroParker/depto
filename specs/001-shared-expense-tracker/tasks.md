@@ -383,3 +383,12 @@ receipts, edit/delete, dashboard/UI, tests, and documentation.
 - [x] T123 [US11] Add Casa to desktop and phone navigation while retaining the central expense action in `src/components/layout/app-shell.tsx`
 - [x] T124 [P] [US11] Add validation, D1 transaction, security, manager/user browser, and mobile overflow coverage in `tests/`
 - [x] T125 Run formatting, lint, typecheck, unit/integration/browser tests, Next.js build, and OpenNext Cloudflare build
+
+## Bulk-payment extension
+
+- [x] T126 [P] [US3] Specify directional bulk-payment behavior, shared-proof lifecycle, dashboard UX, and REST contracts in `specs/001-shared-expense-tracker/`
+- [x] T127 [P] [US3] Add migration, aggregate, authorization, atomicity, shared-proof cleanup, API, component, and browser coverage in `tests/`
+- [x] T128 [US3] Allow multiple paid-share proof associations to reference one private object in `migrations/0011_allow_shared_payment_proof_objects.sql`
+- [x] T129 [US3] Add directional bulk reimbursement persistence, shared proof storage, reference-aware cleanup, and authenticated API handling under `src/lib/` and `src/app/api/reimbursements/`
+- [x] T130 [US3] Add counterpart expense counts and the accessible “Pagar todo” dashboard dialog under `src/components/dashboard/`
+- [x] T131 Run formatting, lint, typecheck, unit/integration/browser tests, Next.js build, and OpenNext Cloudflare build

@@ -48,6 +48,7 @@ export async function createTestBindings(): Promise<TestBindings> {
 		"0008_add_expense_split_modes.sql",
 		"0009_add_household_information.sql",
 		"0010_add_oauth_mcp.sql",
+		"0011_allow_shared_payment_proof_objects.sql",
 	]);
 	await bindings.database.batch(
 		[

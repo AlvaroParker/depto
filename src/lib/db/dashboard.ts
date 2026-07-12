@@ -46,6 +46,8 @@ interface PersonalAggregateRow {
 interface PersonalDebtRow extends ParticipantRow {
 	amount_due_to_me_minor: number;
 	amount_owed_minor: number;
+	amount_due_to_me_expense_count: number;
+	amount_owed_expense_count: number;
 }
 
 export interface DashboardContext {
@@ -111,7 +113,11 @@ async function getPersonalSummary(
 				        COALESCE(SUM(CASE WHEN s.participant_id = ? THEN s.share_amount_minor ELSE 0 END), 0)
 				          AS amount_owed_minor,
 				        COALESCE(SUM(CASE WHEN s.paid_to_participant_id = ? THEN s.share_amount_minor ELSE 0 END), 0)
-				          AS amount_due_to_me_minor
+				          AS amount_due_to_me_minor,
+				        COUNT(DISTINCT CASE WHEN s.participant_id = ? THEN s.expense_id END)
+				          AS amount_owed_expense_count,
+				        COUNT(DISTINCT CASE WHEN s.paid_to_participant_id = ? THEN s.expense_id END)
+				          AS amount_due_to_me_expense_count
 				 FROM expense_shares s
 				 JOIN expenses e ON e.id = s.expense_id AND e.deleted_at IS NULL
 				 JOIN participants p ON p.id = CASE
@@ -124,7 +130,15 @@ async function getPersonalSummary(
 				 GROUP BY p.id, p.name, p.slug, p.sort_order
 				 ORDER BY amount_owed_minor + amount_due_to_me_minor DESC, p.sort_order ASC, p.id ASC`,
 			)
-			.bind(participantId, participantId, participantId, participantId, participantId)
+			.bind(
+				participantId,
+				participantId,
+				participantId,
+				participantId,
+				participantId,
+				participantId,
+				participantId,
+			)
 			.all<PersonalDebtRow>(),
 		listExpenses({ page: 1, pageSize: 5 }, { database, participantScopeId: participantId }),
 	]);
@@ -144,7 +158,9 @@ async function getPersonalSummary(
 		amountOwedMinor: values.amount_owed_minor,
 		debtsByParticipant: debtResult.results.map((row): PersonalDebtByParticipant => ({
 			amountDueToMeMinor: row.amount_due_to_me_minor,
+			amountDueToMeExpenseCount: row.amount_due_to_me_expense_count,
 			amountOwedMinor: row.amount_owed_minor,
+			amountOwedExpenseCount: row.amount_owed_expense_count,
 			participant: mapParticipant(row),
 		})),
 		dueToMeExpenseCount: values.due_to_me_expense_count,

@@ -6,8 +6,8 @@ import {
 	forbiddenResponse,
 	validationErrorResponse,
 } from "@/lib/api/server";
-import { getBindings } from "@/lib/db/bindings";
 import { updateShareStatus } from "@/lib/db/expense-shares";
+import { deletePaymentProofObjectIfUnreferenced } from "@/lib/services/files";
 import { ShareStatusInputSchema } from "@/lib/types/expense";
 
 interface ShareRouteContext {
@@ -51,11 +51,7 @@ export async function PATCH(request: Request, { params }: ShareRouteContext) {
 		);
 	if (result.val.kind === "forbidden") return forbiddenResponse();
 	if (result.val.removedProofObjectKey) {
-		try {
-			await getBindings().RECEIPTS.delete(result.val.removedProofObjectKey);
-		} catch (error) {
-			console.error("R2 payment proof cleanup failed after reverting a share.", error);
-		}
+		await deletePaymentProofObjectIfUnreferenced(result.val.removedProofObjectKey);
 	}
 	return NextResponse.json(result.val.share);
 }

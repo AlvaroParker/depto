@@ -11,6 +11,7 @@ const scopedFinanceRoutes = [
 	"src/app/api/expense-shares/[id]/status/route.ts",
 	"src/app/api/expense-shares/[id]/amount/route.ts",
 	"src/app/api/expense-shares/[id]/proof/route.ts",
+	"src/app/api/reimbursements/pay-all/[paidToParticipantId]/route.ts",
 ];
 
 const sessionOnlyRoutes = [

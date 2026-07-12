@@ -23,6 +23,7 @@ vi.mock("@/lib/db/bindings", () => ({
 
 import { GET as dashboard } from "@/app/api/dashboard/route";
 import { POST as createExpenseRoute } from "@/app/api/expenses/route";
+import { POST as payAllRoute } from "@/app/api/reimbursements/pay-all/[paidToParticipantId]/route";
 import {
 	createGrantAndAuthorizationCode,
 	createOAuthClient,
@@ -72,7 +73,7 @@ describe("finance API OAuth scope integration", () => {
 				codeHash: await sha256Base64Url("unused-code"),
 				redirectUri: "https://client.example/callback",
 				resource: "https://expenses.example",
-				scopes: ["expenses:read", "expenses:write"],
+				scopes: ["expenses:read", "expenses:write", "reimbursements:write"],
 				userId: "finance-user",
 			},
 			bindings.database,
@@ -182,5 +183,53 @@ describe("finance API OAuth scope integration", () => {
 			}),
 		);
 		expect(created.status).toBe(201);
+	});
+
+	it("requires reimbursement scope for bulk payment", async () => {
+		const writeToken = "c".repeat(43);
+		const reimbursementToken = "d".repeat(43);
+		await issue(writeToken, ["expenses:write"]);
+		await issue(reimbursementToken, ["reimbursements:write"]);
+		const expense = {
+			amountMinor: 6000,
+			currency: "CLP",
+			description: null,
+			expenseDate: "2026-07-12",
+			kindId: "kind-other",
+			name: "OAuth bulk payment",
+			paidByParticipantId: "participant_camila",
+			participantIds: ["participant_alvaro", "participant_camila"],
+			splitMode: "equal",
+		};
+		expect(
+			(
+				await createExpenseRoute(
+					bearerRequest("/api/expenses", writeToken, {
+						body: JSON.stringify(expense),
+						headers: { "content-type": "application/json" },
+						method: "POST",
+					}),
+				)
+			).status,
+		).toBe(201);
+		const context = { params: Promise.resolve({ paidToParticipantId: "participant_camila" }) };
+		expect(
+			(
+				await payAllRoute(
+					bearerRequest("/api/reimbursements/pay-all/participant_camila", writeToken, {
+						method: "POST",
+					}),
+					context,
+				)
+			).status,
+		).toBe(403);
+		const paid = await payAllRoute(
+			bearerRequest("/api/reimbursements/pay-all/participant_camila", reimbursementToken, {
+				method: "POST",
+			}),
+			context,
+		);
+		expect(paid.status).toBe(200);
+		expect(await paid.json()).toMatchObject({ amountPaidMinor: 3000, paidExpenseCount: 1 });
 	});
 });
