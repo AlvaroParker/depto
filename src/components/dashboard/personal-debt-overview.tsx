@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { BankAccountCopyAction } from "@/components/payments/bank-account-copy-action";
 import {
 	MAX_PAYMENT_PROOF_SIZE_BYTES,
 	PAYMENT_PROOF_CONTENT_TYPES,
 } from "@/lib/const/payment-proofs";
 import { payAllDebt } from "@/lib/api/bulk-payments";
 import type { PersonalDebtByParticipant } from "@/lib/types/dashboard";
+import type { BankTransferDetails } from "@/lib/types/bank-account";
 import { formatMoney } from "@/lib/util/format";
 
 function expenseCountLabel(count: number): string {
@@ -40,7 +42,15 @@ function DebtAmounts({ debt }: { debt: PersonalDebtByParticipant }) {
 	);
 }
 
-export function PersonalDebtOverview({ debts }: { debts: PersonalDebtByParticipant[] }) {
+interface PersonalDebtOverviewProps {
+	bankTransferDetailsByParticipantId?: Record<string, BankTransferDetails>;
+	debts: PersonalDebtByParticipant[];
+}
+
+export function PersonalDebtOverview({
+	bankTransferDetailsByParticipantId = {},
+	debts,
+}: PersonalDebtOverviewProps) {
 	const router = useRouter();
 	const [selectedDebt, setSelectedDebt] = useState<PersonalDebtByParticipant | null>(null);
 	const [file, setFile] = useState<File | null>(null);
@@ -165,6 +175,13 @@ export function PersonalDebtOverview({ debts }: { debts: PersonalDebtByParticipa
 				title={selectedDebt ? `Pagar deuda a ${selectedDebt.participant.name}` : "Pagar deuda"}
 			>
 				<div className="grid gap-5">
+					<BankAccountCopyAction
+						details={
+							selectedDebt
+								? (bankTransferDetailsByParticipantId[selectedDebt.participant.id] ?? null)
+								: null
+						}
+					/>
 					{selectedDebt?.amountDueToMeMinor ? (
 						<p className="border-line bg-paper-strong text-ink-muted rounded-2xl border px-4 py-3 text-sm leading-5">
 							{selectedDebt.participant.name} todavía te deberá{" "}

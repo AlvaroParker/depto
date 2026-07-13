@@ -174,5 +174,17 @@ describe("production user-participant migration", () => {
 			)
 			.first<{ name: string }>();
 		expect(bulkPaymentColumn?.name).toBe("bulk_payment_id");
+
+		await applyMigrations(bindings.database, ["0012_add_participant_bank_accounts.sql"]);
+		const bankAccountTable = await bindings.database
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'participant_bank_accounts'",
+			)
+			.first<{ name: string }>();
+		expect(bankAccountTable?.name).toBe("participant_bank_accounts");
+		const legacyAccounts = await bindings.database
+			.prepare("SELECT COUNT(*) AS count FROM participant_bank_accounts")
+			.first<{ count: number }>();
+		expect(legacyAccounts?.count).toBe(0);
 	});
 });

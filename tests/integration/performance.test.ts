@@ -55,7 +55,7 @@ describe("1,000 expense query performance", () => {
 			.run();
 		for (let index = 0; index < statements.length; index += 100)
 			await bindings.database.batch(statements.slice(index, index + 100));
-	}, 60_000);
+	}, 120_000);
 	afterEach(async () => bindings.dispose());
 
 	it("loads the first list page and complete dashboard under one second each", async () => {

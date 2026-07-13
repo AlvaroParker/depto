@@ -9,6 +9,7 @@ import { ExpenseKindIcon } from "@/components/expenses/expense-kind-icon";
 import { ReceiptField } from "@/components/expenses/receipt-field";
 import { ReceiptViewer } from "@/components/expenses/receipt-viewer";
 import { findExpenseById } from "@/lib/db/expenses";
+import { findBankTransferDetails } from "@/lib/db/bank-accounts";
 import { formatDateTime, formatExpenseDate, formatMoney } from "@/lib/util/format";
 
 interface ExpenseDetailPageProps {
@@ -27,6 +28,8 @@ export default async function ExpenseDetailPage({ params }: ExpenseDetailPagePro
 	if (result.err) throw new Error("Could not load expense.");
 	if (!result.val) notFound();
 	const expense = result.val;
+	const bankTransferDetails = await findBankTransferDetails(expense.payer.id);
+	if (bankTransferDetails.err) throw new Error("Could not load bank transfer details.");
 	return (
 		<main className="mx-auto max-w-5xl px-4 py-7 sm:px-7 sm:py-10">
 			<div className="flex items-center justify-between gap-4">
@@ -71,6 +74,7 @@ export default async function ExpenseDetailPage({ params }: ExpenseDetailPagePro
 					role: session.user.role,
 				}}
 				initialShares={expense.shares}
+				payeeBankTransferDetails={bankTransferDetails.val}
 				payeeName={expense.payer.name}
 				splitMode={expense.splitMode}
 			/>

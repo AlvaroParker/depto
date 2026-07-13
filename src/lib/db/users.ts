@@ -4,6 +4,7 @@ import type { Result } from "ts-results";
 import { isUserRole, type UserRole } from "@/lib/const/roles";
 import { getDatabase } from "@/lib/db/bindings";
 import { type DbError, safeDbCall } from "@/lib/db/safe-db-call";
+import type { BankAccountType, ParticipantBankAccount } from "@/lib/types/bank-account";
 import type {
 	AppUser,
 	BootstrapRootInput,
@@ -24,6 +25,15 @@ interface AppUserRow {
 	password_hash: string;
 	role: string;
 	username: string;
+}
+
+interface ManagedUserRow extends AppUserRow {
+	bank_account_number: string | null;
+	bank_account_type: BankAccountType | null;
+	bank_created_at: string | null;
+	bank_name: string | null;
+	bank_rut: string | null;
+	bank_updated_at: string | null;
 }
 
 export type DisableUserOutcome =
@@ -51,6 +61,15 @@ const APP_USER_COLUMNS = `
 	, (SELECT email FROM participants WHERE id = app_users.participant_id) AS participant_email
 `;
 
+const MANAGED_USER_COLUMNS = `${APP_USER_COLUMNS},
+	(SELECT rut FROM participant_bank_accounts WHERE participant_id = app_users.participant_id) AS bank_rut,
+	(SELECT account_type FROM participant_bank_accounts WHERE participant_id = app_users.participant_id) AS bank_account_type,
+	(SELECT account_number FROM participant_bank_accounts WHERE participant_id = app_users.participant_id) AS bank_account_number,
+	(SELECT bank_name FROM participant_bank_accounts WHERE participant_id = app_users.participant_id) AS bank_name,
+	(SELECT created_at FROM participant_bank_accounts WHERE participant_id = app_users.participant_id) AS bank_created_at,
+	(SELECT updated_at FROM participant_bank_accounts WHERE participant_id = app_users.participant_id) AS bank_updated_at
+`;
+
 export function normalizeUsername(username: string): string {
 	return username.trim().toLocaleLowerCase("es-CL");
 }
@@ -76,8 +95,32 @@ function mapAppUser(row: AppUserRow): AppUser {
 	};
 }
 
-function mapManagedUser(row: AppUserRow): ManagedUser {
+function mapManagedBankAccount(row: ManagedUserRow): ParticipantBankAccount | null {
+	if (
+		!row.participant_id ||
+		!row.bank_rut ||
+		!row.bank_account_type ||
+		!row.bank_account_number ||
+		!row.bank_name ||
+		!row.bank_created_at ||
+		!row.bank_updated_at
+	) {
+		return null;
+	}
 	return {
+		accountNumber: row.bank_account_number,
+		accountType: row.bank_account_type,
+		bankName: row.bank_name,
+		createdAt: row.bank_created_at,
+		participantId: row.participant_id,
+		rut: row.bank_rut,
+		updatedAt: row.bank_updated_at,
+	};
+}
+
+function mapManagedUser(row: ManagedUserRow): ManagedUser {
+	return {
+		bankAccount: mapManagedBankAccount(row),
 		createdAt: row.created_at,
 		disabledAt: row.disabled_at,
 		displayName: row.display_name,
@@ -136,14 +179,14 @@ export async function listManagedUsers(
 	return safeDbCall(async () => {
 		const result = await database
 			.prepare(
-				`SELECT ${APP_USER_COLUMNS}
+				`SELECT ${MANAGED_USER_COLUMNS}
 				 FROM app_users
 				 WHERE disabled_at IS NULL
 				 ORDER BY CASE role WHEN 'root' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,
 				          lower(display_name),
 				          lower(username)`,
 			)
-			.all<AppUserRow>();
+			.all<ManagedUserRow>();
 		return result.results.map(mapManagedUser);
 	});
 }
@@ -189,6 +232,7 @@ async function insertUser(
 	);
 	await database.batch(statements);
 	return {
+		bankAccount: null,
 		createdAt: now,
 		disabledAt: null,
 		displayName: input.displayName.trim(),
@@ -221,9 +265,9 @@ export async function updateManagedUser(
 ): Promise<Result<UpdateManagedUserOutcome, DbError>> {
 	return safeDbCall(async () => {
 		const target = await database
-			.prepare(`SELECT ${APP_USER_COLUMNS} FROM app_users WHERE id = ?`)
+			.prepare(`SELECT ${MANAGED_USER_COLUMNS} FROM app_users WHERE id = ?`)
 			.bind(id)
-			.first<AppUserRow>();
+			.first<ManagedUserRow>();
 		if (!target || target.disabled_at) return { kind: "not_found" };
 		if (target.role !== "user") return { kind: "role_protected" };
 
@@ -260,6 +304,7 @@ export async function updateManagedUser(
 		return {
 			kind: "updated",
 			user: {
+				bankAccount: mapManagedBankAccount(target),
 				createdAt: target.created_at,
 				disabledAt: null,
 				displayName,
