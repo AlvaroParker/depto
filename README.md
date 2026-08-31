@@ -44,6 +44,10 @@ Cada cuenta creada con rol `user` requiere un correo y genera automáticamente s
 cuentas `root` y `admin` administran accesos, pero no participan en gastos. Si `RESEND_API_KEY` está
 vacío en desarrollo, el gasto se crea normalmente y el envío se omite.
 
+Cada usuario regular puede guardar o reemplazar su ID numérico de Telegram en **Ajustes → Telegram**.
+Es un dato declarado por el usuario: no se aceptan nombres `@usuario`, no se consulta Telegram para
+resolverlo o verificar su propiedad y nunca se usa como credencial de autenticación.
+
 ## OAuth y MCP
 
 Los usuarios regulares pueden conectar aplicaciones sin crear ni copiar claves personales. El servidor

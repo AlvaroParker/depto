@@ -28,17 +28,18 @@ addresses; email-less participants are skipped for notifications until an admini
 Represents a private credentials login. Every regular user has exactly one participant identity;
 root and admin accounts have none.
 
-| Field            | Type | Rules                                                   |
-| ---------------- | ---- | ------------------------------------------------------- |
-| `id`             | text | Primary key                                             |
-| `username`       | text | Required; unique case-insensitive normalized value      |
-| `password_hash`  | text | Required; self-describing PBKDF2 value                  |
-| `display_name`   | text | Required                                                |
-| `participant_id` | text | Required and unique for `user`; null for `root`/`admin` |
-| `role`           | text | Required; exactly `root`, `admin`, or `user`            |
-| `created_at`     | text | Required UTC timestamp                                  |
-| `updated_at`     | text | Required UTC timestamp                                  |
-| `disabled_at`    | text | Nullable UTC timestamp                                  |
+| Field              | Type | Rules                                                               |
+| ------------------ | ---- | ------------------------------------------------------------------- |
+| `id`               | text | Primary key                                                         |
+| `username`         | text | Required; unique case-insensitive normalized value                  |
+| `password_hash`    | text | Required; self-describing PBKDF2 value                              |
+| `display_name`     | text | Required                                                            |
+| `participant_id`   | text | Required and unique for `user`; null for `root`/`admin`             |
+| `role`             | text | Required; exactly `root`, `admin`, or `user`                        |
+| `telegram_user_id` | text | Nullable; unique canonical integer `1`–`1099511627775`; `user` only |
+| `created_at`       | text | Required UTC timestamp                                              |
+| `updated_at`       | text | Required UTC timestamp                                              |
+| `disabled_at`      | text | Nullable UTC timestamp                                              |
 
 Every account has one hierarchical role. Multiple simultaneous roles are intentionally unsupported:
 `root` and `admin` already include user-management privileges, so role sets would add ambiguity
@@ -49,6 +50,11 @@ deletions set `disabled_at` so financial audit foreign keys remain intact.
 On a fresh database, `/setup` creates root once. Root or an admin creates regular users through the
 management UI; user and participant insertion is one atomic database batch. Database triggers
 enforce the role/link invariant and synchronize participant name and active state.
+
+Regular users may declare and remove their own Telegram user ID in Settings. The value is an
+unverified numeric identifier rather than an `@username`; it is not added to the login session and
+must never authenticate Telegram or bot actions. Disabling an account retains and reserves its ID
+until the user explicitly removes it while active.
 
 ## Login Attempt Window
 
