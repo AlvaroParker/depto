@@ -4,7 +4,7 @@ import { signIn } from "./helpers";
 test("fits core routes at 360px and exposes keyboard-focusable controls", async ({ page }) => {
 	await page.setViewportSize({ width: 360, height: 800 });
 	await signIn(page);
-	for (const path of ["/", "/expenses", "/expenses/new", "/household"]) {
+	for (const path of ["/", "/expenses", "/expenses/new", "/household", "/settings"]) {
 		await page.goto(path);
 		const overflow = await page.evaluate(
 			() => document.documentElement.scrollWidth - document.documentElement.clientWidth,
