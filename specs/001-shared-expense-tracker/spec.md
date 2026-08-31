@@ -38,7 +38,7 @@ each protected page and data operation without a session.
 
 ### User Story 2 - Record and inspect a shared expense (Priority: P1)
 
-As an authenticated household user, I record an expense, its payer, and its participants so that
+As an authenticated household user, I record an expense, its payer, and its share recipients so that
 the application creates an exact equal split for that group and everyone can inspect the result.
 
 **Why this priority**: Recording correctly split expenses is the core replacement for the current
@@ -49,8 +49,9 @@ and detail to verify the stored expense and exactly one share per selected parti
 
 **Acceptance Scenarios**:
 
-1. **Given** three active participants, **When** only two are selected for a 30,000 CLP expense,
-   **Then** two 15,000 CLP shares are created, the payer is settled, and the other is pending.
+1. **Given** three active participants, **When** only two are selected as share recipients for a
+   30,000 CLP expense, **Then** exactly two 15,000 CLP shares are created. A selected payer's share
+   is settled; an external payer receives no synthetic share and both recipients owe that payer.
 2. **Given** a 10,000 CLP expense with three selected participants, **When** it is split, **Then**
    shares are 3,334, 3,333, and 3,333 CLP in participant order and sum exactly to 10,000 CLP.
 3. **Given** invalid or missing required form values, **When** the expense is submitted,
@@ -60,6 +61,9 @@ and detail to verify the stored expense and exactly one share per selected parti
 5. **Given** selected non-payers who already reimbursed the payer, **When** the creator marks them
    paid while creating the expense, **Then** their shares start paid with the creator and creation
    time recorded while every unchecked non-payer starts pending.
+6. **Given** an active payer outside the selected share recipients, **When** an equal or custom
+   expense is created, **Then** the payer remains the reimbursement recipient without receiving a
+   share. An open expense instead requires the payer among its share recipients.
 
 ---
 
@@ -266,6 +270,8 @@ open pending share as its owner, and verify the payer remainder and all dashboar
    remains locked until the owner or root/admin returns it to pending.
 5. **Given** a zero allocation, **When** expense state is summarized, **Then** the participant stays
    associated but the share is not counted as pending and cannot be marked paid.
+6. **Given** a payer outside the proposed open-expense recipients, **When** creation or editing is
+   attempted, **Then** validation rejects it because the payer remainder requires a payer share.
 
 ### User Story 11 - Keep useful household information together (Priority: P2)
 
@@ -330,22 +336,25 @@ then archive it and verify it no longer appears in normal reads.
 - **FR-002**: For a regular user linked to a participant, the dashboard MUST show their pending
   outgoing amount and expense count, pending incoming amount and expense count, a descending
   per-participant breakdown that keeps both directions visible, current cash spend, final allocated
-  share, and recent participating expenses. For root or admin accounts without a participant, it
-  MUST show expense count, total amount spent, total paid and share by participant, net balances,
-  total pending reimbursements, an aggregated from/to pending matrix, and household recent expenses.
+  share, and recent expenses where they paid or received a share. For root or admin accounts without
+  a participant, it MUST show expense count, total amount spent, total paid and share by participant,
+  net balances, total pending reimbursements, an aggregated from/to pending matrix, and household
+  recent expenses.
 - **FR-003**: The system MUST provide a mobile-usable list of all non-deleted expenses showing
   date, name, amount, payer, receipt presence, reimbursement state, and view/edit/delete actions.
 - **FR-004**: An authenticated user MUST be able to create an expense with required name, positive
-  amount, currency, date, payer, and one or more selected participants plus optional description,
+  amount, currency, date, payer, and one or more selected share recipients plus optional description,
   receipt, and a unique subset of selected non-payers who already reimbursed the payer. The payer
-  MUST be selected and MUST NOT appear in the initially paid subset. Creation MUST atomically create
-  one share for each selected participant. Integer remainder units MUST be assigned by participant
-  order so that shares always sum exactly to the original amount.
-- **FR-005**: The system MUST mark the payer's share settled automatically, start checked non-payer
-  shares paid and unchecked non-payer shares pending, allow non-payer shares to change between
-  pending and paid, record the expense creator and creation time for initially paid shares, record
-  the payment time and marking user for every later paid transition, and clear those fields when
-  reverting to pending.
+  MUST be active and MUST NOT appear in the initially paid subset. Equal and custom expenses MAY
+  keep the payer outside the selected recipients; open expenses MUST select the payer. Creation MUST
+  atomically create one share for each selected recipient and no synthetic payer share. Integer
+  remainder units MUST be assigned by participant order so that shares always sum exactly to the
+  original amount.
+- **FR-005**: The system MUST mark the payer's share settled automatically when the payer is a share
+  recipient, start checked non-payer shares paid and unchecked non-payer shares pending, allow
+  non-payer shares to change between pending and paid, record the expense creator and creation time
+  for initially paid shares, record the payment time and marking user for every later paid
+  transition, and clear those fields when reverting to pending.
 - **FR-006**: Authenticated users MUST be able to upload JPEG, PNG, WebP, and PDF receipts up to
   and including 10 MB. Only receipt metadata and an opaque object reference may be associated with
   the expense. Receipt content and object listings MUST never be publicly accessible.
@@ -412,8 +421,9 @@ then archive it and verify it no longer appears in normal reads.
 - **FR-029**: Every expense MUST store exactly one split mode: equal, custom, or open. Existing and
   omitted-mode expenses MUST remain equal for compatibility.
 - **FR-030**: Custom and open creation MUST accept exactly one non-negative integer allocation per
-  selected participant and reject duplicates, missing participants, unsafe integers, or totals that
-  differ from the expense amount. Equal splitting MUST retain deterministic remainder ordering.
+  selected share recipient and reject duplicates, missing recipients, unsafe integers, or totals
+  that differ from the expense amount. Equal splitting MUST retain deterministic remainder ordering.
+  Open creation MUST include the payer among those recipients.
 - **FR-031**: Open expenses MUST initialize with equal suggested allocations by default while
   permitting the creator to enter arbitrary exact amounts and mark positive non-payer amounts paid.
 - **FR-032**: The owner of an open pending non-payer share and root/admin MUST be able to change its

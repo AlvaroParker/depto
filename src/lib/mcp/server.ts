@@ -99,8 +99,15 @@ export function createExpenseMcpServer(actor: OAuthActor): McpServer {
 				initialPaidParticipantIds: z.array(z.string()).optional(),
 				kindId: z.string(),
 				name: z.string().min(1).max(120),
-				paidByParticipantId: z.string(),
-				participantIds: z.array(z.string()).min(1),
+				paidByParticipantId: z
+					.string()
+					.describe(
+						"Persona que pagó; puede quedar fuera de las partes salvo en cuentas abiertas.",
+					),
+				participantIds: z
+					.array(z.string())
+					.min(1)
+					.describe("Personas que reciben una parte del gasto."),
 				receipt: z.unknown().optional(),
 				sendEmailNotifications: z.boolean().default(true),
 				shareAllocations: z

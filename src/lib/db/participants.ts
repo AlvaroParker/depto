@@ -77,6 +77,27 @@ export async function findParticipantsForExpense(
 	});
 }
 
+export async function findAvailablePayersForExpense(
+	expenseId: string,
+	database: D1Database = getDatabase(),
+): Promise<Result<Participant[], DbError>> {
+	return safeDbCall(async () => {
+		const result = await database
+			.prepare(
+				`SELECT id, name, slug, sort_order
+				 FROM participants
+				 WHERE active = 1 OR EXISTS (
+				   SELECT 1 FROM expenses
+				   WHERE id = ? AND paid_by_participant_id = participants.id
+				 )
+				 ORDER BY sort_order ASC`,
+			)
+			.bind(expenseId)
+			.all<ParticipantRow>();
+		return result.results.map(mapParticipant);
+	});
+}
+
 export async function findExpenseNotificationRecipients(
 	expenseId: string,
 	database: D1Database = getDatabase(),

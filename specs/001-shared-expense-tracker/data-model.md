@@ -76,28 +76,33 @@ row has `locked_until` after the current time.
 
 Represents a shared household cost.
 
-| Field                    | Type    | Rules                                                    |
-| ------------------------ | ------- | -------------------------------------------------------- |
-| `id`                     | text    | Primary key                                              |
-| `name`                   | text    | Required; trimmed; 1–120 characters                      |
-| `description`            | text    | Nullable; at most 2,000 characters                       |
-| `amount_minor`           | integer | Required; greater than zero; safe integer                |
-| `currency`               | text    | Required ISO-style three-letter code; defaults to `CLP`  |
-| `expense_date`           | text    | Required valid `YYYY-MM-DD` date                         |
-| `kind_id`                | text    | Required foreign key to an expense kind                  |
-| `paid_by_participant_id` | text    | Required foreign key to active participant               |
-| `split_mode`             | text    | `equal`, `custom`, or `open`; defaults to `equal`        |
-| `receipt_object_key`     | text    | Nullable private R2 key; never client supplied           |
-| `receipt_filename`       | text    | Nullable sanitized original name; at most 255 characters |
-| `receipt_content_type`   | text    | Nullable supported MIME type                             |
-| `receipt_size_bytes`     | integer | Nullable; 1 through 10,485,760 when receipt exists       |
-| `created_by_user_id`     | text    | Required foreign key to application user                 |
-| `created_at`             | text    | Required UTC timestamp                                   |
-| `updated_at`             | text    | Required UTC timestamp                                   |
-| `deleted_at`             | text    | Nullable UTC timestamp                                   |
+| Field                    | Type    | Rules                                                                    |
+| ------------------------ | ------- | ------------------------------------------------------------------------ |
+| `id`                     | text    | Primary key                                                              |
+| `name`                   | text    | Required; trimmed; 1–120 characters                                      |
+| `description`            | text    | Nullable; at most 2,000 characters                                       |
+| `amount_minor`           | integer | Required; greater than zero; safe integer                                |
+| `currency`               | text    | Required ISO-style three-letter code; defaults to `CLP`                  |
+| `expense_date`           | text    | Required valid `YYYY-MM-DD` date                                         |
+| `kind_id`                | text    | Required foreign key to an expense kind                                  |
+| `paid_by_participant_id` | text    | Required foreign key; active on create or retained current payer on edit |
+| `split_mode`             | text    | `equal`, `custom`, or `open`; defaults to `equal`                        |
+| `receipt_object_key`     | text    | Nullable private R2 key; never client supplied                           |
+| `receipt_filename`       | text    | Nullable sanitized original name; at most 255 characters                 |
+| `receipt_content_type`   | text    | Nullable supported MIME type                                             |
+| `receipt_size_bytes`     | integer | Nullable; 1 through 10,485,760 when receipt exists                       |
+| `created_by_user_id`     | text    | Required foreign key to application user                                 |
+| `created_at`             | text    | Required UTC timestamp                                                   |
+| `updated_at`             | text    | Required UTC timestamp                                                   |
+| `deleted_at`             | text    | Nullable UTC timestamp                                                   |
 
 Receipt metadata fields are either all null or all present. Soft-deleted rows remain referentially
 intact and are excluded from all normal queries and summaries.
+
+Expense input `participantIds` identifies share recipients, independently from the payer. Equal and
+custom expenses may reference an active payer outside that set. Open expenses require a payer share
+because it absorbs the remaining amount. These rules use the existing expense and share foreign keys;
+no schema migration is required.
 
 ## Expense Kind
 
@@ -129,7 +134,7 @@ Represents one participant's exact portion and reimbursement state for one expen
 | `participant_id`         | text    | Required foreign key; unique with expense                             |
 | `share_amount_minor`     | integer | Required; non-negative                                                |
 | `status`                 | text    | `settled`, `pending`, or `paid`                                       |
-| `paid_to_participant_id` | text    | Null for payer; expense payer for non-payers                          |
+| `paid_to_participant_id` | text    | Null for payer recipient; expense payer for other recipients          |
 | `paid_at`                | text    | Required only for `paid`; null otherwise                              |
 | `marked_by_user_id`      | text    | Required only for `paid`; null otherwise                              |
 | `bulk_payment_id`        | text    | Opaque operation ID for shares paid together; otherwise null          |
@@ -139,13 +144,16 @@ Represents one participant's exact portion and reimbursement state for one expen
 ### State transitions
 
 ```text
-Payer:      settled (terminal)
-Non-payer:  pending ↔ paid
+Payer recipient: settled (terminal)
+Other recipient: pending ↔ paid
+External payer:  no share
 ```
 
-- Creation sets exactly one payer share to `settled`, creator-checked non-payer shares to `paid`,
-  and unchecked non-payer shares to `pending`. Initially paid shares use the expense creation time
-  for `paid_at` and the expense creator for `marked_by_user_id`.
+- Creation sets a payer share to `settled` when the payer is a share recipient, creator-checked
+  non-payer shares to `paid`, and unchecked non-payer shares to `pending`. An equal/custom external
+  payer receives no synthetic share; every recipient share points to that payer. Open expenses always
+  include the payer share. Initially paid shares use the expense creation time for `paid_at` and the
+  expense creator for `marked_by_user_id`.
 - `pending → paid` sets `paid_at`, `marked_by_user_id`, and `updated_at` together.
 - `paid → pending` clears `paid_at` and `marked_by_user_id` and updates `updated_at`.
 - Amount, payer, or participant-set recalculation replaces selected shares only after required confirmation.

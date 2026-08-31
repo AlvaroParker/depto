@@ -79,6 +79,67 @@ describe("custom and open expense splits", () => {
 		expect(created.val.shares.map((share) => share.shareAmountMinor)).toEqual([7_000, 3_000, 0]);
 	});
 
+	it("stores custom recipient shares for an external payer without synthesizing a payer share", async () => {
+		const created = await createExpense(
+			{
+				amountMinor: 10_000,
+				currency: "CLP",
+				expenseDate: "2026-07-11",
+				kindId: "kind-other",
+				name: "Compra personalizada para otras personas",
+				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_camila", "participant_trinidad"],
+				shareAllocations: [
+					{ participantId: "participant_camila", shareAmountMinor: 7_000 },
+					{ participantId: "participant_trinidad", shareAmountMinor: 3_000 },
+				],
+				splitMode: "custom",
+			},
+			"user_alvaro",
+			bindings.database,
+			NOW,
+		);
+
+		expect(created.ok).toBe(true);
+		if (created.err) return;
+		expect(created.val.shares.map((share) => share.participant.id)).toEqual([
+			"participant_camila",
+			"participant_trinidad",
+		]);
+		expect(created.val.shares.map((share) => share.shareAmountMinor)).toEqual([7_000, 3_000]);
+		expect(created.val.shares.every((share) => share.status === "pending")).toBe(true);
+		expect(
+			created.val.shares.every((share) => share.paidToParticipantId === "participant_alvaro"),
+		).toBe(true);
+	});
+
+	it("rejects an open split when the payer has no share even if persistence is called directly", async () => {
+		const created = await createExpense(
+			{
+				amountMinor: 10_000,
+				currency: "CLP",
+				expenseDate: "2026-07-11",
+				kindId: "kind-other",
+				name: "Cuenta abierta inválida",
+				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_camila", "participant_trinidad"],
+				shareAllocations: [
+					{ participantId: "participant_camila", shareAmountMinor: 7_000 },
+					{ participantId: "participant_trinidad", shareAmountMinor: 3_000 },
+				],
+				splitMode: "open",
+			},
+			"user_alvaro",
+			bindings.database,
+			NOW,
+		);
+
+		expect(created.err).toBe(true);
+		expect(
+			await bindings.database.prepare("SELECT COUNT(*) AS count FROM expenses").first(),
+		).toMatchObject({ count: 0 });
+	});
+
 	it("keeps open allocations exact while owners and admins update pending shares", async () => {
 		const created = await createExpense(
 			{
@@ -173,6 +234,67 @@ describe("custom and open expense splits", () => {
 		);
 		expect(pendingMine.ok && pendingMine.val.total).toBe(0);
 	});
+
+	it.each(["missing", "not settled"] as const)(
+		"does not mutate an open share when its payer share is %s",
+		async (corruption) => {
+			const created = await createExpense(
+				{
+					amountMinor: 10_000,
+					currency: "CLP",
+					expenseDate: "2026-07-11",
+					kindId: "kind-other",
+					name: "Cuenta abierta corrupta",
+					paidByParticipantId: "participant_alvaro",
+					participantIds: ["participant_alvaro", "participant_camila"],
+					shareAllocations: [
+						{ participantId: "participant_alvaro", shareAmountMinor: 6_000 },
+						{ participantId: "participant_camila", shareAmountMinor: 4_000 },
+					],
+					splitMode: "open",
+				},
+				"user_alvaro",
+				bindings.database,
+				NOW,
+			);
+			if (created.err) throw created.val;
+			const [payerShare, camilaShare] = created.val.shares;
+			if (corruption === "missing") {
+				await bindings.database
+					.prepare("DELETE FROM expense_shares WHERE id = ?")
+					.bind(payerShare.id)
+					.run();
+			} else {
+				await bindings.database
+					.prepare(
+						"UPDATE expense_shares SET status = 'pending', paid_to_participant_id = ? WHERE id = ?",
+					)
+					.bind("participant_camila", payerShare.id)
+					.run();
+			}
+
+			const result = await updateOpenShareAmount(
+				camilaShare.id,
+				5_000,
+				{ id: "user_camila", participantId: "participant_camila", role: "user" },
+				bindings.database,
+				new Date("2026-07-11T16:00:00.000Z"),
+			);
+			expect(result.err).toBe(true);
+			expect(
+				await bindings.database
+					.prepare("SELECT share_amount_minor FROM expense_shares WHERE id = ?")
+					.bind(camilaShare.id)
+					.first(),
+			).toMatchObject({ share_amount_minor: 4_000 });
+			expect(
+				await bindings.database
+					.prepare("SELECT updated_at FROM expenses WHERE id = ?")
+					.bind(created.val.id)
+					.first(),
+			).toMatchObject({ updated_at: NOW.toISOString() });
+		},
+	);
 
 	it("allows only root or admin to make structural edits to an existing open expense", async () => {
 		const input = {

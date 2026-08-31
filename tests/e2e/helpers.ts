@@ -11,7 +11,7 @@ export async function signIn(page: Page, username = "alvaro", passwordOverride?:
 }
 
 export async function selectExpenseParticipants(page: Page, names: string[]): Promise<void> {
-	const participantGroup = page.getByRole("group", { name: "¿Quiénes participan?" });
+	const participantGroup = page.getByRole("group", { name: "¿Entre quiénes se divide?" });
 	for (const checkbox of await participantGroup.getByRole("checkbox").all()) {
 		await checkbox.uncheck();
 	}

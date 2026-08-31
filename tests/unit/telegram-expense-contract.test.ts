@@ -47,6 +47,27 @@ describe("Telegram expense RPC contract", () => {
 		).toBe(true);
 	});
 
+	it("treats participant IDs as share recipients rather than requiring the payer", () => {
+		const externalPayerRequest = {
+			...equalRequest,
+			expense: {
+				...equalRequest.expense,
+				participantIds: ["participant_camila"],
+			},
+		};
+		expect(CreateTelegramExpenseRequestSchema.safeParse(externalPayerRequest).success).toBe(true);
+		expect(
+			CreateTelegramExpenseRequestSchema.safeParse({
+				...externalPayerRequest,
+				expense: {
+					...externalPayerRequest.expense,
+					shareAllocations: [{ participantId: "participant_camila", shareAmountMinor: 12_000 }],
+					splitMode: "custom",
+				},
+			}).success,
+		).toBe(true);
+	});
+
 	it.each([
 		["extra top-level field", { ...equalRequest, actorUserId: "user_alvaro" }],
 		["non-canonical Telegram ID", { ...equalRequest, telegramUserId: "00123" }],

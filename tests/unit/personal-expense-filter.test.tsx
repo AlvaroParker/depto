@@ -108,7 +108,30 @@ describe("personal expense filter", () => {
 		expect(reimbursedMarkup).toContain("Tu parte pagada");
 		expect(reimbursedMarkup).not.toContain("1 pendiente");
 		expect(payerMarkup).toContain("Pagaste tú");
+		expect(payerMarkup).toContain("$12.000");
 		expect(payerMarkup).not.toContain("1 pendiente");
+	});
+
+	it("shows an external payer as involved even when they have no share", () => {
+		const externalPayerExpense: ExpenseSummary = {
+			...expense,
+			id: "expense-external-payer",
+			payer: expense.shares[0].participant,
+			shares: expense.shares
+				.filter((share) => share.participant.id !== "participant_alvaro")
+				.map((share) => ({
+					...share,
+					paidToParticipantId: "participant_alvaro",
+					status: "pending" as const,
+				})),
+		};
+
+		const markup = renderToStaticMarkup(
+			<ExpenseList expenses={[externalPayerExpense]} personalParticipantId="participant_alvaro" />,
+		);
+
+		expect(markup).toContain("Pagaste tú");
+		expect(markup).not.toContain("pendiente");
 	});
 
 	it("renders an all-clear state when no personal payments remain", () => {

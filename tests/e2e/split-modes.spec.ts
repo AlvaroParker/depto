@@ -20,6 +20,49 @@ test("creates an expense with exact participant-specific amounts", async ({ page
 	await expect(page.getByText("$3.000")).toBeVisible();
 });
 
+test("creates and reopens a custom expense whose payer is outside the share recipients", async ({
+	page,
+}) => {
+	await signIn(page);
+	await page.goto("/expenses/new");
+	const name = uniqueName("Pagador externo");
+	await page.getByLabel("Nombre del gasto").fill(name);
+	await page.getByLabel("Monto (CLP)").fill("10000");
+	await selectExpenseParticipants(page, ["Camila", "Trinidad"]);
+	const payerSelect = page.getByLabel("¿Quién pagó?");
+	const alvaroId = await payerSelect.locator("option", { hasText: "Alvaro" }).getAttribute("value");
+	const camilaId = await payerSelect.locator("option", { hasText: "Camila" }).getAttribute("value");
+	const trinidadId = await payerSelect
+		.locator("option", { hasText: "Trinidad" })
+		.getAttribute("value");
+	if (!alvaroId || !camilaId || !trinidadId) throw new Error("Missing participant options.");
+	await payerSelect.selectOption(alvaroId);
+	await page.getByLabel("Montos específicos").check();
+	await page.getByLabel("Monto de Camila").fill("7000");
+	await page.getByLabel("Monto de Trinidad").fill("3000");
+
+	const createRequest = page.waitForRequest(
+		(request) => request.url().endsWith("/api/expenses") && request.method() === "POST",
+	);
+	await page.getByRole("button", { name: "Guardar gasto" }).click();
+	expect((await createRequest).postDataJSON()).toMatchObject({
+		paidByParticipantId: alvaroId,
+		participantIds: [camilaId, trinidadId],
+		shareAllocations: [
+			{ participantId: camilaId, shareAmountMinor: 7_000 },
+			{ participantId: trinidadId, shareAmountMinor: 3_000 },
+		],
+		splitMode: "custom",
+	});
+	await expect(page.getByRole("heading", { name })).toBeVisible();
+	await page.getByRole("link", { name: "Editar" }).click();
+	await expect(page.getByLabel("¿Quién pagó?")).toHaveValue(alvaroId);
+	const recipients = page.getByRole("group", { name: "¿Entre quiénes se divide?" });
+	await expect(recipients.getByRole("checkbox", { name: "Alvaro" })).not.toBeChecked();
+	await expect(recipients.getByRole("checkbox", { name: "Camila" })).toBeChecked();
+	await expect(recipients.getByRole("checkbox", { name: "Trinidad" })).toBeChecked();
+});
+
 test("lets an open-share owner adjust their amount while the payer absorbs the remainder", async ({
 	browser,
 	page,

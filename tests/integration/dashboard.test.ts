@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getDashboardSummary } from "@/lib/db/dashboard";
-import { createExpense } from "@/lib/db/expenses";
+import { createExpense, listExpenses } from "@/lib/db/expenses";
 import { updateShareStatus } from "@/lib/db/expense-shares";
 import { createTestBindings, type TestBindings } from "../fixtures/miniflare";
 
@@ -271,5 +271,57 @@ describe("dashboard aggregates", () => {
 		});
 		expect(result.val.recentExpenses).toEqual([]);
 		expect(result.val.debtsByParticipant).toEqual([]);
+	});
+
+	it("includes an external payer in personal expenses and debts without assigning them a share", async () => {
+		const created = await createExpense(
+			{
+				amountMinor: 10_000,
+				currency: "CLP",
+				expenseDate: "2026-07-09",
+				kindId: "kind-other",
+				name: "Compra para Camila y Trinidad",
+				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_camila", "participant_trinidad"],
+			},
+			"user_alvaro",
+			bindings.database,
+			NOW,
+		);
+		if (created.err) throw new Error("fixture failed");
+
+		const personalList = await listExpenses(
+			{},
+			{ database: bindings.database, participantScopeId: "participant_alvaro" },
+		);
+		expect(personalList.ok && personalList.val.expenses.map((expense) => expense.id)).toEqual([
+			created.val.id,
+		]);
+
+		const summary = await getDashboardSummary({
+			currentParticipantId: "participant_alvaro",
+			database: bindings.database,
+		});
+		expect(summary.ok).toBe(true);
+		if (summary.err || summary.val.view !== "personal") return;
+		expect(summary.val).toMatchObject({
+			amountDueToMeMinor: 10_000,
+			amountOwedMinor: 0,
+			dueToMeExpenseCount: 1,
+			expectedSpendMinor: 0,
+			owedExpenseCount: 0,
+			spentSoFarMinor: 10_000,
+		});
+		expect(summary.val.recentExpenses.map((expense) => expense.id)).toEqual([created.val.id]);
+		expect(
+			summary.val.debtsByParticipant.map((debt) => [
+				debt.participant.name,
+				debt.amountOwedMinor,
+				debt.amountDueToMeMinor,
+			]),
+		).toEqual([
+			["Camila", 0, 5_000],
+			["Trinidad", 0, 5_000],
+		]);
 	});
 });

@@ -7,6 +7,7 @@ import {
 	updateExpense,
 } from "@/lib/db/expenses";
 import { updateShareStatus } from "@/lib/db/expense-shares";
+import { findAvailablePayersForExpense, findParticipantsForExpense } from "@/lib/db/participants";
 import { createTestBindings, type TestBindings } from "../fixtures/miniflare";
 
 const NOW = new Date("2026-07-09T20:00:00.000Z");
@@ -160,5 +161,123 @@ describe("expense corrections", () => {
 			deleted_at: NOW.toISOString(),
 			receipt_object_key: "receipts/a.pdf",
 		});
+	});
+
+	it("moves an equal expense to an active payer outside the share recipients", async () => {
+		const created = await createExpense(
+			{
+				amountMinor: 10_000,
+				currency: "CLP",
+				expenseDate: "2026-07-09",
+				kindId: "kind-other",
+				name: "Compra original",
+				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_alvaro", "participant_camila"],
+			},
+			"user_alvaro",
+			bindings.database,
+			NOW,
+		);
+		if (created.err) throw new Error("fixture failed");
+
+		const updated = await updateExpense(
+			created.val.id,
+			{
+				amountMinor: 10_000,
+				currency: "CLP",
+				expenseDate: "2026-07-09",
+				kindId: "kind-other",
+				name: "Compra corregida",
+				paidByParticipantId: "participant_trinidad",
+				participantIds: ["participant_alvaro", "participant_camila"],
+				resetPaidReimbursements: false,
+				splitMode: "equal",
+			},
+			bindings.database,
+			NOW,
+		);
+
+		expect(updated.ok && updated.val.kind).toBe("updated");
+		if (updated.err || updated.val.kind !== "updated") return;
+		expect(updated.val.expense.payer.id).toBe("participant_trinidad");
+		expect(updated.val.expense.shares.map((share) => share.participant.id)).toEqual([
+			"participant_alvaro",
+			"participant_camila",
+		]);
+		expect(updated.val.expense.shares.map((share) => share.status)).toEqual(["pending", "pending"]);
+		expect(updated.val.expense.shares.map((share) => share.paidToParticipantId)).toEqual([
+			"participant_trinidad",
+			"participant_trinidad",
+		]);
+	});
+
+	it("keeps an inactive current external payer editable but excludes inactive former recipients as payers", async () => {
+		const created = await createExpense(
+			{
+				amountMinor: 10_000,
+				currency: "CLP",
+				expenseDate: "2026-07-09",
+				kindId: "kind-other",
+				name: "Compra histórica",
+				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_camila", "participant_trinidad"],
+			},
+			"user_alvaro",
+			bindings.database,
+			NOW,
+		);
+		if (created.err) throw new Error("fixture failed");
+		await bindings.database
+			.prepare("UPDATE participants SET active = 0 WHERE id IN (?, ?)")
+			.bind("participant_alvaro", "participant_camila")
+			.run();
+
+		const recipients = await findParticipantsForExpense(created.val.id, bindings.database);
+		const payers = await findAvailablePayersForExpense(created.val.id, bindings.database);
+		expect(recipients.ok && recipients.val.map((participant) => participant.id)).toEqual([
+			"participant_camila",
+			"participant_trinidad",
+		]);
+		expect(payers.ok && payers.val.map((participant) => participant.id)).toEqual([
+			"participant_alvaro",
+			"participant_trinidad",
+		]);
+
+		const descriptive = await updateExpense(
+			created.val.id,
+			{
+				amountMinor: 10_000,
+				currency: "CLP",
+				description: "Conserva el pagador histórico",
+				expenseDate: "2026-07-09",
+				kindId: "kind-other",
+				name: "Compra histórica corregida",
+				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_camila", "participant_trinidad"],
+				resetPaidReimbursements: false,
+				splitMode: "equal",
+			},
+			bindings.database,
+			NOW,
+		);
+		expect(descriptive.ok && descriptive.val.kind).toBe("updated");
+
+		const invalidPayer = await updateExpense(
+			created.val.id,
+			{
+				amountMinor: 10_000,
+				currency: "CLP",
+				expenseDate: "2026-07-09",
+				kindId: "kind-other",
+				name: "Pagador inactivo inválido",
+				paidByParticipantId: "participant_camila",
+				participantIds: ["participant_camila", "participant_trinidad"],
+				resetPaidReimbursements: false,
+				splitMode: "equal",
+			},
+			bindings.database,
+			NOW,
+		);
+		expect(invalidPayer.err).toBe(true);
 	});
 });

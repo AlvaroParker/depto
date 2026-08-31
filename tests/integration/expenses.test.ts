@@ -61,6 +61,48 @@ describe("expense persistence", () => {
 		]);
 	});
 
+	it("creates equal shares only for recipients when an active payer is outside the split", async () => {
+		const result = await createExpense(
+			{
+				amountMinor: 10_000,
+				currency: "CLP",
+				expenseDate: "2026-07-08",
+				kindId: "kind-other",
+				name: "Regalo compartido",
+				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_camila", "participant_trinidad"],
+			},
+			"user_alvaro",
+			bindings.database,
+			NOW,
+		);
+
+		expect(result.ok).toBe(true);
+		if (result.err) return;
+		expect(result.val.payer.id).toBe("participant_alvaro");
+		expect(
+			result.val.shares.map((share) => ({
+				amount: share.shareAmountMinor,
+				participantId: share.participant.id,
+				paidToParticipantId: share.paidToParticipantId,
+				status: share.status,
+			})),
+		).toEqual([
+			{
+				amount: 5_000,
+				participantId: "participant_camila",
+				paidToParticipantId: "participant_alvaro",
+				status: "pending",
+			},
+			{
+				amount: 5_000,
+				participantId: "participant_trinidad",
+				paidToParticipantId: "participant_alvaro",
+				status: "pending",
+			},
+		]);
+	});
+
 	it("creates selected non-payer shares as already paid with creator audit data", async () => {
 		const result = await createExpense(
 			{

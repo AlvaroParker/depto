@@ -7,7 +7,7 @@ import { DeleteExpenseButton } from "@/components/expenses/delete-expense-button
 import { ExpenseForm } from "@/components/expenses/expense-form";
 import { listExpenseKinds } from "@/lib/db/expense-kinds";
 import { findExpenseById } from "@/lib/db/expenses";
-import { findParticipantsForExpense } from "@/lib/db/participants";
+import { findAvailablePayersForExpense, findParticipantsForExpense } from "@/lib/db/participants";
 
 export const metadata: Metadata = { title: "Editar gasto" };
 
@@ -15,12 +15,13 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
 	const session = await auth();
 	if (!session?.user) redirect("/login");
 	const id = (await params).id;
-	const [expense, participants, expenseKinds] = await Promise.all([
+	const [expense, participants, payers, expenseKinds] = await Promise.all([
 		findExpenseById(id),
 		findParticipantsForExpense(id),
+		findAvailablePayersForExpense(id),
 		listExpenseKinds(),
 	]);
-	if (expense.err || participants.err || expenseKinds.err)
+	if (expense.err || participants.err || payers.err || expenseKinds.err)
 		throw new Error("Could not load expense editor.");
 	if (!expense.val) notFound();
 	return (
@@ -46,6 +47,7 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
 					expense={expense.val}
 					expenseKinds={expenseKinds.val}
 					participants={participants.val}
+					payers={payers.val}
 				/>
 			</section>
 		</main>
