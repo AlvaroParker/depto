@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Shared Expense Tracker API
-  version: 1.1.0
+  version: 1.2.0
   description: >-
     Authenticated application endpoints used by the Spanish household expense UI and by
     user-authorized OAuth clients. Bootstrap, administration, household management, and OAuth grant
@@ -44,6 +44,26 @@ components:
           additionalProperties:
             type: array
             items: { type: string }
+    TelegramUserIdInput:
+      type: object
+      additionalProperties: false
+      required: [telegramUserId]
+      properties:
+        telegramUserId:
+          type: string
+          minLength: 1
+          maxLength: 13
+          pattern: "^[1-9][0-9]{0,12}$"
+          description: >-
+            Unverified canonical numeric Telegram user ID from 1 through 1099511627775; usernames
+            such as @usuario are not accepted.
+    TelegramUserIdResponse:
+      type: object
+      required: [telegramUserId]
+      properties:
+        telegramUserId:
+          type: string
+          description: The regular user's saved canonical numeric Telegram user ID.
     UserRole:
       type: string
       enum: [root, admin, user]
@@ -333,6 +353,40 @@ components:
           type: array
           items: { $ref: "#/components/schemas/ExpenseSummary" }
 paths:
+  /profile/telegram:
+    put:
+      operationId: setOwnTelegramUserId
+      summary: Save or replace the authenticated regular user's unverified Telegram user ID
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TelegramUserIdInput" }
+      responses:
+        "200":
+          description: Telegram user ID saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TelegramUserIdResponse" }
+        "400": { description: Invalid body or Telegram user ID }
+        "401": { description: Unauthenticated }
+        "403": { description: Only regular users may configure a Telegram user ID }
+        "404": { description: Active regular-user account not found }
+        "409": { description: Telegram user ID is already reserved by another account }
+        "503": { description: Database unavailable }
+    delete:
+      operationId: clearOwnTelegramUserId
+      summary: Remove the authenticated regular user's Telegram user ID
+      security:
+        - sessionCookie: []
+      responses:
+        "204": { description: Telegram user ID removed or already absent }
+        "401": { description: Unauthenticated }
+        "403": { description: Only regular users may remove a Telegram user ID }
+        "404": { description: Active regular-user account not found }
+        "503": { description: Database unavailable }
   /household-information:
     get:
       operationId: listHouseholdInformation
