@@ -1,14 +1,9 @@
 import { getDashboardSummary } from "@/lib/db/dashboard";
 import { listExpenseKinds } from "@/lib/db/expense-kinds";
 import { findActiveParticipants } from "@/lib/db/participants";
-import {
-	completeMcpIdempotencyRecord,
-	releaseMcpIdempotencyReservation,
-	reserveMcpIdempotencyRecord,
-} from "@/lib/db/mcp-idempotency";
 import { sha256Base64Url } from "@/lib/oauth/crypto";
 import {
-	createExpenseForActor,
+	createIdempotentExpenseForActor,
 	getExpenseForActor,
 	listExpensesForActor,
 } from "@/lib/services/expenses";
@@ -100,38 +95,25 @@ export async function createExpenseTool(input: Record<string, unknown>, actor: O
 		toolName: "create_expense",
 		userId: actor.userId,
 	};
-	const reservation = await reserveMcpIdempotencyRecord(reservationInput);
-	if (reservation.err) return mcpBusinessError("No pudimos verificar la idempotencia.");
-	if (reservation.val.kind === "conflict") {
+	const created = await createIdempotentExpenseForActor(parsed.data, actor, reservationInput);
+	if (created.kind === "conflict") {
 		return mcpBusinessError("La clave de idempotencia ya se usó con otros datos.", "CONFLICT");
 	}
-	if (reservation.val.kind === "existing") {
-		if (!reservation.val.expenseId) {
-			return mcpBusinessError("Ya hay una creación en curso con esta clave.", "IN_PROGRESS");
-		}
-		const expense = await getExpenseForActor(reservation.val.expenseId);
-		if (expense.err || !expense.val)
-			return mcpBusinessError("No pudimos recuperar el gasto original.");
+	if (created.kind === "in_progress") {
+		return mcpBusinessError("Ya hay una creación en curso con esta clave.", "IN_PROGRESS");
+	}
+	if (created.kind === "replayed") {
 		return mcpSuccess("El gasto ya había sido creado; devolvemos el original.", {
-			expense: expense.val,
+			expense: created.expense,
 			replayed: true,
 		});
 	}
-	const created = await createExpenseForActor(parsed.data, actor);
 	if (created.kind === "invalid_kind") {
-		await releaseMcpIdempotencyReservation(reservationInput);
 		return mcpBusinessError("La categoría no es válida.", "VALIDATION_ERROR");
 	}
 	if (created.kind !== "created") {
-		await releaseMcpIdempotencyReservation(reservationInput);
 		return mcpBusinessError("No pudimos crear el gasto.");
 	}
-	const recorded = await completeMcpIdempotencyRecord({
-		expenseId: created.expense.id,
-		...reservationInput,
-	});
-	if (recorded.err || !recorded.val)
-		return mcpBusinessError("El gasto se creó, pero no pudimos registrar la idempotencia.");
 	let warning: string | undefined;
 	if (input.receipt) {
 		const receipt = McpFileInputSchema.safeParse(input.receipt);

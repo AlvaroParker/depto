@@ -2,6 +2,11 @@ import "server-only";
 
 import type { Result } from "ts-results";
 import { getDatabase } from "@/lib/db/bindings";
+import {
+	type ExpenseIdempotencyInput,
+	prepareCompletedExpenseIdempotencyRecord,
+	readExpenseIdempotencyRecord,
+} from "@/lib/db/expense-idempotency";
 import { type DbError, safeDbCall } from "@/lib/db/safe-db-call";
 import type {
 	ExpenseDetail,
@@ -263,6 +268,112 @@ async function findExpense(database: D1Database, id: string): Promise<ExpenseDet
 	return mapDetail(row, shares.get(id) ?? []);
 }
 
+interface PreparedExpenseCreation {
+	expenseId: string;
+	statements: D1PreparedStatement[];
+}
+
+async function prepareExpenseCreation(
+	input: ExpenseCreateInput,
+	createdByUserId: string,
+	database: D1Database,
+	now: Date,
+): Promise<PreparedExpenseCreation> {
+	const participants = await findSelectedParticipants(database, input.participantIds);
+	if (!participants.some((participant) => participant.id === input.paidByParticipantId)) {
+		throw new Error("The payer must be one of the selected participants.");
+	}
+	const initialPaidParticipantIds = input.initialPaidParticipantIds ?? [];
+	const initialPaidParticipantIdSet = new Set(initialPaidParticipantIds);
+	if (
+		initialPaidParticipantIdSet.size !== initialPaidParticipantIds.length ||
+		initialPaidParticipantIds.includes(input.paidByParticipantId) ||
+		initialPaidParticipantIds.some((participantId) => !input.participantIds.includes(participantId))
+	) {
+		throw new Error("Initial paid participants must be unique selected non-payers.");
+	}
+	const splitMode = input.splitMode ?? "equal";
+	const amounts = resolveShareAmounts(input, participants, splitMode);
+	if (
+		initialPaidParticipantIds.some(
+			(participantId) =>
+				amounts[participants.findIndex((participant) => participant.id === participantId)] === 0,
+		)
+	) {
+		throw new Error("Zero-value shares cannot start paid.");
+	}
+	const expenseId = createId();
+	const timestamp = now.toISOString();
+	const statements: D1PreparedStatement[] = [
+		database
+			.prepare(
+				`INSERT INTO expenses
+				 (id, name, description, amount_minor, currency, expense_date, kind_id, split_mode,
+				  paid_by_participant_id, created_by_user_id, created_at, updated_at)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			)
+			.bind(
+				expenseId,
+				input.name,
+				input.description || null,
+				input.amountMinor,
+				input.currency,
+				input.expenseDate,
+				input.kindId,
+				splitMode,
+				input.paidByParticipantId,
+				createdByUserId,
+				timestamp,
+				timestamp,
+			),
+	];
+	participants.forEach((participant, index) => {
+		const isPayer = participant.id === input.paidByParticipantId;
+		const isInitiallyPaid = initialPaidParticipantIdSet.has(participant.id);
+		statements.push(
+			database
+				.prepare(
+					`INSERT INTO expense_shares
+					 (id, expense_id, participant_id, share_amount_minor, status,
+					  paid_to_participant_id, paid_at, marked_by_user_id, created_at, updated_at)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				)
+				.bind(
+					createId(),
+					expenseId,
+					participant.id,
+					amounts[index],
+					isPayer ? "settled" : isInitiallyPaid ? "paid" : "pending",
+					isPayer ? null : input.paidByParticipantId,
+					isInitiallyPaid ? timestamp : null,
+					isInitiallyPaid ? createdByUserId : null,
+					timestamp,
+					timestamp,
+				),
+		);
+	});
+	return { expenseId, statements };
+}
+
+export type IdempotentExpenseCreationOutcome =
+	| { expense: ExpenseDetail; kind: "created" }
+	| { expense: ExpenseDetail; kind: "replayed" }
+	| { kind: "conflict" }
+	| { kind: "in_progress" };
+
+async function resolveExistingIdempotentExpense(
+	database: D1Database,
+	idempotency: ExpenseIdempotencyInput,
+): Promise<Exclude<IdempotentExpenseCreationOutcome, { kind: "created" }> | null> {
+	const existing = await readExpenseIdempotencyRecord(idempotency, database);
+	if (!existing) return null;
+	if (existing.requestHash !== idempotency.requestHash) return { kind: "conflict" };
+	if (!existing.expenseId) return { kind: "in_progress" };
+	const expense = await findExpense(database, existing.expenseId);
+	if (!expense) throw new Error("Idempotent expense could not be read.");
+	return { expense, kind: "replayed" };
+}
+
 export async function createExpense(
 	input: ExpenseCreateInput,
 	createdByUserId: string,
@@ -270,85 +381,42 @@ export async function createExpense(
 	now: Date = new Date(),
 ): Promise<Result<ExpenseDetail, DbError>> {
 	return safeDbCall(async () => {
-		const participants = await findSelectedParticipants(database, input.participantIds);
-		if (!participants.some((participant) => participant.id === input.paidByParticipantId)) {
-			throw new Error("The payer must be one of the selected participants.");
-		}
-		const initialPaidParticipantIds = input.initialPaidParticipantIds ?? [];
-		const initialPaidParticipantIdSet = new Set(initialPaidParticipantIds);
-		if (
-			initialPaidParticipantIdSet.size !== initialPaidParticipantIds.length ||
-			initialPaidParticipantIds.includes(input.paidByParticipantId) ||
-			initialPaidParticipantIds.some(
-				(participantId) => !input.participantIds.includes(participantId),
-			)
-		) {
-			throw new Error("Initial paid participants must be unique selected non-payers.");
-		}
-		const splitMode = input.splitMode ?? "equal";
-		const amounts = resolveShareAmounts(input, participants, splitMode);
-		if (
-			initialPaidParticipantIds.some(
-				(participantId) =>
-					amounts[participants.findIndex((participant) => participant.id === participantId)] === 0,
-			)
-		) {
-			throw new Error("Zero-value shares cannot start paid.");
-		}
-		const id = createId();
-		const timestamp = now.toISOString();
-		const statements: D1PreparedStatement[] = [
-			database
-				.prepare(
-					`INSERT INTO expenses
-					 (id, name, description, amount_minor, currency, expense_date, kind_id, split_mode,
-					  paid_by_participant_id, created_by_user_id, created_at, updated_at)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				)
-				.bind(
-					id,
-					input.name,
-					input.description || null,
-					input.amountMinor,
-					input.currency,
-					input.expenseDate,
-					input.kindId,
-					splitMode,
-					input.paidByParticipantId,
-					createdByUserId,
-					timestamp,
-					timestamp,
-				),
-		];
-		participants.forEach((participant, index) => {
-			const isPayer = participant.id === input.paidByParticipantId;
-			const isInitiallyPaid = initialPaidParticipantIdSet.has(participant.id);
-			statements.push(
-				database
-					.prepare(
-						`INSERT INTO expense_shares
-						 (id, expense_id, participant_id, share_amount_minor, status,
-						  paid_to_participant_id, paid_at, marked_by_user_id, created_at, updated_at)
-						 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-					)
-					.bind(
-						createId(),
-						id,
-						participant.id,
-						amounts[index],
-						isPayer ? "settled" : isInitiallyPaid ? "paid" : "pending",
-						isPayer ? null : input.paidByParticipantId,
-						isInitiallyPaid ? timestamp : null,
-						isInitiallyPaid ? createdByUserId : null,
-						timestamp,
-						timestamp,
-					),
-			);
-		});
-		await database.batch(statements);
-		const expense = await findExpense(database, id);
+		const prepared = await prepareExpenseCreation(input, createdByUserId, database, now);
+		await database.batch(prepared.statements);
+		const expense = await findExpense(database, prepared.expenseId);
 		if (!expense) throw new Error("Created expense could not be read.");
 		return expense;
+	});
+}
+
+export async function createExpenseIdempotently(
+	input: ExpenseCreateInput,
+	createdByUserId: string,
+	idempotency: ExpenseIdempotencyInput,
+	database: D1Database = getDatabase(),
+	now: Date = new Date(),
+): Promise<Result<IdempotentExpenseCreationOutcome, DbError>> {
+	return safeDbCall(async () => {
+		if (idempotency.userId !== createdByUserId) {
+			throw new Error("The idempotency owner must be the expense creator.");
+		}
+		const existing = await resolveExistingIdempotentExpense(database, idempotency);
+		if (existing) return existing;
+
+		const prepared = await prepareExpenseCreation(input, createdByUserId, database, now);
+		prepared.statements.push(
+			prepareCompletedExpenseIdempotencyRecord(database, idempotency, prepared.expenseId, now),
+		);
+		try {
+			await database.batch(prepared.statements);
+		} catch (cause) {
+			const raced = await resolveExistingIdempotentExpense(database, idempotency);
+			if (raced) return raced;
+			throw cause;
+		}
+		const expense = await findExpense(database, prepared.expenseId);
+		if (!expense) throw new Error("Created expense could not be read.");
+		return { expense, kind: "created" };
 	});
 }
 
