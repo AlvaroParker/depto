@@ -13,6 +13,29 @@ export interface ReceiptValidationInput {
 	sizeBytes: number;
 }
 
+export type ReceiptImageContentType = "image/jpeg" | "image/png" | "image/webp";
+
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] as const;
+
+function matchesBytes(bytes: Uint8Array, expected: readonly number[], offset = 0): boolean {
+	return expected.every((value, index) => bytes[offset + index] === value);
+}
+
+export function validateReceiptImageSignature(
+	bytes: Uint8Array,
+	contentType: ReceiptImageContentType,
+): void {
+	const valid =
+		contentType === "image/jpeg"
+			? bytes.length >= 3 && matchesBytes(bytes, [0xff, 0xd8, 0xff])
+			: contentType === "image/png"
+				? bytes.length >= PNG_SIGNATURE.length && matchesBytes(bytes, PNG_SIGNATURE)
+				: bytes.length >= 12 &&
+					matchesBytes(bytes, [0x52, 0x49, 0x46, 0x46]) &&
+					matchesBytes(bytes, [0x57, 0x45, 0x42, 0x50], 8);
+	if (!valid) throw new Error("El contenido del comprobante no coincide con el tipo de imagen.");
+}
+
 export function sanitizeReceiptFilename(filename: string): string {
 	const basename = filename.split(/[\\/]/).at(-1) ?? "";
 	return basename

@@ -49,6 +49,59 @@ export interface ReceiptAttachment {
 	previousObjectKey: string | null;
 }
 
+export type ReceiptAttachmentIfMissing =
+	| { kind: "already_attached"; receipt: ReceiptMetadata }
+	| { kind: "attached" }
+	| { kind: "not_found" };
+
+export async function attachExpenseReceiptIfMissing(
+	expenseId: string,
+	receipt: ReceiptMetadata,
+	database: D1Database = getDatabase(),
+	now: Date = new Date(),
+): Promise<Result<ReceiptAttachmentIfMissing, DbError>> {
+	return safeDbCall(async () => {
+		const existingRow = await database
+			.prepare(
+				"SELECT receipt_object_key, receipt_filename, receipt_content_type, receipt_size_bytes FROM expenses WHERE id = ? AND deleted_at IS NULL",
+			)
+			.bind(expenseId)
+			.first<ReceiptRow>();
+		if (!existingRow) return { kind: "not_found" };
+		const existing = mapReceipt(existingRow);
+		if (existing) return { kind: "already_attached", receipt: existing };
+
+		const update = await database
+			.prepare(
+				`UPDATE expenses
+				 SET receipt_object_key = ?, receipt_filename = ?, receipt_content_type = ?,
+				     receipt_size_bytes = ?, updated_at = ?
+				 WHERE id = ? AND deleted_at IS NULL AND receipt_object_key IS NULL`,
+			)
+			.bind(
+				receipt.objectKey,
+				receipt.filename,
+				receipt.contentType,
+				receipt.sizeBytes,
+				now.toISOString(),
+				expenseId,
+			)
+			.run();
+		if (update.meta.changes === 1) return { kind: "attached" };
+
+		const racedRow = await database
+			.prepare(
+				"SELECT receipt_object_key, receipt_filename, receipt_content_type, receipt_size_bytes FROM expenses WHERE id = ? AND deleted_at IS NULL",
+			)
+			.bind(expenseId)
+			.first<ReceiptRow>();
+		if (!racedRow) return { kind: "not_found" };
+		const raced = mapReceipt(racedRow);
+		if (!raced) throw new Error("Receipt attachment did not persist.");
+		return { kind: "already_attached", receipt: raced };
+	});
+}
+
 export async function attachExpenseReceipt(
 	expenseId: string,
 	receipt: ReceiptMetadata,

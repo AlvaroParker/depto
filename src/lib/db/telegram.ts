@@ -8,6 +8,20 @@ interface TelegramUserIdRow {
 	telegram_user_id: string | null;
 }
 
+interface TelegramExpenseActorRow {
+	display_name: string;
+	participant_id: string;
+	user_id: string;
+	username: string;
+}
+
+export interface TelegramExpenseActor {
+	displayName: string;
+	participantId: string;
+	userId: string;
+	username: string;
+}
+
 export type FindTelegramUserIdOutcome =
 	{ kind: "found"; telegramUserId: string | null } | { kind: "not_found" };
 
@@ -17,6 +31,34 @@ export type SetTelegramUserIdOutcome =
 	| { kind: "updated"; telegramUserId: string };
 
 export type ClearTelegramUserIdOutcome = { kind: "cleared" } | { kind: "not_found" };
+
+export async function findTelegramExpenseActorByTelegramUserId(
+	telegramUserId: string,
+	database: D1Database = getDatabase(),
+): Promise<Result<TelegramExpenseActor | null, DbError>> {
+	return safeDbCall(async () => {
+		const row = await database
+			.prepare(
+				`SELECT u.id AS user_id, u.username, u.display_name, u.participant_id
+				 FROM app_users u
+				 JOIN participants p ON p.id = u.participant_id
+				 WHERE u.telegram_user_id = ?
+				   AND u.role = 'user'
+				   AND u.disabled_at IS NULL
+				   AND p.active = 1`,
+			)
+			.bind(telegramUserId)
+			.first<TelegramExpenseActorRow>();
+		return row
+			? {
+					displayName: row.display_name,
+					participantId: row.participant_id,
+					userId: row.user_id,
+					username: row.username,
+				}
+			: null;
+	});
+}
 
 export async function findTelegramUserIdForUser(
 	userId: string,
