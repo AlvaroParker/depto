@@ -20,6 +20,21 @@ function receiptStream(bytes: Uint8Array = RECEIPT_BYTES): ReadableStream<Uint8A
 	return stream;
 }
 
+function cancellableReceiptStream(): {
+	stream: ReadableStream<Uint8Array>;
+	wasCancelled: () => boolean;
+} {
+	let cancelled = false;
+	return {
+		stream: new ReadableStream<Uint8Array>({
+			cancel() {
+				cancelled = true;
+			},
+		}),
+		wasCancelled: () => cancelled,
+	};
+}
+
 function createRequest(updateId = 42) {
 	return {
 		expense: {
@@ -148,15 +163,17 @@ describe("Telegram expense application service", () => {
 	it("rejects changed data under the same Telegram update", async () => {
 		const created = await createTelegramExpense(createRequest(), receiptStream(), dependencies);
 		expect(created.kind).toBe("created");
+		const unusedReceipt = cancellableReceiptStream();
 		const conflict = await createTelegramExpense(
 			{
 				...createRequest(),
 				expense: { ...createRequest().expense, amountMinor: 13_000 },
 			},
-			receiptStream(),
+			unusedReceipt.stream,
 			dependencies,
 		);
 		expect(conflict).toEqual({ kind: "idempotency_conflict", version: 1 });
+		expect(unusedReceipt.wasCancelled()).toBe(true);
 	});
 
 	it("repairs a missing receipt without rerunning creation or notifications", async () => {
@@ -285,24 +302,52 @@ describe("Telegram expense application service", () => {
 	});
 
 	it("rejects invalid categories and malformed commands without database writes", async () => {
-		expect(await createTelegramExpense({}, receiptStream(), dependencies)).toEqual({
+		const malformedReceipt = cancellableReceiptStream();
+		expect(await createTelegramExpense({}, malformedReceipt.stream, dependencies)).toEqual({
 			kind: "invalid_request",
 			version: 1,
 		});
+		expect(malformedReceipt.wasCancelled()).toBe(true);
+		const invalidKindReceipt = cancellableReceiptStream();
 		expect(
 			await createTelegramExpense(
 				{
 					...createRequest(),
 					expense: { ...createRequest().expense, kindId: "missing-kind" },
 				},
-				receiptStream(),
+				invalidKindReceipt.stream,
 				dependencies,
 			),
 		).toEqual({ kind: "invalid_request", version: 1 });
+		expect(invalidKindReceipt.wasCancelled()).toBe(true);
 		const count = await bindings.database
 			.prepare("SELECT COUNT(*) AS count FROM expenses")
 			.first<{ count: number }>();
 		expect(count?.count).toBe(0);
+	});
+
+	it("cancels receipt-repair streams when no expense can receive them", async () => {
+		const malformedReceipt = cancellableReceiptStream();
+		expect(await attachTelegramExpenseReceipt({}, malformedReceipt.stream, dependencies)).toEqual({
+			kind: "invalid_request",
+			version: 1,
+		});
+		expect(malformedReceipt.wasCancelled()).toBe(true);
+
+		const missingReceipt = cancellableReceiptStream();
+		expect(
+			await attachTelegramExpenseReceipt(
+				{
+					receipt: createRequest().receipt,
+					telegramUserId: "111111",
+					updateId: 404,
+					version: 1,
+				},
+				missingReceipt.stream,
+				dependencies,
+			),
+		).toEqual({ kind: "not_found", version: 1 });
+		expect(missingReceipt.wasCancelled()).toBe(true);
 	});
 
 	it("fails closed when persisted data cannot fit the v1 summary contract", async () => {

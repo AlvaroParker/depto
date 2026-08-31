@@ -70,7 +70,10 @@ export async function attachReceiptStreamIfMissing(
 ): Promise<ReceiptStreamAttachmentOutcome> {
 	const metadata = validateReceiptMetadata(input);
 	const existing = await findExpenseReceipt(expenseId, dependencies.database);
-	if (existing.err) return { kind: "failed" };
+	if (existing.err) {
+		await (stream as ReadableStream | undefined)?.cancel?.().catch(() => undefined);
+		return { kind: "failed" };
+	}
 	if (existing.val) {
 		await (stream as ReadableStream | undefined)?.cancel?.().catch(() => undefined);
 		return { kind: "already_attached" };
@@ -97,6 +100,7 @@ export async function attachReceiptStreamIfMissing(
 		}
 		return { kind: "attached" };
 	} catch {
+		await (stream as ReadableStream | undefined)?.cancel?.().catch(() => undefined);
 		await dependencies.receipts.delete(objectKey).catch(() => undefined);
 		return { kind: "failed" };
 	}

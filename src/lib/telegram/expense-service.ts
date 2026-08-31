@@ -45,6 +45,15 @@ function idempotencyKey(updateId: number): string {
 	return `telegram-update/${updateId}`;
 }
 
+async function cancelReceiptStream(stream: unknown): Promise<void> {
+	if (!stream || typeof (stream as ReadableStream).cancel !== "function") return;
+	try {
+		await (stream as ReadableStream).cancel();
+	} catch {
+		// Releasing an unused RPC stream is best effort and must not hide the domain result.
+	}
+}
+
 function mapExpense(expense: ExpenseDetail): TelegramExpenseSummary {
 	if (expense.currency !== "CLP") throw new Error("Telegram expenses must use CLP.");
 	if (expense.splitMode === "open") throw new Error("Telegram expenses cannot use open splits.");
@@ -139,75 +148,81 @@ export async function createTelegramExpense(
 	receiptStream: unknown,
 	dependencies: TelegramExpenseServiceDependencies,
 ): Promise<CreateTelegramExpenseResult> {
-	const parsed = CreateTelegramExpenseRequestSchema.safeParse(request);
-	if (!parsed.success) return { kind: "invalid_request", version: TELEGRAM_EXPENSE_RPC_VERSION };
-	const actor = await resolveActor(parsed.data.telegramUserId, dependencies.database);
-	if (actor.kind !== "found") return { kind: actor.kind, version: TELEGRAM_EXPENSE_RPC_VERSION };
-	const expenseInput = ExpenseCreateInputSchema.safeParse({
-		...parsed.data.expense,
-		currency: "CLP",
-		initialPaidParticipantIds: [],
-		sendEmailNotifications: true,
-		shareAllocations:
-			parsed.data.expense.shareAllocations.length > 0
-				? parsed.data.expense.shareAllocations
-				: undefined,
-	});
-	if (!expenseInput.success) {
-		return { kind: "invalid_request", version: TELEGRAM_EXPENSE_RPC_VERSION };
-	}
-	const requestHash = await sha256Base64Url(JSON.stringify(expenseInput.data));
-	const created = await createIdempotentExpenseForActor(
-		expenseInput.data,
-		actor.actor,
-		{
-			idempotencyKey: idempotencyKey(parsed.data.updateId),
-			requestHash,
-			toolName: TELEGRAM_EXPENSE_IDEMPOTENCY_TOOL,
-			userId: actor.actor.userId,
-		},
-		expenseDependencies(dependencies),
-	);
-	if (created.kind === "conflict") {
-		return { kind: "idempotency_conflict", version: TELEGRAM_EXPENSE_RPC_VERSION };
-	}
-	if (
-		created.kind === "in_progress" ||
-		created.kind === "invalid_kind" ||
-		created.kind === "storage_error"
-	) {
-		return {
-			kind: created.kind === "invalid_kind" ? "invalid_request" : created.kind,
-			version: TELEGRAM_EXPENSE_RPC_VERSION,
-		};
-	}
-
-	let receipt: "already_attached" | "attached" | "failed" = "failed";
+	let receiptHandled = false;
 	try {
-		const attachment = await attachReceiptStreamIfMissing(
-			created.expense.id,
-			parsed.data.receipt,
-			receiptStream,
-			{ database: dependencies.database, receipts: dependencies.receipts },
-		);
-		if (attachment.kind === "attached" || attachment.kind === "already_attached") {
-			receipt = attachment.kind;
+		const parsed = CreateTelegramExpenseRequestSchema.safeParse(request);
+		if (!parsed.success) return { kind: "invalid_request", version: TELEGRAM_EXPENSE_RPC_VERSION };
+		const actor = await resolveActor(parsed.data.telegramUserId, dependencies.database);
+		if (actor.kind !== "found") return { kind: actor.kind, version: TELEGRAM_EXPENSE_RPC_VERSION };
+		const expenseInput = ExpenseCreateInputSchema.safeParse({
+			...parsed.data.expense,
+			currency: "CLP",
+			initialPaidParticipantIds: [],
+			sendEmailNotifications: true,
+			shareAllocations:
+				parsed.data.expense.shareAllocations.length > 0
+					? parsed.data.expense.shareAllocations
+					: undefined,
+		});
+		if (!expenseInput.success) {
+			return { kind: "invalid_request", version: TELEGRAM_EXPENSE_RPC_VERSION };
 		}
-	} catch {
-		receipt = "failed";
-	}
-	const current = await findExpenseById(created.expense.id, dependencies.database);
-	const expense = current.ok && current.val ? current.val : created.expense;
-	try {
-		return {
-			expense: mapExpense(expense),
-			kind: created.kind,
-			notification: created.kind === "created" ? created.notification : "not_sent",
-			receipt,
-			version: TELEGRAM_EXPENSE_RPC_VERSION,
-		};
-	} catch {
-		return { kind: "storage_error", version: TELEGRAM_EXPENSE_RPC_VERSION };
+		const requestHash = await sha256Base64Url(JSON.stringify(expenseInput.data));
+		const created = await createIdempotentExpenseForActor(
+			expenseInput.data,
+			actor.actor,
+			{
+				idempotencyKey: idempotencyKey(parsed.data.updateId),
+				requestHash,
+				toolName: TELEGRAM_EXPENSE_IDEMPOTENCY_TOOL,
+				userId: actor.actor.userId,
+			},
+			expenseDependencies(dependencies),
+		);
+		if (created.kind === "conflict") {
+			return { kind: "idempotency_conflict", version: TELEGRAM_EXPENSE_RPC_VERSION };
+		}
+		if (
+			created.kind === "in_progress" ||
+			created.kind === "invalid_kind" ||
+			created.kind === "storage_error"
+		) {
+			return {
+				kind: created.kind === "invalid_kind" ? "invalid_request" : created.kind,
+				version: TELEGRAM_EXPENSE_RPC_VERSION,
+			};
+		}
+
+		let receipt: "already_attached" | "attached" | "failed" = "failed";
+		try {
+			const attachment = await attachReceiptStreamIfMissing(
+				created.expense.id,
+				parsed.data.receipt,
+				receiptStream,
+				{ database: dependencies.database, receipts: dependencies.receipts },
+			);
+			receiptHandled = true;
+			if (attachment.kind === "attached" || attachment.kind === "already_attached") {
+				receipt = attachment.kind;
+			}
+		} catch {
+			receipt = "failed";
+		}
+		const current = await findExpenseById(created.expense.id, dependencies.database);
+		const expense = current.ok && current.val ? current.val : created.expense;
+		try {
+			return {
+				expense: mapExpense(expense),
+				kind: created.kind,
+				notification: created.kind === "created" ? created.notification : "not_sent",
+				receipt,
+				version: TELEGRAM_EXPENSE_RPC_VERSION,
+			};
+		} catch {
+			return { kind: "storage_error", version: TELEGRAM_EXPENSE_RPC_VERSION };
+		}
+	} finally {
+		if (!receiptHandled) await cancelReceiptStream(receiptStream);
 	}
 }
 
@@ -216,42 +231,53 @@ export async function attachTelegramExpenseReceipt(
 	receiptStream: unknown,
 	dependencies: TelegramExpenseServiceDependencies,
 ): Promise<AttachTelegramExpenseReceiptResult> {
-	const parsed = AttachTelegramExpenseReceiptRequestSchema.safeParse(request);
-	if (!parsed.success) return { kind: "invalid_request", version: TELEGRAM_EXPENSE_RPC_VERSION };
-	const actor = await resolveActor(parsed.data.telegramUserId, dependencies.database);
-	if (actor.kind !== "found") return { kind: actor.kind, version: TELEGRAM_EXPENSE_RPC_VERSION };
-	const resolved = await resolveExpense(actor.actor, parsed.data.updateId, dependencies.database);
-	if (resolved.kind !== "found") {
-		return { kind: resolved.kind, version: TELEGRAM_EXPENSE_RPC_VERSION };
-	}
-	let attachment: "already_attached" | "attached" | "failed" | "not_found";
+	let receiptHandled = false;
 	try {
-		attachment = (
-			await attachReceiptStreamIfMissing(resolved.expense.id, parsed.data.receipt, receiptStream, {
-				database: dependencies.database,
-				receipts: dependencies.receipts,
-			})
-		).kind;
-	} catch {
-		attachment = "failed";
-	}
-	if (attachment !== "attached" && attachment !== "already_attached") {
-		return {
-			kind: "storage_error",
-			version: TELEGRAM_EXPENSE_RPC_VERSION,
-		};
-	}
-	const current = await findExpenseById(resolved.expense.id, dependencies.database);
-	if (current.err || !current.val) {
-		return { kind: "storage_error", version: TELEGRAM_EXPENSE_RPC_VERSION };
-	}
-	try {
-		return {
-			expense: mapExpense(current.val),
-			kind: attachment,
-			version: TELEGRAM_EXPENSE_RPC_VERSION,
-		};
-	} catch {
-		return { kind: "storage_error", version: TELEGRAM_EXPENSE_RPC_VERSION };
+		const parsed = AttachTelegramExpenseReceiptRequestSchema.safeParse(request);
+		if (!parsed.success) return { kind: "invalid_request", version: TELEGRAM_EXPENSE_RPC_VERSION };
+		const actor = await resolveActor(parsed.data.telegramUserId, dependencies.database);
+		if (actor.kind !== "found") return { kind: actor.kind, version: TELEGRAM_EXPENSE_RPC_VERSION };
+		const resolved = await resolveExpense(actor.actor, parsed.data.updateId, dependencies.database);
+		if (resolved.kind !== "found") {
+			return { kind: resolved.kind, version: TELEGRAM_EXPENSE_RPC_VERSION };
+		}
+		let attachment: "already_attached" | "attached" | "failed" | "not_found";
+		try {
+			attachment = (
+				await attachReceiptStreamIfMissing(
+					resolved.expense.id,
+					parsed.data.receipt,
+					receiptStream,
+					{
+						database: dependencies.database,
+						receipts: dependencies.receipts,
+					},
+				)
+			).kind;
+			receiptHandled = true;
+		} catch {
+			attachment = "failed";
+		}
+		if (attachment !== "attached" && attachment !== "already_attached") {
+			return {
+				kind: "storage_error",
+				version: TELEGRAM_EXPENSE_RPC_VERSION,
+			};
+		}
+		const current = await findExpenseById(resolved.expense.id, dependencies.database);
+		if (current.err || !current.val) {
+			return { kind: "storage_error", version: TELEGRAM_EXPENSE_RPC_VERSION };
+		}
+		try {
+			return {
+				expense: mapExpense(current.val),
+				kind: attachment,
+				version: TELEGRAM_EXPENSE_RPC_VERSION,
+			};
+		} catch {
+			return { kind: "storage_error", version: TELEGRAM_EXPENSE_RPC_VERSION };
+		}
+	} finally {
+		if (!receiptHandled) await cancelReceiptStream(receiptStream);
 	}
 }
