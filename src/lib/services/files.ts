@@ -90,9 +90,18 @@ export async function attachReceiptStreamIfMissing(
 			{ ...metadata, objectKey },
 			dependencies.database,
 		);
-		if (result.err || result.val.kind === "not_found") {
+		if (result.err) {
+			const reconciled = await findExpenseReceipt(expenseId, dependencies.database);
+			if (reconciled.err) return { kind: "failed" };
+			if (reconciled.val?.objectKey === objectKey) {
+				return { kind: "attached" };
+			}
 			await dependencies.receipts.delete(objectKey);
-			return result.err ? { kind: "failed" } : { kind: "not_found" };
+			return reconciled.val ? { kind: "already_attached" } : { kind: "failed" };
+		}
+		if (result.val.kind === "not_found") {
+			await dependencies.receipts.delete(objectKey);
+			return { kind: "not_found" };
 		}
 		if (result.val.kind === "already_attached") {
 			await dependencies.receipts.delete(objectKey);
