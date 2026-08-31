@@ -62,9 +62,6 @@ export const TelegramExpenseInputSchema = z
 		if (new Set(input.participantIds).size !== input.participantIds.length) {
 			context.addIssue({ code: "custom", message: "Duplicate participants." });
 		}
-		if (!input.participantIds.includes(input.paidByParticipantId)) {
-			context.addIssue({ code: "custom", message: "The payer must participate." });
-		}
 		if (input.splitMode === "equal") {
 			if (input.shareAllocations.length > 0) {
 				context.addIssue({ code: "custom", message: "Equal splits cannot include allocations." });

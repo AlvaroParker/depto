@@ -107,7 +107,7 @@ describe("MCP server definition", () => {
 			idempotencyKey: crypto.randomUUID(),
 			kindId: "kind-other",
 			name: "Supermercado",
-			paidByParticipantId: "participant_alvaro",
+			paidByParticipantId: "participant_trinidad",
 			participantIds: ["participant_alvaro", "participant_camila"],
 			...(sendEmailNotifications === undefined ? {} : { sendEmailNotifications }),
 		};
@@ -119,7 +119,11 @@ describe("MCP server definition", () => {
 		});
 		expect(response.status).toBe(200);
 		expect(mocks.createExpenseTool).toHaveBeenCalledWith(
-			expect.objectContaining({ sendEmailNotifications: expected }),
+			expect.objectContaining({
+				paidByParticipantId: "participant_trinidad",
+				participantIds: ["participant_alvaro", "participant_camila"],
+				sendEmailNotifications: expected,
+			}),
 			actor,
 		);
 	});

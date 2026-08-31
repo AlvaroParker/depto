@@ -44,6 +44,44 @@ describe("expense creation input", () => {
 		).toBe(true);
 	});
 
+	it("treats equal and custom participants as share recipients independent of the payer", () => {
+		const externalPayerExpense = {
+			...validExpense,
+			participantIds: ["participant_camila", "participant_trinidad"],
+		};
+		expect(ExpenseCreateInputSchema.safeParse(externalPayerExpense).success).toBe(true);
+		expect(
+			ExpenseCreateInputSchema.safeParse({
+				...externalPayerExpense,
+				shareAllocations: [
+					{ participantId: "participant_camila", shareAmountMinor: 7_000 },
+					{ participantId: "participant_trinidad", shareAmountMinor: 3_000 },
+				],
+				splitMode: "custom",
+			}).success,
+		).toBe(true);
+	});
+
+	it("requires the payer to receive a share in open creation and edits", () => {
+		const externalPayerOpenExpense = {
+			...validExpense,
+			participantIds: ["participant_camila", "participant_trinidad"],
+			shareAllocations: [
+				{ participantId: "participant_camila", shareAmountMinor: 7_000 },
+				{ participantId: "participant_trinidad", shareAmountMinor: 3_000 },
+			],
+			splitMode: "open" as const,
+		};
+		for (const schema of [ExpenseCreateInputSchema, ExpensePatchSchema]) {
+			const result = schema.safeParse(externalPayerOpenExpense);
+			expect(result.success).toBe(false);
+			if (result.success) continue;
+			expect(result.error.issues).toContainEqual(
+				expect.objectContaining({ path: ["paidByParticipantId"] }),
+			);
+		}
+	});
+
 	it.each([
 		["missing allocations", undefined],
 		[

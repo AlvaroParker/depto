@@ -109,6 +109,29 @@ async function findSelectedParticipants(
 	return result.results;
 }
 
+async function assertPayerAvailable(
+	database: D1Database,
+	payerId: string,
+	expenseId?: string,
+): Promise<void> {
+	const historicalAvailability = expenseId
+		? `OR EXISTS (
+		     SELECT 1 FROM expenses
+		     WHERE id = ? AND paid_by_participant_id = participants.id
+		   )`
+		: "";
+	const bindings = expenseId ? [payerId, expenseId] : [payerId];
+	const payer = await database
+		.prepare(
+			`SELECT id
+			 FROM participants
+			 WHERE id = ? AND (active = 1 ${historicalAvailability})`,
+		)
+		.bind(...bindings)
+		.first<{ id: string }>();
+	if (!payer) throw new Error("The payer is not available.");
+}
+
 const EXPENSE_SELECT = `
 	SELECT e.id, e.name, e.description, e.amount_minor, e.currency, e.expense_date,
 	       e.receipt_object_key, e.receipt_filename, e.receipt_content_type,
@@ -280,8 +303,13 @@ async function prepareExpenseCreation(
 	now: Date,
 ): Promise<PreparedExpenseCreation> {
 	const participants = await findSelectedParticipants(database, input.participantIds);
-	if (!participants.some((participant) => participant.id === input.paidByParticipantId)) {
-		throw new Error("The payer must be one of the selected participants.");
+	await assertPayerAvailable(database, input.paidByParticipantId);
+	const splitMode = input.splitMode ?? "equal";
+	if (
+		splitMode === "open" &&
+		!participants.some((participant) => participant.id === input.paidByParticipantId)
+	) {
+		throw new Error("Open splits require the payer to receive a share.");
 	}
 	const initialPaidParticipantIds = input.initialPaidParticipantIds ?? [];
 	const initialPaidParticipantIdSet = new Set(initialPaidParticipantIds);
@@ -292,7 +320,6 @@ async function prepareExpenseCreation(
 	) {
 		throw new Error("Initial paid participants must be unique selected non-payers.");
 	}
-	const splitMode = input.splitMode ?? "equal";
 	const amounts = resolveShareAmounts(input, participants, splitMode);
 	if (
 		initialPaidParticipantIds.some(
@@ -459,13 +486,13 @@ export async function listExpenses(
 		}
 		if (context.participantScopeId) {
 			where.push(
-				`EXISTS (
-				 SELECT 1 FROM expense_shares scoped_share
-				 WHERE scoped_share.expense_id = e.id
-				   AND scoped_share.participant_id = ?
-				)`,
+				`(e.paid_by_participant_id = ? OR EXISTS (
+				  SELECT 1 FROM expense_shares scoped_share
+				  WHERE scoped_share.expense_id = e.id
+				    AND scoped_share.participant_id = ?
+				))`,
 			);
-			bindings.push(context.participantScopeId);
+			bindings.push(context.participantScopeId, context.participantScopeId);
 		}
 		if (query.pending === "mine") {
 			if (!context.currentParticipantId) {
@@ -544,6 +571,13 @@ export async function updateExpense(
 		const requestedParticipantIds = [...input.participantIds].sort();
 		const requestedSplitMode = input.splitMode ?? existing.splitMode;
 		const selectedParticipants = await findSelectedParticipants(database, input.participantIds, id);
+		await assertPayerAvailable(database, input.paidByParticipantId, id);
+		if (
+			requestedSplitMode === "open" &&
+			!selectedParticipants.some((participant) => participant.id === input.paidByParticipantId)
+		) {
+			throw new Error("Open splits require the payer to receive a share.");
+		}
 		const requestedAmounts = resolveShareAmounts(input, selectedParticipants, requestedSplitMode);
 		const requestedAmountByParticipant = new Map(
 			selectedParticipants.map((participant, index) => [participant.id, requestedAmounts[index]]),
@@ -577,9 +611,6 @@ export async function updateExpense(
 				.all<{ object_key: string }>();
 			removedPaymentProofObjectKeys = proofKeys.results.map((proof) => proof.object_key);
 			const participants = selectedParticipants;
-			if (!participants.some((participant) => participant.id === input.paidByParticipantId)) {
-				throw new Error("The payer must be one of the selected participants.");
-			}
 			const timestamp = now.toISOString();
 			const amounts = requestedAmounts;
 			const statements: D1PreparedStatement[] = [

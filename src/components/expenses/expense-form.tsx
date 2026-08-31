@@ -37,6 +37,7 @@ interface ExpenseFormProps {
 	expense?: ExpenseDetail;
 	expenseKinds: ExpenseKind[];
 	participants: Participant[];
+	payers?: Participant[];
 }
 
 const splitModeOptions: Array<{
@@ -97,6 +98,7 @@ export function ExpenseForm({
 	expense,
 	expenseKinds,
 	participants,
+	payers = participants,
 }: ExpenseFormProps) {
 	const router = useRouter();
 	const initialParticipantIds = expense
@@ -156,6 +158,9 @@ export function ExpenseForm({
 		(participant) => participant.id !== payerId,
 	);
 	const financialFieldsLocked = Boolean(expense?.splitMode === "open" && !canEditFinancials);
+	const openPayerUnavailable = Boolean(
+		payerId && !participants.some((participant) => participant.id === payerId),
+	);
 
 	function changeAmount(nextValue: string) {
 		const previousAmount = amountMinor;
@@ -171,10 +176,39 @@ export function ExpenseForm({
 
 	function changeSplitMode(nextMode: ExpenseSplitMode) {
 		if (financialFieldsLocked) return;
+		const nextParticipantIds =
+			nextMode === "open" && payerId && !participantIds.includes(payerId)
+				? [...participantIds, payerId]
+				: participantIds;
+		if (nextParticipantIds !== participantIds) setParticipantIds(nextParticipantIds);
 		if (splitMode === "equal" && nextMode !== "equal") {
-			setShareAmounts(equalAllocationMap(amountMinor, selectedParticipantIds));
+			setShareAmounts(equalAllocationMap(amountMinor, nextParticipantIds));
+		} else if (splitMode === "open" && nextMode === "custom" && payerId) {
+			setShareAmounts((current) => ({
+				...current,
+				[payerId]: resolvedShareAmounts[payerId] ?? 0,
+			}));
 		}
 		setSplitMode(nextMode);
+	}
+
+	function changePayer(nextPayerId: string) {
+		if (splitMode === "open") {
+			if (nextPayerId && !participantIds.includes(nextPayerId)) {
+				setParticipantIds((current) => [...current, nextPayerId]);
+			}
+			if (payerId) {
+				setShareAmounts((current) => ({
+					...current,
+					[payerId]: resolvedShareAmounts[payerId] ?? 0,
+					...(nextPayerId ? { [nextPayerId]: current[nextPayerId] ?? 0 } : {}),
+				}));
+			}
+		}
+		setPayerId(nextPayerId);
+		setInitialPaidParticipantIds((current) =>
+			current.filter((participantId) => participantId !== nextPayerId),
+		);
 	}
 
 	function buildShareAllocations(): ExpenseShareAllocation[] | undefined {
@@ -347,20 +381,14 @@ export function ExpenseForm({
 						disabled={financialFieldsLocked}
 						id="paidByParticipantId"
 						name="paidByParticipantId"
-						onChange={(event) => {
-							const nextPayerId = event.target.value;
-							setPayerId(nextPayerId);
-							setInitialPaidParticipantIds((current) =>
-								current.filter((participantId) => participantId !== nextPayerId),
-							);
-						}}
+						onChange={(event) => changePayer(event.target.value)}
 						required
 						value={payerId}
 					>
 						<option disabled value="">
 							Selecciona una persona
 						</option>
-						{selectedParticipants.map((participant) => (
+						{payers.map((participant) => (
 							<option key={participant.id} value={participant.id}>
 								{participant.name}
 							</option>
@@ -372,27 +400,29 @@ export function ExpenseForm({
 				</div>
 
 				<fieldset className="border-line bg-paper-strong/45 grid gap-3 rounded-2xl border p-4 sm:col-span-2">
-					<legend className="px-1 text-sm font-semibold">¿Quiénes participan?</legend>
+					<legend className="px-1 text-sm font-semibold">¿Entre quiénes se divide?</legend>
 					<p className="text-ink-muted flex items-center gap-2 text-xs leading-5">
-						<UsersRound aria-hidden size={16} /> El gasto incluye solo a las personas que
-						selecciones.
+						<UsersRound aria-hidden size={16} /> Cada persona seleccionada recibe una parte. Quien
+						pagó puede quedar fuera, salvo en una cuenta abierta.
 					</p>
 					<div className="grid gap-2 sm:grid-cols-2">
 						{participants.map((participant) => {
 							const selected = participantIds.includes(participant.id);
+							const requiredOpenPayer = splitMode === "open" && participant.id === payerId;
+							const selectionLocked = financialFieldsLocked || requiredOpenPayer;
 							return (
 								<label
 									className={`focus-within:ring-accent/20 relative flex min-h-12 items-center gap-3 rounded-xl border px-4 py-3 transition-colors focus-within:ring-3 ${
 										selected
 											? "border-accent/45 bg-accent/8 text-ink"
 											: "border-line bg-paper text-ink-muted"
-									} ${financialFieldsLocked ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+									} ${selectionLocked ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
 									key={participant.id}
 								>
 									<input
 										checked={selected}
 										className="absolute inset-0 z-10 cursor-pointer opacity-0 disabled:cursor-not-allowed"
-										disabled={financialFieldsLocked}
+										disabled={selectionLocked}
 										onChange={(event) => {
 											const next = event.target.checked
 												? [...participantIds, participant.id]
@@ -404,7 +434,6 @@ export function ExpenseForm({
 											setInitialPaidParticipantIds((current) =>
 												current.filter((participantId) => next.includes(participantId)),
 											);
-											if (!next.includes(payerId)) setPayerId("");
 										}}
 										type="checkbox"
 									/>
@@ -430,18 +459,20 @@ export function ExpenseForm({
 					<div className="grid gap-2 sm:grid-cols-3">
 						{splitModeOptions.map((option) => {
 							const selected = splitMode === option.value;
+							const optionDisabled =
+								financialFieldsLocked || (option.value === "open" && openPayerUnavailable);
 							const Icon = option.icon;
 							return (
 								<label
 									className={`relative grid min-h-32 gap-2 rounded-xl border p-4 transition ${
 										selected ? "border-accent/50 bg-accent/8" : "border-line bg-paper"
-									} ${financialFieldsLocked ? "cursor-not-allowed opacity-60" : "hover:border-line-strong cursor-pointer"}`}
+									} ${optionDisabled ? "cursor-not-allowed opacity-60" : "hover:border-line-strong cursor-pointer"}`}
 									key={option.value}
 								>
 									<input
 										checked={selected}
 										className="absolute inset-0 opacity-0"
-										disabled={financialFieldsLocked}
+										disabled={optionDisabled}
 										name="splitMode"
 										onChange={() => changeSplitMode(option.value)}
 										type="radio"
@@ -457,6 +488,11 @@ export function ExpenseForm({
 							);
 						})}
 					</div>
+					{openPayerUnavailable ? (
+						<p className="text-ink-muted text-xs leading-5">
+							Para usar una cuenta abierta, elige primero a una persona activa como pagadora.
+						</p>
+					) : null}
 					{financialFieldsLocked ? (
 						<p className="text-ink-muted text-xs leading-5">
 							Solo una persona administradora puede cambiar la estructura de una cuenta abierta.

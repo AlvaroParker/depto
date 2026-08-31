@@ -50,6 +50,13 @@ function validateSplitConfiguration(
 ): void {
 	const splitMode = input.splitMode ?? "equal";
 	const allocations = input.shareAllocations ?? [];
+	if (splitMode === "open" && !input.participantIds.includes(input.paidByParticipantId)) {
+		context.addIssue({
+			code: "custom",
+			message: "En una cuenta abierta, quien pagó debe recibir una parte.",
+			path: ["paidByParticipantId"],
+		});
+	}
 	if (splitMode === "equal") {
 		if (allocations.length > 0) {
 			context.addIssue({
@@ -86,16 +93,7 @@ function validateSplitConfiguration(
 	}
 }
 
-export const ExpenseInputSchema = ExpenseFieldsSchema.superRefine((input, context) => {
-	if (!input.participantIds.includes(input.paidByParticipantId)) {
-		context.addIssue({
-			code: "custom",
-			message: "Quien pagó debe participar en el gasto.",
-			path: ["paidByParticipantId"],
-		});
-	}
-	validateSplitConfiguration(input, context);
-});
+export const ExpenseInputSchema = ExpenseFieldsSchema.superRefine(validateSplitConfiguration);
 
 export const ExpenseCreateInputSchema = ExpenseFieldsSchema.extend({
 	initialPaidParticipantIds: z
@@ -105,13 +103,6 @@ export const ExpenseCreateInputSchema = ExpenseFieldsSchema.extend({
 	sendEmailNotifications: z.boolean().default(true),
 }).superRefine((input, context) => {
 	validateSplitConfiguration(input, context);
-	if (!input.participantIds.includes(input.paidByParticipantId)) {
-		context.addIssue({
-			code: "custom",
-			message: "Quien pagó debe participar en el gasto.",
-			path: ["paidByParticipantId"],
-		});
-	}
 	if (input.initialPaidParticipantIds?.includes(input.paidByParticipantId)) {
 		context.addIssue({
 			code: "custom",
@@ -151,16 +142,7 @@ export const ExpenseCreateInputSchema = ExpenseFieldsSchema.extend({
 
 export const ExpensePatchSchema = ExpenseFieldsSchema.extend({
 	resetPaidReimbursements: z.boolean().default(false),
-}).superRefine((input, context) => {
-	if (!input.participantIds.includes(input.paidByParticipantId)) {
-		context.addIssue({
-			code: "custom",
-			message: "Quien pagó debe participar en el gasto.",
-			path: ["paidByParticipantId"],
-		});
-	}
-	validateSplitConfiguration(input, context);
-});
+}).superRefine(validateSplitConfiguration);
 
 export const ExpenseQuerySchema = z.object({
 	kind: z.string().trim().optional(),

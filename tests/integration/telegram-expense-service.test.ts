@@ -232,6 +232,7 @@ describe("Telegram expense application service", () => {
 				...custom,
 				expense: {
 					...custom.expense,
+					paidByParticipantId: "participant_trinidad",
 					shareAllocations: [
 						{ participantId: "participant_alvaro", shareAmountMinor: 8_000 },
 						{ participantId: "participant_camila", shareAmountMinor: 4_000 },
@@ -243,7 +244,21 @@ describe("Telegram expense application service", () => {
 			dependencies,
 		);
 		expect(alvaro).toMatchObject({
-			expense: { shares: [{ shareAmountMinor: 8_000 }, { shareAmountMinor: 4_000 }] },
+			expense: {
+				payer: { id: "participant_trinidad" },
+				shares: [
+					{
+						participant: { id: "participant_alvaro" },
+						shareAmountMinor: 8_000,
+						status: "pending",
+					},
+					{
+						participant: { id: "participant_camila" },
+						shareAmountMinor: 4_000,
+						status: "pending",
+					},
+				],
+			},
 			kind: "created",
 		});
 

@@ -58,6 +58,7 @@ export function ExpenseList({
 				const personalShare = personalParticipantId
 					? expense.shares.find((share) => share.participant.id === personalParticipantId)
 					: undefined;
+				const paidByPersonalParticipant = expense.payer.id === personalParticipantId;
 				return (
 					<Link
 						className="group border-line bg-paper hover:border-line-strong hover:shadow-card grid gap-4 rounded-2xl border p-4 transition sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:px-5"
@@ -87,7 +88,18 @@ export function ExpenseList({
 							</div>
 						</div>
 						<div className="flex items-center justify-between gap-3 sm:block sm:text-right">
-							{personalShare?.shareAmountMinor === 0 ? (
+							{paidByPersonalParticipant && !personalShare ? (
+								<div>
+									<strong className="font-display text-xl">
+										{formatMoney(expense.amountMinor, expense.currency)}
+									</strong>
+									<div className="mt-1">
+										<Badge tone="paid">
+											<CheckCircle2 aria-hidden size={13} /> Pagaste tú
+										</Badge>
+									</div>
+								</div>
+							) : personalShare?.shareAmountMinor === 0 ? (
 								<div>
 									<strong className="font-display text-xl">
 										{formatMoney(expense.amountMinor, expense.currency)}
@@ -116,9 +128,7 @@ export function ExpenseList({
 									<div className="mt-1">
 										<Badge tone="paid">
 											<CheckCircle2 aria-hidden size={13} />{" "}
-											{expense.payer.id === personalParticipantId
-												? "Pagaste tú"
-												: "Tu parte pagada"}
+											{paidByPersonalParticipant ? "Pagaste tú" : "Tu parte pagada"}
 										</Badge>
 									</div>
 								</div>

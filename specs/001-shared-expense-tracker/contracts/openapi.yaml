@@ -293,11 +293,17 @@ components:
         currency: { type: string, pattern: "^[A-Z]{3}$" }
         expenseDate: { type: string, format: date }
         kindId: { type: string }
-        paidByParticipantId: { type: string }
+        paidByParticipantId:
+          type: string
+          description: >-
+            Payer, active on creation. An edit may retain the expense's current inactive payer. The
+            payer may be outside participantIds for equal and custom splits, but must be included for
+            open splits.
         participantIds:
           type: array
           minItems: 1
           uniqueItems: true
+          description: Participants who receive expense shares; this set does not imply the payer.
           items: { type: string }
         splitMode:
           allOf: [{ $ref: "#/components/schemas/ExpenseSplitMode" }]
@@ -306,8 +312,9 @@ components:
           type: array
           uniqueItems: true
           description: >-
-            Required for custom and open modes, with one non-negative allocation per selected
-            participant and an exact sum equal to amountMinor. Omitted for equal mode.
+            Required for custom and open modes, with one non-negative allocation per share recipient
+            and an exact sum equal to amountMinor. Open mode requires the payer among the recipients.
+            Omitted for equal mode.
           items: { $ref: "#/components/schemas/ExpenseShareAllocation" }
     ExpenseCreateInput:
       allOf:
@@ -318,7 +325,7 @@ components:
               type: array
               uniqueItems: true
               default: []
-              description: Selected non-payers whose shares start paid; the payer is not allowed.
+              description: Selected non-payer share recipients whose shares start paid.
               items: { type: string }
     Dashboard:
       type: object

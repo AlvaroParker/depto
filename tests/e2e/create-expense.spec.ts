@@ -14,7 +14,7 @@ test("creates an exact expense and shows it in detail and history", async ({ pag
 	});
 	await expect(notificationSwitch).toBeChecked();
 	await notificationSwitch.uncheck();
-	const participantGroup = page.getByRole("group", { name: "¿Quiénes participan?" });
+	const participantGroup = page.getByRole("group", { name: "¿Entre quiénes se divide?" });
 	const paidGroup = page.getByRole("group", { name: "¿Quién ya pagó su parte?" });
 	await paidGroup.getByRole("checkbox", { name: /Camila/ }).check();
 	await participantGroup.getByRole("checkbox", { name: "Camila", exact: true }).uncheck();

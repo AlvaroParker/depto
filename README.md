@@ -139,6 +139,13 @@ elimina su comprobante; la eliminación lógica del gasto lo conserva de forma i
 
 ## Correctitud financiera
 
-Los montos se almacenan como enteros CLP. Cada gasto crea una parte por participante seleccionado dentro de un `D1.batch()`: base `floor(monto / cantidad)` y los pesos restantes se asignan en el orden estable de participantes. Agregar un usuario no modifica las partes de gastos anteriores. Cambiar monto, pagador o participantes reinicia estados pagados solamente después de confirmación explícita.
+Los montos se almacenan como enteros CLP. `participantIds` identifica a quienes reciben una parte y
+cada gasto crea solo esas partes dentro de un `D1.batch()`: base `floor(monto / cantidad)` y los pesos
+restantes se asignan en el orden estable de participantes. En divisiones iguales o específicas, una
+persona activa puede pagar sin recibir una parte; todas las partes quedan como deuda hacia ella. Una
+cuenta abierta siempre incluye a quien pagó porque su parte absorbe el saldo restante. Agregar un
+usuario no modifica las partes de gastos anteriores. Cambiar monto, pagador o destinatarios reinicia
+estados pagados solamente después de confirmación explícita. Este comportamiento usa el esquema D1
+existente y no requiere una migración.
 
 La especificación OAuth/MCP y su plan ejecutable están en [`specs/002-mcp-expense-integration`](specs/002-mcp-expense-integration/).

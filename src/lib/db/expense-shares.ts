@@ -296,6 +296,12 @@ export async function updateOpenShareAmount(
 		}
 
 		const shares = await readExpenseShares(database, existing.expense_id);
+		const payerShares = shares.filter(
+			(share) => share.participant_id === existing.expense_payer_id,
+		);
+		if (payerShares.length !== 1 || payerShares[0]?.status !== "settled") {
+			throw new Error("Open expenses require exactly one settled payer share.");
+		}
 		const otherNonPayerTotal = shares.reduce(
 			(sum, share) =>
 				share.participant_id !== existing.expense_payer_id && share.id !== id
