@@ -50,6 +50,7 @@ export async function createTestBindings(): Promise<TestBindings> {
 		"0010_add_oauth_mcp.sql",
 		"0011_allow_shared_payment_proof_objects.sql",
 		"0012_add_participant_bank_accounts.sql",
+		"0013_add_user_telegram_ids.sql",
 	]);
 	await bindings.database.batch(
 		[

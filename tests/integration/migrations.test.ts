@@ -186,5 +186,62 @@ describe("production user-participant migration", () => {
 			.prepare("SELECT COUNT(*) AS count FROM participant_bank_accounts")
 			.first<{ count: number }>();
 		expect(legacyAccounts?.count).toBe(0);
+
+		await applyMigrations(bindings.database, ["0013_add_user_telegram_ids.sql"]);
+		const telegramColumn = await bindings.database
+			.prepare("SELECT name FROM pragma_table_info('app_users') WHERE name = 'telegram_user_id'")
+			.first<{ name: string }>();
+		expect(telegramColumn?.name).toBe("telegram_user_id");
+		const legacyTelegramIds = await bindings.database
+			.prepare("SELECT COUNT(*) AS count FROM app_users WHERE telegram_user_id IS NOT NULL")
+			.first<{ count: number }>();
+		expect(legacyTelegramIds?.count).toBe(0);
+
+		await bindings.database
+			.prepare("UPDATE app_users SET telegram_user_id = '1' WHERE id = 'linked-user'")
+			.run();
+		await bindings.database
+			.prepare("UPDATE app_users SET telegram_user_id = '1099511627775' WHERE id = 'missing-user'")
+			.run();
+		const storedTelegramIds = await bindings.database
+			.prepare(
+				"SELECT id, telegram_user_id FROM app_users WHERE telegram_user_id IS NOT NULL ORDER BY id",
+			)
+			.all<{ id: string; telegram_user_id: string }>();
+		expect(storedTelegramIds.results).toEqual([
+			{ id: "linked-user", telegram_user_id: "1" },
+			{ id: "missing-user", telegram_user_id: "1099511627775" },
+		]);
+
+		for (const invalid of [
+			"",
+			"0",
+			"01",
+			"-1",
+			"+1",
+			"1.0",
+			"1e3",
+			"@linked",
+			" 2 ",
+			"١٢٣",
+			"1099511627776",
+		]) {
+			await expect(
+				bindings.database
+					.prepare("UPDATE app_users SET telegram_user_id = ? WHERE id = 'linked-user'")
+					.bind(invalid)
+					.run(),
+			).rejects.toThrow(/check constraint/i);
+		}
+		await expect(
+			bindings.database
+				.prepare("UPDATE app_users SET telegram_user_id = '2' WHERE id = 'root'")
+				.run(),
+		).rejects.toThrow(/check constraint/i);
+		await expect(
+			bindings.database
+				.prepare("UPDATE app_users SET telegram_user_id = '1' WHERE id = 'missing-user'")
+				.run(),
+		).rejects.toThrow(/unique constraint/i);
 	});
 });

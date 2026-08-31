@@ -21,6 +21,7 @@ const sessionOnlyRoutes = [
 	"src/app/api/household-information/[id]/route.ts",
 	"src/app/api/oauth/grants/route.ts",
 	"src/app/api/oauth/grants/[id]/route.ts",
+	"src/app/api/profile/telegram/route.ts",
 ];
 
 describe("security gates", () => {
@@ -35,12 +36,17 @@ describe("security gates", () => {
 	it("keeps privileged and grant-management routes session-only", async () => {
 		for (const route of sessionOnlyRoutes) {
 			const source = await readFile(path.join(process.cwd(), route), "utf8");
-			if (route.includes("/oauth/grants")) {
+			if (route.includes("/oauth/grants") || route.includes("/profile/telegram")) {
 				expect(source, route).toMatch(/allowBearer: false/);
 			} else {
 				expect(source, route).toMatch(/await auth\(\)/);
 				expect(source, route).toMatch(/unauthorizedResponse\(\)/);
 			}
 		}
+		const telegramRoute = await readFile(
+			path.join(process.cwd(), "src/app/api/profile/telegram/route.ts"),
+			"utf8",
+		);
+		expect(telegramRoute).not.toMatch(/export async function GET/);
 	});
 });
