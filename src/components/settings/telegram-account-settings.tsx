@@ -108,7 +108,7 @@ export function TelegramAccountSettings({ initialTelegramUserId }: TelegramAccou
 							) : null}
 						</div>
 						<p className="text-ink-muted mt-1 text-sm leading-6">
-							Guarda el ID numérico de tu cuenta para usarlo en futuras integraciones.
+							Guarda el ID numérico de tu cuenta para registrar gastos desde el bot.
 						</p>
 					</div>
 				</div>
@@ -137,7 +137,9 @@ export function TelegramAccountSettings({ initialTelegramUserId }: TelegramAccou
 						value={telegramUserId}
 					/>
 					<p className="border-line bg-paper-strong/70 text-ink-muted rounded-2xl border px-4 py-3 text-xs leading-5">
-						Este dato es declarado por ti. No verificamos que esa cuenta de Telegram te pertenezca.
+						Este dato es declarado por ti y no verificamos que esa cuenta de Telegram te pertenezca.
+						Al guardarlo, autorizas al bot a registrar gastos en tu nombre; configura solo tu propia
+						cuenta. Eliminarlo revoca ese acceso.
 					</p>
 					{generalError ? (
 						<p className="text-danger text-sm" role="alert">
@@ -184,7 +186,7 @@ export function TelegramAccountSettings({ initialTelegramUserId }: TelegramAccou
 			</section>
 
 			<Dialog
-				description="Dejarás de tener un ID de Telegram configurado en tu cuenta."
+				description="El bot dejará de poder registrar gastos en tu nombre."
 				onClose={closeRemovalDialog}
 				open={confirmingRemoval}
 				title="Eliminar ID de Telegram"

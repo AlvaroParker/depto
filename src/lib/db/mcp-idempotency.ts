@@ -2,18 +2,17 @@ import "server-only";
 
 import type { Result } from "ts-results";
 import { getDatabase } from "@/lib/db/bindings";
+import {
+	type ExpenseIdempotencyInput,
+	readExpenseIdempotencyRecord,
+} from "@/lib/db/expense-idempotency";
 import { type DbError, safeDbCall } from "@/lib/db/safe-db-call";
 import { createId } from "@/lib/util/ids";
 
 export type McpIdempotencyReservation =
 	{ kind: "reserved" } | { expenseId: string | null; kind: "existing" } | { kind: "conflict" };
 
-interface ReservationInput {
-	idempotencyKey: string;
-	requestHash: string;
-	toolName: string;
-	userId: string;
-}
+type ReservationInput = ExpenseIdempotencyInput;
 
 export async function reserveMcpIdempotencyRecord(
 	input: ReservationInput,
@@ -39,16 +38,10 @@ export async function reserveMcpIdempotencyRecord(
 			)
 			.run();
 		if (inserted.meta.changes === 1) return { kind: "reserved" };
-		const existing = await database
-			.prepare(
-				`SELECT request_hash, expense_id FROM mcp_idempotency_records
-				 WHERE user_id = ? AND tool_name = ? AND idempotency_key = ?`,
-			)
-			.bind(input.userId, input.toolName, input.idempotencyKey)
-			.first<{ expense_id: string | null; request_hash: string }>();
+		const existing = await readExpenseIdempotencyRecord(input, database);
 		if (!existing) throw new Error("Idempotency reservation disappeared.");
-		if (existing.request_hash !== input.requestHash) return { kind: "conflict" };
-		return { expenseId: existing.expense_id, kind: "existing" };
+		if (existing.requestHash !== input.requestHash) return { kind: "conflict" };
+		return { expenseId: existing.expenseId, kind: "existing" };
 	});
 }
 

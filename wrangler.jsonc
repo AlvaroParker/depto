@@ -17,7 +17,10 @@
 			"custom_domain": true,
 		},
 	],
-	"main": ".open-next/worker.js",
+	"main": "custom-worker.ts",
+	"alias": {
+		"server-only": "./src/worker/server-only.ts",
+	},
 	"compatibility_date": "2026-07-09",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {

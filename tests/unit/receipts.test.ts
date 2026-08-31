@@ -4,6 +4,7 @@ import {
 	createReceiptObjectKey,
 	receiptContentDisposition,
 	sanitizeReceiptFilename,
+	validateReceiptImageSignature,
 	validateReceiptMetadata,
 } from "@/lib/util/receipts";
 
@@ -44,5 +45,20 @@ describe("receipt metadata", () => {
 		const second = createReceiptObjectKey("expense-1", "image/png");
 		expect(first).toMatch(/^receipts\/expense-1\/[0-9a-f-]+\.png$/);
 		expect(second).not.toBe(first);
+	});
+	it.each([
+		["image/jpeg", new Uint8Array([0xff, 0xd8, 0xff, 0xd9])],
+		["image/png", new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+		["image/webp", new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x04, 0, 0, 0, 0x57, 0x45, 0x42, 0x50])],
+	] as const)("accepts matching %s image signatures", (contentType, bytes) => {
+		expect(() => validateReceiptImageSignature(bytes, contentType)).not.toThrow();
+	});
+	it("rejects invalid bytes and MIME types that do not match the image", () => {
+		expect(() => validateReceiptImageSignature(new Uint8Array([0, 1, 2, 3]), "image/jpeg")).toThrow(
+			/no coincide/,
+		);
+		expect(() =>
+			validateReceiptImageSignature(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), "image/png"),
+		).toThrow(/no coincide/);
 	});
 });
