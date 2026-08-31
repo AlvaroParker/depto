@@ -5,6 +5,10 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@": path.resolve(import.meta.dirname, "src"),
+			"cloudflare:workers": path.resolve(
+				import.meta.dirname,
+				"tests/fixtures/cloudflare-workers.ts",
+			),
 			"server-only": path.resolve(import.meta.dirname, "tests/fixtures/server-only.ts"),
 		},
 	},
