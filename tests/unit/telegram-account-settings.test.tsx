@@ -24,7 +24,7 @@ describe("Telegram account settings", () => {
 	});
 	afterEach(cleanup);
 
-	it("renders an empty numeric text field with the unverified-account guidance", () => {
+	it("explains the authorization granted by a declared, unverified Telegram account", () => {
 		render(<TelegramAccountSettings initialTelegramUserId={null} />);
 
 		const input = screen.getByRole("textbox", { name: "ID de usuario de Telegram" });
@@ -34,8 +34,10 @@ describe("Telegram account settings", () => {
 		expect(input).toHaveAttribute("maxlength", "13");
 		expect(screen.getByText("Usa el ID numérico, no tu @usuario.")).toBeVisible();
 		expect(
-			screen.getByText(/No verificamos que esa cuenta de Telegram te pertenezca/),
+			screen.getByText(/no verificamos que esa cuenta de Telegram te pertenezca/i),
 		).toBeVisible();
+		expect(screen.getByText(/autorizas al bot a registrar gastos en tu nombre/)).toBeVisible();
+		expect(screen.getByText(/Eliminarlo revoca ese acceso/)).toBeVisible();
 		expect(screen.queryByText("Configurado")).not.toBeInTheDocument();
 	});
 

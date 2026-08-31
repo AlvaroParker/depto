@@ -46,7 +46,27 @@ vacío en desarrollo, el gasto se crea normalmente y el envío se omite.
 
 Cada usuario regular puede guardar o reemplazar su ID numérico de Telegram en **Ajustes → Telegram**.
 Es un dato declarado por el usuario: no se aceptan nombres `@usuario`, no se consulta Telegram para
-resolverlo o verificar su propiedad y nunca se usa como credencial de autenticación.
+resolverlo ni verificar su propiedad. Guardarlo autoriza al bot privado a registrar gastos en nombre
+de esa cuenta; debe configurarse solamente la cuenta propia. Eliminarlo o reemplazarlo revoca el acceso
+del ID anterior de inmediato.
+
+## Integración privada de Telegram
+
+El Worker del sitio exporta `TelegramExpenses` como un `WorkerEntrypoint` nombrado para una vinculación
+de servicio de Cloudflare; no agrega una ruta HTTP pública. El bot puede buscar el resultado de una
+actualización, crear el gasto con su comprobante o reparar un comprobante que no logró adjuntarse. En
+cada llamada, el sitio vuelve a resolver el ID de Telegram contra una cuenta regular activa y su
+participante activo antes de leer o escribir datos.
+
+Las solicitudes usan un contrato versionado y estricto. Los comprobantes se transfieren como streams,
+aceptan JPEG, PNG o WebP de hasta 10 MB y se validan por tamaño y firma binaria. La creación es atómica
+e idempotente por actualización de Telegram: repetir la misma solicitud devuelve el gasto existente,
+mientras que reutilizar la clave con datos distintos falla sin crear otro gasto.
+
+Para desplegar la integración, publica primero este Worker `expenses`, luego configura en el Worker del
+bot una vinculación de servicio que apunte a `expenses` con el entrypoint `TelegramExpenses` y finalmente
+publica el bot. Para retirar o revertir la integración, despliega primero el bot sin esa dependencia y
+después cambia el entrypoint del sitio.
 
 ## OAuth y MCP
 
