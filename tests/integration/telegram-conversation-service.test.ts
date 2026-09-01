@@ -261,6 +261,57 @@ describe("Telegram conversation read service", () => {
 		});
 	});
 
+	it("keeps every outgoing balance row aligned with its expense breakdown", async () => {
+		const balance = await getTelegramBalance(actorRequest, dependencies);
+		if (balance.kind !== "ok") throw new Error("Expected Telegram balance.");
+		const outgoing = balance.data.debtsByParticipant.filter(
+			({ amountOwedMinor }) => amountOwedMinor > 0,
+		);
+
+		expect(
+			outgoing.map(({ amountOwedMinor, participant }) => ({
+				amountOwedMinor,
+				name: participant.name,
+			})),
+		).toEqual([
+			{ amountOwedMinor: 6_000, name: "Trinidad" },
+			{ amountOwedMinor: 3_000, name: "Camila" },
+		]);
+
+		const breakdowns = await Promise.all(
+			outgoing.map(async (debt) => ({
+				debt,
+				result: await getTelegramDebtBreakdown(
+					{
+						...actorRequest,
+						counterpartyId: debt.participant.id,
+						direction: "owed_by_caller",
+						page: 1,
+						pageSize: 10,
+					},
+					dependencies,
+				),
+			})),
+		);
+		for (const { debt, result } of breakdowns) {
+			expect(result).toMatchObject({
+				data: {
+					counterparty: { id: debt.participant.id },
+					direction: "owed_by_caller",
+					totalAmountMinor: debt.amountOwedMinor,
+					totalExpenseCount: debt.amountOwedExpenseCount,
+				},
+				kind: "ok",
+				version: 1,
+			});
+		}
+		expect(
+			breakdowns.map(({ result }) =>
+				result.kind === "ok" ? result.data.expenses.map(({ name }) => name) : [],
+			),
+		).toEqual([["Internet hogar"], ["Mercado semanal"]]);
+	});
+
 	it("paginates debt contributions while keeping the aggregate independent of the page", async () => {
 		for (const [name, amountMinor, expenseDate, offset] of [
 			["Agua", 1_000, "2026-09-01", 5_000],
