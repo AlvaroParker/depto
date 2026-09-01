@@ -25,8 +25,11 @@ test("edits and deletes an expense with explicit confirmation", async ({ page })
 	await expect(page.getByRole("heading", { name: `${name} editado` })).toBeVisible();
 	await expect(page.getByRole("link", { name: /ver reemplazo\.pdf/i })).toBeVisible();
 	await page.getByRole("link", { name: "Editar" }).click();
-	await page.getByRole("button", { name: "Eliminar" }).click();
-	await page.getByRole("button", { name: "Sí, eliminar" }).click();
+	await page.getByRole("button", { name: "Eliminar gasto" }).click();
+	await page
+		.getByRole("dialog", { name: "¿Eliminar este gasto?" })
+		.getByRole("button", { name: "Eliminar gasto" })
+		.click();
 	await expect(page).toHaveURL(/\/expenses$/);
 	await expect(page.getByText(`${name} editado`)).toHaveCount(0);
 });

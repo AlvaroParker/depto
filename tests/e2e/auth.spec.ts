@@ -4,7 +4,9 @@ import { signIn } from "./helpers";
 test("redirects unauthenticated household pages to sign in", async ({ page }) => {
 	await page.goto("/expenses");
 	await expect(page).toHaveURL(/\/login/);
-	await expect(page.getByRole("heading", { name: /bienvenid/i })).toBeVisible();
+	await expect(page.getByRole("heading", { level: 1, name: "Bienvenidos a casa" })).toBeVisible();
+	await expect(page.locator("h1")).toHaveCount(1);
+	await expect(page.getByText("Lo compartido, claro para todos.", { exact: true })).toBeVisible();
 });
 
 test("shows one generic failure for invalid credentials", async ({ page }) => {
@@ -14,7 +16,10 @@ test("shows one generic failure for invalid credentials", async ({ page }) => {
 	await page.getByRole("button", { name: "Ingresar" }).click();
 
 	await expect(
-		page.getByText("El usuario o contraseña no son válidos.", { exact: true }),
+		page.getByText(
+			"El usuario o la contraseña no son válidos. Revisa ambos datos e inténtalo nuevamente.",
+			{ exact: true },
+		),
 	).toBeVisible();
 });
 
@@ -55,7 +60,10 @@ test("keeps repeated limited failures generic", async ({ context, page }) => {
 		await page.getByLabel("Contraseña").fill("incorrect-password");
 		await page.getByRole("button", { name: "Ingresar" }).click();
 		await expect(
-			page.getByText("El usuario o contraseña no son válidos.", { exact: true }),
+			page.getByText(
+				"El usuario o la contraseña no son válidos. Revisa ambos datos e inténtalo nuevamente.",
+				{ exact: true },
+			),
 		).toBeVisible();
 	}
 });

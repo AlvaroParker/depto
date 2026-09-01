@@ -65,8 +65,8 @@ describe("Telegram account settings", () => {
 			"1099511627775",
 		);
 		expect(screen.getByText("Configurado")).toBeVisible();
-		expect(screen.getByRole("button", { name: "Actualizar ID" })).toBeVisible();
-		expect(screen.getByRole("button", { name: "Eliminar ID" })).toBeVisible();
+		expect(screen.getByRole("button", { name: "Actualizar ID de Telegram" })).toBeVisible();
+		expect(screen.getByRole("button", { name: "Eliminar ID de Telegram" })).toBeVisible();
 	});
 
 	it("saves a new ID and announces success", async () => {
@@ -78,7 +78,7 @@ describe("Telegram account settings", () => {
 			screen.getByRole("textbox", { name: "ID de usuario de Telegram" }),
 			"123456789",
 		);
-		await user.click(screen.getByRole("button", { name: "Guardar ID" }));
+		await user.click(screen.getByRole("button", { name: "Guardar ID de Telegram" }));
 
 		expect(mocks.saveTelegramUserId).toHaveBeenCalledWith({ telegramUserId: "123456789" });
 		expect(await screen.findByRole("status")).toHaveTextContent("Tu ID de Telegram fue guardado.");
@@ -93,7 +93,7 @@ describe("Telegram account settings", () => {
 
 		await user.clear(input);
 		await user.type(input, "987654321012");
-		await user.click(screen.getByRole("button", { name: "Actualizar ID" }));
+		await user.click(screen.getByRole("button", { name: "Actualizar ID de Telegram" }));
 
 		expect(await screen.findByRole("status")).toHaveTextContent(
 			"Tu ID de Telegram fue actualizado.",
@@ -106,10 +106,10 @@ describe("Telegram account settings", () => {
 		const user = userEvent.setup();
 		render(<TelegramAccountSettings initialTelegramUserId="987654321012" />);
 
-		await user.click(screen.getByRole("button", { name: "Eliminar ID" }));
+		await user.click(screen.getByRole("button", { name: "Eliminar ID de Telegram" }));
 		const dialog = screen.getByRole("dialog", { name: "Eliminar ID de Telegram" });
 		expect(dialog).toHaveTextContent("987654321012");
-		await user.click(within(dialog).getByRole("button", { name: "Eliminar ID" }));
+		await user.click(within(dialog).getByRole("button", { name: "Eliminar ID de Telegram" }));
 
 		expect(mocks.removeTelegramUserId).toHaveBeenCalledOnce();
 		expect(await screen.findByRole("status")).toHaveTextContent("Tu ID de Telegram fue eliminado.");
@@ -123,7 +123,7 @@ describe("Telegram account settings", () => {
 		const input = screen.getByRole("textbox", { name: "ID de usuario de Telegram" });
 
 		await user.type(input, "@alvaro");
-		await user.click(screen.getByRole("button", { name: "Guardar ID" }));
+		await user.click(screen.getByRole("button", { name: "Guardar ID de Telegram" }));
 
 		expect(screen.getByText("Ingresa un ID numérico de Telegram válido.")).toBeVisible();
 		expect(input).toHaveAttribute("aria-invalid", "true");
@@ -145,7 +145,7 @@ describe("Telegram account settings", () => {
 		const input = screen.getByRole("textbox", { name: "ID de usuario de Telegram" });
 
 		await user.type(input, "123456789");
-		await user.click(screen.getByRole("button", { name: "Guardar ID" }));
+		await user.click(screen.getByRole("button", { name: "Guardar ID de Telegram" }));
 
 		expect(
 			await screen.findByText("Ese ID de Telegram ya está configurado en otra cuenta."),
@@ -164,7 +164,7 @@ describe("Telegram account settings", () => {
 			screen.getByRole("textbox", { name: "ID de usuario de Telegram" }),
 			"123456789",
 		);
-		await user.click(screen.getByRole("button", { name: "Guardar ID" }));
+		await user.click(screen.getByRole("button", { name: "Guardar ID de Telegram" }));
 
 		expect(await screen.findByRole("alert")).toHaveTextContent(
 			"No pudimos conectarnos. Revisa tu conexión e inténtalo nuevamente.",

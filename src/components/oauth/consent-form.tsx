@@ -6,7 +6,7 @@ interface ConsentFormProps {
 
 const scopeLabels: Record<string, string> = {
 	"expenses:read": "Ver gastos, saldos, comprobantes y participantes",
-	"expenses:write": "Crear y modificar gastos y recibos",
+	"expenses:write": "Crear y modificar gastos y comprobantes",
 	"reimbursements:write": "Cambiar pagos, montos abiertos y comprobantes",
 	offline_access: "Mantener la conexión cuando no estés usando la aplicación",
 };

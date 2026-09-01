@@ -37,7 +37,7 @@ export default async function SettingsPage() {
 				</h1>
 				<p className="text-ink-muted mt-3">
 					{canManage
-						? "Cada gasto se divide entre las personas que participan en él."
+						? "Administra los accesos y las categorías que usa el hogar."
 						: "Administra tus datos personales y las aplicaciones que pueden acceder a tu cuenta."}
 				</p>
 				{canManage ? (

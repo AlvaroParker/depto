@@ -281,7 +281,9 @@ export function ExpenseForm({
 				setReceiptProgress(null);
 				if (upload.err) {
 					setSavedId(result.val.id);
-					setFormError(`El gasto se guardó, pero el comprobante no: ${upload.val.message}`);
+					setFormError(
+						"El gasto se guardó sin el comprobante. Abre el gasto para volver a subir el archivo.",
+					);
 					return;
 				}
 			}
@@ -720,12 +722,18 @@ export function ExpenseForm({
 						className="bg-accent text-accent-foreground inline-flex min-h-11 items-center justify-center rounded-full px-5 text-sm font-semibold"
 						href={`/expenses/${savedId}`}
 					>
-						Ver gasto y reintentar
+						Ir al gasto para subirlo
 					</a>
 				) : null}
 				<Button disabled={pending || Boolean(savedId)} type="submit">
 					<Save aria-hidden size={18} />{" "}
-					{pending ? "Guardando…" : expense ? "Guardar cambios" : "Guardar gasto"}
+					{pending
+						? expense
+							? "Guardando cambios del gasto…"
+							: "Guardando gasto…"
+						: expense
+							? "Guardar cambios"
+							: "Guardar gasto"}
 				</Button>
 				{receiptProgress !== null ? (
 					<span className="text-ink-muted self-center text-sm">

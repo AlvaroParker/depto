@@ -32,7 +32,7 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
 			>
 				← Volver al gasto
 			</Link>
-			<header className="mt-6 mb-8 flex items-end justify-between gap-4">
+			<header className="mt-6 mb-8 flex flex-wrap items-end justify-between gap-4">
 				<div>
 					<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 						Corrección segura

@@ -109,7 +109,7 @@ export function ParticipantBankAccountDialog({
 							) : (
 								<Trash2 aria-hidden size={16} />
 							)}
-							{pending ? "Eliminando…" : "Eliminar datos"}
+							{pending ? "Eliminando datos bancarios…" : "Eliminar datos bancarios"}
 						</Button>
 					</div>
 				</div>
@@ -180,7 +180,7 @@ export function ParticipantBankAccountDialog({
 					<div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-between">
 						{account ? (
 							<Button disabled={pending} onClick={() => setConfirmingRemoval(true)} variant="ghost">
-								<Trash2 aria-hidden size={16} /> Eliminar datos
+								<Trash2 aria-hidden size={16} /> Eliminar datos bancarios
 							</Button>
 						) : (
 							<span />
@@ -195,7 +195,7 @@ export function ParticipantBankAccountDialog({
 								) : (
 									<Save aria-hidden size={16} />
 								)}
-								{pending ? "Guardando…" : "Guardar datos"}
+								{pending ? "Guardando datos bancarios…" : "Guardar datos bancarios"}
 							</Button>
 						</div>
 					</div>

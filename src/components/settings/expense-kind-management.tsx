@@ -185,7 +185,7 @@ export function ExpenseKindManagement({ initialKinds }: ExpenseKindManagementPro
 						</p>
 					) : null}
 					<Button className="w-full" disabled={pending} type="submit">
-						<Plus aria-hidden size={18} /> {pending ? "Guardando…" : "Crear categoría"}
+						<Plus aria-hidden size={18} /> {pending ? "Creando categoría…" : "Crear categoría"}
 					</Button>
 				</form>
 			</section>
@@ -269,7 +269,8 @@ export function ExpenseKindManagement({ initialKinds }: ExpenseKindManagementPro
 								Cancelar
 							</Button>
 							<Button disabled={pending} type="submit">
-								<Save aria-hidden size={17} /> {pending ? "Guardando…" : "Guardar cambios"}
+								<Save aria-hidden size={17} />
+								{pending ? "Guardando cambios de la categoría…" : "Guardar cambios"}
 							</Button>
 						</div>
 					</form>

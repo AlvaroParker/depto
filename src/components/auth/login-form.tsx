@@ -25,7 +25,9 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
 				username: formData.get("username"),
 			});
 			if (result?.error) {
-				setError("El usuario o contraseña no son válidos.");
+				setError(
+					"El usuario o la contraseña no son válidos. Revisa ambos datos e inténtalo nuevamente.",
+				);
 				return;
 			}
 			router.replace(callbackUrl);

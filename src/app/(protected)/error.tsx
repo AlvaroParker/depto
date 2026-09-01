@@ -18,7 +18,7 @@ export default function ErrorBoundary({
 					No pudimos cargar esta información. Tus datos no se modificaron.
 				</p>
 				<Button className="mt-6" onClick={reset}>
-					Intentar nuevamente
+					Volver a intentar
 				</Button>
 			</div>
 		</main>

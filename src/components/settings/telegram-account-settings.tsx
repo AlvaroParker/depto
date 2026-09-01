@@ -136,7 +136,7 @@ export function TelegramAccountSettings({ initialTelegramUserId }: TelegramAccou
 						type="text"
 						value={telegramUserId}
 					/>
-					<p className="border-line bg-paper-strong/70 text-ink-muted rounded-2xl border px-4 py-3 text-xs leading-5">
+					<p className="border-line bg-paper-strong/70 text-ink-muted max-w-3xl rounded-2xl border px-4 py-3 text-xs leading-5">
 						Este dato es declarado por ti y no verificamos que esa cuenta de Telegram te pertenezca.
 						Al guardarlo, autorizas al bot a consultar tu información de gastos, saldos y deudas del
 						hogar, y a registrar gastos en tu nombre; configura solo tu propia cuenta. Eliminarlo
@@ -167,7 +167,7 @@ export function TelegramAccountSettings({ initialTelegramUserId }: TelegramAccou
 								}}
 								variant="ghost"
 							>
-								<Trash2 aria-hidden size={16} /> Eliminar ID
+								<Trash2 aria-hidden size={16} /> Eliminar ID de Telegram
 							</Button>
 						) : (
 							<span />
@@ -180,11 +180,11 @@ export function TelegramAccountSettings({ initialTelegramUserId }: TelegramAccou
 							)}
 							{pending
 								? savedTelegramUserId
-									? "Actualizando…"
-									: "Guardando…"
+									? "Actualizando ID de Telegram…"
+									: "Guardando ID de Telegram…"
 								: savedTelegramUserId
-									? "Actualizar ID"
-									: "Guardar ID"}
+									? "Actualizar ID de Telegram"
+									: "Guardar ID de Telegram"}
 						</Button>
 					</div>
 				</form>
@@ -218,7 +218,7 @@ export function TelegramAccountSettings({ initialTelegramUserId }: TelegramAccou
 							) : (
 								<Trash2 aria-hidden size={16} />
 							)}
-							{pending ? "Eliminando…" : "Eliminar ID"}
+							{pending ? "Eliminando ID de Telegram…" : "Eliminar ID de Telegram"}
 						</Button>
 					</div>
 				</div>

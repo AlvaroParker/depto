@@ -51,8 +51,13 @@ test("approves, denies, lists, and disconnects OAuth applications", async ({ pag
 	await expect(page.getByRole("heading", { name: "Aplicaciones conectadas" })).toBeVisible();
 	const application = page.getByRole("listitem").filter({ hasText: approvedName });
 	await expect(application).toContainText("Lectura de gastos");
-	page.once("dialog", (dialog) => dialog.accept());
-	await application.getByRole("button", { name: "Desconectar" }).click();
-	await expect(page.getByText(approvedName)).not.toBeVisible();
+	await application.getByRole("button", { name: "Desconectar aplicación" }).click();
+	const disconnectDialog = page.getByRole("dialog", { name: "Desconectar aplicación" });
+	await expect(disconnectDialog).toContainText(approvedName);
+	await disconnectDialog.getByRole("button", { name: "Desconectar aplicación" }).click();
+	await expect(page.getByRole("status")).toHaveText(
+		`La aplicación ${approvedName} fue desconectada.`,
+	);
+	await expect(application).not.toBeVisible();
 	await expect(page.getByText(deniedName)).not.toBeVisible();
 });

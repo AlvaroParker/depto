@@ -562,7 +562,7 @@ export function HouseholdInformationDirectory({
 							Cancelar
 						</Button>
 						<Button disabled={pending} type="submit">
-							<Save aria-hidden size={17} /> {pending ? "Guardando…" : "Guardar"}
+							<Save aria-hidden size={17} /> {pending ? "Guardando dato…" : "Guardar dato"}
 						</Button>
 					</div>
 				</form>
@@ -583,7 +583,7 @@ export function HouseholdInformationDirectory({
 						Cancelar
 					</Button>
 					<Button disabled={pending} onClick={confirmArchive} variant="danger">
-						<Archive aria-hidden size={17} /> {pending ? "Archivando…" : "Archivar"}
+						<Archive aria-hidden size={17} /> {pending ? "Archivando dato…" : "Archivar dato"}
 					</Button>
 				</div>
 			</Dialog>

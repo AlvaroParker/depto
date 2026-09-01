@@ -35,9 +35,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 					<p className="font-display text-accent-strong mb-6 text-lg italic">
 						Gastos compartidos, cuentas claras
 					</p>
-					<h1 className="font-display text-6xl leading-[0.98] font-semibold tracking-[-0.04em]">
+					<p className="font-display text-6xl leading-[0.98] font-semibold tracking-[-0.04em]">
 						Lo compartido, claro para todos.
-					</h1>
+					</p>
 					<p className="text-paper/65 mt-7 max-w-md text-base leading-7">
 						Gastos, comprobantes y reembolsos en un solo cuaderno común.
 					</p>
@@ -50,9 +50,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 					<p className="text-accent-strong text-xs font-bold tracking-[0.2em] lg:hidden">
 						CUENTAS DE CASA
 					</p>
-					<h2 className="font-display text-ink mt-3 text-4xl font-semibold tracking-[-0.03em]">
+					<h1 className="font-display text-ink mt-3 text-4xl font-semibold tracking-[-0.03em]">
 						Bienvenidos a casa
-					</h2>
+					</h1>
 					<p className="text-ink-muted mt-3 mb-8 text-sm leading-6">
 						Ingresa con tu usuario para revisar los gastos compartidos.
 					</p>

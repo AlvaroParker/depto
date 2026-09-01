@@ -232,7 +232,7 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 						type="password"
 					/>
 					<Button className="w-full" disabled={pending} type="submit">
-						<UserPlus aria-hidden size={18} /> {pending ? "Guardando…" : "Crear acceso"}
+						<UserPlus aria-hidden size={18} /> {pending ? "Creando acceso…" : "Crear acceso"}
 					</Button>
 				</form>
 			</section>
@@ -355,7 +355,7 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 										</span>
 									) : !isCurrent ? (
 										<Button
-											aria-label={`Eliminar a ${user.displayName}`}
+											aria-label={`Eliminar acceso de ${user.displayName}`}
 											className="size-11 shrink-0 p-0"
 											disabled={pending}
 											onClick={() => setDeletingUser(user)}
@@ -386,7 +386,8 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 						Cancelar
 					</Button>
 					<Button disabled={pending} onClick={confirmDelete} variant="danger">
-						<Trash2 aria-hidden size={17} /> {pending ? "Eliminando…" : "Eliminar"}
+						<Trash2 aria-hidden size={17} />
+						{pending ? "Eliminando acceso…" : "Eliminar acceso"}
 					</Button>
 				</div>
 			</Dialog>
@@ -455,7 +456,8 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 								Cancelar
 							</Button>
 							<Button disabled={pending} type="submit">
-								<Save aria-hidden size={17} /> {pending ? "Guardando…" : "Guardar cambios"}
+								<Save aria-hidden size={17} />
+								{pending ? "Guardando cambios del acceso…" : "Guardar cambios"}
 							</Button>
 						</div>
 					</form>

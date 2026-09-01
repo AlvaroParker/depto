@@ -31,11 +31,11 @@ test("lets regular users manage a unique Telegram ID while hiding it from root",
 		await expect(alvaroPage.getByRole("heading", { name: "Tu cuenta" })).toBeVisible();
 		const alvaroInput = alvaroPage.getByLabel("ID de usuario de Telegram");
 		await alvaroInput.fill("@alvaro");
-		await alvaroPage.getByRole("button", { name: "Guardar ID" }).click();
+		await alvaroPage.getByRole("button", { name: "Guardar ID de Telegram" }).click();
 		await expect(alvaroPage.getByText("Ingresa un ID numérico de Telegram válido.")).toBeVisible();
 
 		await alvaroInput.fill(originalTelegramUserId);
-		await alvaroPage.getByRole("button", { name: "Guardar ID" }).click();
+		await alvaroPage.getByRole("button", { name: "Guardar ID de Telegram" }).click();
 		await expect(alvaroPage.getByRole("status")).toHaveText("Tu ID de Telegram fue guardado.");
 		await expect(alvaroPage.getByText("Configurado", { exact: true })).toBeVisible();
 
@@ -44,12 +44,12 @@ test("lets regular users manage a unique Telegram ID while hiding it from root",
 			originalTelegramUserId,
 		);
 		await alvaroPage.getByLabel("ID de usuario de Telegram").fill(replacementTelegramUserId);
-		await alvaroPage.getByRole("button", { name: "Actualizar ID" }).click();
+		await alvaroPage.getByRole("button", { name: "Actualizar ID de Telegram" }).click();
 		await expect(alvaroPage.getByRole("status")).toHaveText("Tu ID de Telegram fue actualizado.");
 
 		await camilaPage.goto("/settings");
 		await camilaPage.getByLabel("ID de usuario de Telegram").fill(replacementTelegramUserId);
-		await camilaPage.getByRole("button", { name: "Guardar ID" }).click();
+		await camilaPage.getByRole("button", { name: "Guardar ID de Telegram" }).click();
 		await expect(
 			camilaPage.getByText("Ese ID de Telegram ya está configurado en otra cuenta."),
 		).toBeVisible();
@@ -59,10 +59,10 @@ test("lets regular users manage a unique Telegram ID while hiding it from root",
 		await expect(rootPage.getByRole("heading", { name: "Telegram" })).toHaveCount(0);
 		await expect(rootPage.getByLabel("ID de usuario de Telegram")).toHaveCount(0);
 
-		await alvaroPage.getByRole("button", { name: "Eliminar ID" }).click();
+		await alvaroPage.getByRole("button", { name: "Eliminar ID de Telegram" }).click();
 		const removalDialog = alvaroPage.getByRole("dialog", { name: "Eliminar ID de Telegram" });
 		await expect(removalDialog).toContainText(replacementTelegramUserId);
-		await removalDialog.getByRole("button", { name: "Eliminar ID" }).click();
+		await removalDialog.getByRole("button", { name: "Eliminar ID de Telegram" }).click();
 		await expect(alvaroPage.getByRole("status")).toHaveText("Tu ID de Telegram fue eliminado.");
 		await alvaroPage.reload();
 		await expect(alvaroPage.getByLabel("ID de usuario de Telegram")).toHaveValue("");
