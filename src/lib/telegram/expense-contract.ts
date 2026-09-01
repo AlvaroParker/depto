@@ -4,7 +4,7 @@ import { MAX_RECEIPT_SIZE_BYTES } from "@/lib/const/receipts";
 export const TELEGRAM_EXPENSE_RPC_VERSION = 1 as const;
 export const TELEGRAM_EXPENSE_IDEMPOTENCY_TOOL = "telegram_create_expense";
 
-const telegramUserIdSchema = z
+export const TelegramRpcUserIdSchema = z
 	.string()
 	.regex(/^[1-9][0-9]{0,12}$/)
 	.refine((value) => BigInt(value) <= 1_099_511_627_775n);
@@ -24,7 +24,7 @@ const calendarDateSchema = z
 
 const TelegramExpenseIdentitySchema = z
 	.object({
-		telegramUserId: telegramUserIdSchema,
+		telegramUserId: TelegramRpcUserIdSchema,
 		updateId: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
 		version: z.literal(TELEGRAM_EXPENSE_RPC_VERSION),
 	})

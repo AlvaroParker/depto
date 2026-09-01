@@ -1,0 +1,268 @@
+import "server-only";
+
+import {
+	PAYMENT_PROOF_CONTENT_TYPES,
+	MAX_PAYMENT_PROOF_SIZE_BYTES,
+} from "@/lib/const/payment-proofs";
+import { MAX_RECEIPT_SIZE_BYTES, RECEIPT_CONTENT_TYPES } from "@/lib/const/receipts";
+import { getDashboardSummary } from "@/lib/db/dashboard";
+import { listExpenseKinds } from "@/lib/db/expense-kinds";
+import { findExpenseById, listExpenses } from "@/lib/db/expenses";
+import { findActiveParticipants } from "@/lib/db/participants";
+import {
+	findTelegramExpenseActorByTelegramUserId,
+	type TelegramExpenseActor,
+} from "@/lib/db/telegram";
+import type { ExpenseDetail, ExpenseQuery, ExpenseSummary } from "@/lib/types/expense";
+import type { ExpenseKind } from "@/lib/types/expense-kind";
+import type { Participant } from "@/lib/types/participant";
+import {
+	GetTelegramBalanceRequestSchema,
+	type GetTelegramBalanceResult,
+	GetTelegramExpenseContextRequestSchema,
+	type GetTelegramExpenseContextResult,
+	GetTelegramExpenseRequestSchema,
+	type GetTelegramExpenseResult,
+	ListTelegramExpensesRequestSchema,
+	type ListTelegramExpensesResult,
+	TELEGRAM_CONVERSATION_RPC_VERSION,
+	type TelegramBalanceDto,
+	type TelegramConversationExpenseDetailDto,
+	type TelegramConversationExpenseSummaryDto,
+	type TelegramExpenseContextDto,
+	type TelegramExpenseKindDto,
+	type TelegramExpensePageDto,
+	type TelegramParticipantDto,
+	type TelegramReadFailureKind,
+	type TelegramReadResult,
+} from "./conversation-contract";
+
+export interface TelegramConversationServiceDependencies {
+	database: D1Database;
+}
+
+type ActorResolution =
+	{ actor: TelegramExpenseActor; kind: "found" } | { kind: "storage_error" | "unauthorized" };
+
+function failure<T>(kind: TelegramReadFailureKind): TelegramReadResult<T> {
+	return { kind, version: TELEGRAM_CONVERSATION_RPC_VERSION };
+}
+
+function success<T>(data: T): TelegramReadResult<T> {
+	return { data, kind: "ok", version: TELEGRAM_CONVERSATION_RPC_VERSION };
+}
+
+async function resolveActor(
+	telegramUserId: string,
+	database: D1Database,
+): Promise<ActorResolution> {
+	const actor = await findTelegramExpenseActorByTelegramUserId(telegramUserId, database);
+	if (actor.err) return { kind: "storage_error" };
+	return actor.val ? { actor: actor.val, kind: "found" } : { kind: "unauthorized" };
+}
+
+function mapParticipant(participant: Participant): TelegramParticipantDto {
+	return {
+		id: participant.id,
+		name: participant.name,
+		slug: participant.slug,
+		sortOrder: participant.sortOrder,
+	};
+}
+
+function mapExpenseKind(kind: ExpenseKind): TelegramExpenseKindDto {
+	return { id: kind.id, name: kind.name, sortOrder: kind.sortOrder };
+}
+
+function mapExpenseSummary(expense: ExpenseSummary): TelegramConversationExpenseSummaryDto {
+	if (expense.currency !== "CLP") throw new Error("Telegram expenses must use CLP.");
+	return {
+		amountMinor: expense.amountMinor,
+		currency: "CLP",
+		description: expense.description,
+		expenseDate: expense.expenseDate,
+		hasReceipt: expense.hasReceipt,
+		id: expense.id,
+		kind: mapExpenseKind(expense.kind),
+		name: expense.name,
+		payer: mapParticipant(expense.payer),
+		shares: expense.shares.map((share) => ({
+			participant: mapParticipant(share.participant),
+			shareAmountMinor: share.shareAmountMinor,
+			status: share.status,
+		})),
+		splitMode: expense.splitMode,
+	};
+}
+
+function mapExpenseDetail(expense: ExpenseDetail): TelegramConversationExpenseDetailDto {
+	let receipt: TelegramConversationExpenseDetailDto["receipt"] = null;
+	if (expense.hasReceipt) {
+		if (
+			!expense.receiptFilename ||
+			!expense.receiptContentType ||
+			expense.receiptSizeBytes === null ||
+			!RECEIPT_CONTENT_TYPES.includes(
+				expense.receiptContentType as (typeof RECEIPT_CONTENT_TYPES)[number],
+			)
+		) {
+			throw new Error("Stored receipt metadata is incomplete.");
+		}
+		receipt = {
+			contentType: expense.receiptContentType as (typeof RECEIPT_CONTENT_TYPES)[number],
+			filename: expense.receiptFilename,
+			sizeBytes: expense.receiptSizeBytes,
+		};
+	}
+	return {
+		...mapExpenseSummary(expense),
+		createdAt: expense.createdAt,
+		receipt,
+		updatedAt: expense.updatedAt,
+	};
+}
+
+function mapListQuery(
+	query: ReturnType<typeof ListTelegramExpensesRequestSchema.parse>["query"],
+): Partial<ExpenseQuery> {
+	return {
+		kind: query.kindId,
+		page: query.page,
+		pageSize: query.pageSize,
+		payer: query.payerId,
+		pending:
+			query.pending === "all"
+				? undefined
+				: query.pending === "mine"
+					? "mine"
+					: query.pending === "true",
+		q: query.q,
+	};
+}
+
+export async function getTelegramExpenseContext(
+	request: unknown,
+	dependencies: TelegramConversationServiceDependencies,
+): Promise<GetTelegramExpenseContextResult> {
+	const parsed = GetTelegramExpenseContextRequestSchema.safeParse(request);
+	if (!parsed.success) return failure("invalid_request");
+	const actor = await resolveActor(parsed.data.telegramUserId, dependencies.database);
+	if (actor.kind !== "found") return failure(actor.kind);
+	const [participants, categories] = await Promise.all([
+		findActiveParticipants(dependencies.database),
+		listExpenseKinds(dependencies.database),
+	]);
+	if (participants.err || categories.err) return failure("storage_error");
+	const callerParticipant = participants.val.find(({ id }) => id === actor.actor.participantId);
+	if (!callerParticipant) return failure("storage_error");
+	const data: TelegramExpenseContextDto = {
+		caller: {
+			displayName: actor.actor.displayName,
+			participant: mapParticipant(callerParticipant),
+		},
+		categories: categories.val.map(mapExpenseKind),
+		currencies: ["CLP"],
+		fileLimits: {
+			paymentProofs: {
+				contentTypes: [...PAYMENT_PROOF_CONTENT_TYPES],
+				maxBytes: MAX_PAYMENT_PROOF_SIZE_BYTES,
+			},
+			receipts: {
+				contentTypes: [...RECEIPT_CONTENT_TYPES],
+				maxBytes: MAX_RECEIPT_SIZE_BYTES,
+			},
+		},
+		participants: participants.val.map(mapParticipant),
+		splitModes: ["equal", "custom"],
+	};
+	return success(data);
+}
+
+export async function getTelegramBalance(
+	request: unknown,
+	dependencies: TelegramConversationServiceDependencies,
+): Promise<GetTelegramBalanceResult> {
+	const parsed = GetTelegramBalanceRequestSchema.safeParse(request);
+	if (!parsed.success) return failure("invalid_request");
+	const actor = await resolveActor(parsed.data.telegramUserId, dependencies.database);
+	if (actor.kind !== "found") return failure(actor.kind);
+	const summary = await getDashboardSummary({
+		currentParticipantId: actor.actor.participantId,
+		database: dependencies.database,
+	});
+	if (summary.err || summary.val.view !== "personal") return failure("storage_error");
+	try {
+		const data: TelegramBalanceDto = {
+			amountDueToMeMinor: summary.val.amountDueToMeMinor,
+			amountOwedMinor: summary.val.amountOwedMinor,
+			currency: "CLP",
+			debtsByParticipant: summary.val.debtsByParticipant.map((debt) => ({
+				amountDueToMeExpenseCount: debt.amountDueToMeExpenseCount,
+				amountDueToMeMinor: debt.amountDueToMeMinor,
+				amountOwedExpenseCount: debt.amountOwedExpenseCount,
+				amountOwedMinor: debt.amountOwedMinor,
+				participant: mapParticipant(debt.participant),
+			})),
+			dueToMeExpenseCount: summary.val.dueToMeExpenseCount,
+			expectedSpendMinor: summary.val.expectedSpendMinor,
+			owedExpenseCount: summary.val.owedExpenseCount,
+			participantId: summary.val.participantId,
+			recentExpenses: summary.val.recentExpenses.map(mapExpenseSummary),
+			spentSoFarMinor: summary.val.spentSoFarMinor,
+		};
+		return success(data);
+	} catch {
+		return failure("storage_error");
+	}
+}
+
+export async function listTelegramExpenses(
+	request: unknown,
+	dependencies: TelegramConversationServiceDependencies,
+): Promise<ListTelegramExpensesResult> {
+	const parsed = ListTelegramExpensesRequestSchema.safeParse(request);
+	if (!parsed.success) return failure("invalid_request");
+	const actor = await resolveActor(parsed.data.telegramUserId, dependencies.database);
+	if (actor.kind !== "found") return failure(actor.kind);
+	const page = await listExpenses(mapListQuery(parsed.data.query), {
+		currentParticipantId: actor.actor.participantId,
+		database: dependencies.database,
+		participantScopeId: actor.actor.participantId,
+	});
+	if (page.err) return failure("storage_error");
+	try {
+		const data: TelegramExpensePageDto = {
+			expenses: page.val.expenses.map(mapExpenseSummary),
+			page: page.val.page,
+			pageSize: page.val.pageSize,
+			total: page.val.total,
+		};
+		return success(data);
+	} catch {
+		return failure("storage_error");
+	}
+}
+
+export async function getTelegramExpense(
+	request: unknown,
+	dependencies: TelegramConversationServiceDependencies,
+): Promise<GetTelegramExpenseResult> {
+	const parsed = GetTelegramExpenseRequestSchema.safeParse(request);
+	if (!parsed.success) return failure("invalid_request");
+	const actor = await resolveActor(parsed.data.telegramUserId, dependencies.database);
+	if (actor.kind !== "found") return failure(actor.kind);
+	const expense = await findExpenseById(parsed.data.expenseId, dependencies.database);
+	if (expense.err) return failure("storage_error");
+	if (
+		!expense.val ||
+		(expense.val.payer.id !== actor.actor.participantId &&
+			!expense.val.shares.some((share) => share.participant.id === actor.actor.participantId))
+	) {
+		return failure("not_found");
+	}
+	try {
+		return success(mapExpenseDetail(expense.val));
+	} catch {
+		return failure("storage_error");
+	}
+}

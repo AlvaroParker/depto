@@ -10,6 +10,18 @@ import type {
 	CreateTelegramExpenseResult,
 	FindTelegramExpenseResult,
 } from "@/lib/telegram/expense-contract";
+import {
+	getTelegramBalance as getTelegramBalanceForRpc,
+	getTelegramExpense as getTelegramExpenseForRpc,
+	getTelegramExpenseContext as getTelegramExpenseContextForRpc,
+	listTelegramExpenses as listTelegramExpensesForRpc,
+} from "@/lib/telegram/conversation-service";
+import type {
+	GetTelegramBalanceResult,
+	GetTelegramExpenseContextResult,
+	GetTelegramExpenseResult,
+	ListTelegramExpensesResult,
+} from "@/lib/telegram/conversation-contract";
 
 function dependencies(env: CloudflareEnv): TelegramExpenseServiceDependencies {
 	return {
@@ -22,6 +34,22 @@ function dependencies(env: CloudflareEnv): TelegramExpenseServiceDependencies {
 }
 
 export class TelegramExpenses extends WorkerEntrypoint<CloudflareEnv> {
+	getTelegramExpenseContext(request: unknown): Promise<GetTelegramExpenseContextResult> {
+		return getTelegramExpenseContextForRpc(request, { database: this.env.DB });
+	}
+
+	getTelegramBalance(request: unknown): Promise<GetTelegramBalanceResult> {
+		return getTelegramBalanceForRpc(request, { database: this.env.DB });
+	}
+
+	listTelegramExpenses(request: unknown): Promise<ListTelegramExpensesResult> {
+		return listTelegramExpensesForRpc(request, { database: this.env.DB });
+	}
+
+	getTelegramExpense(request: unknown): Promise<GetTelegramExpenseResult> {
+		return getTelegramExpenseForRpc(request, { database: this.env.DB });
+	}
+
 	findTelegramExpense(request: unknown): Promise<FindTelegramExpenseResult> {
 		return findTelegramExpenseForRpc(request, dependencies(this.env));
 	}
