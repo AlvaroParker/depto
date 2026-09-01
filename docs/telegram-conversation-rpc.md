@@ -4,6 +4,19 @@
 not public HTTP or MCP endpoints. Every request uses a strict version-1 schema and resolves the
 canonical Telegram user ID against an enabled regular account with an active participant.
 
+## Balance and conversational drill-down
+
+`getTelegramBalance({ version: 1, telegramUserId })` returns both directional totals and
+`debtsByParticipant`. Each participant row includes independent `amountOwedMinor` and
+`amountDueToMeMinor` values plus their expense counts. Consumers can therefore answer who the caller
+owes (or who owes the caller) by filtering the corresponding positive field without calculating or
+netting balances.
+
+To answer a follow-up about the expenses behind one row, pass that row's participant ID and the same
+direction to `getTelegramDebtBreakdown`. Its `totalAmountMinor` and `totalExpenseCount` match the
+selected directional fields in the balance row, while `expenses` supplies the individual names,
+dates, and shares.
+
 ## Debt breakdown
 
 `getTelegramDebtBreakdown` accepts:
