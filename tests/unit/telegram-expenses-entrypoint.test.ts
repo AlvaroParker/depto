@@ -4,9 +4,14 @@ const mocks = vi.hoisted(() => ({
 	attachTelegramExpenseReceipt: vi.fn(),
 	createTelegramExpense: vi.fn(),
 	findTelegramExpense: vi.fn(),
+	getTelegramBalance: vi.fn(),
+	getTelegramExpense: vi.fn(),
+	getTelegramExpenseContext: vi.fn(),
+	listTelegramExpenses: vi.fn(),
 }));
 
 vi.mock("@/lib/telegram/expense-service", () => mocks);
+vi.mock("@/lib/telegram/conversation-service", () => mocks);
 
 import { TelegramExpenses } from "@/worker/telegram-expenses";
 
@@ -41,6 +46,30 @@ describe("TelegramExpenses Worker entrypoint", () => {
 			resendApiKey: env.RESEND_API_KEY,
 			resendFromEmail: env.RESEND_FROM_EMAIL,
 		});
+	});
+
+	it("forwards each conversation read with only the D1 capability", async () => {
+		const actorRequest = { telegramUserId: "123", version: 1 };
+		const listRequest = { ...actorRequest, query: {} };
+		const detailRequest = { ...actorRequest, expenseId: "expense-1" };
+		mocks.getTelegramExpenseContext.mockResolvedValue({
+			data: {},
+			kind: "ok",
+			version: 1,
+		});
+		mocks.getTelegramBalance.mockResolvedValue({ data: {}, kind: "ok", version: 1 });
+		mocks.listTelegramExpenses.mockResolvedValue({ data: {}, kind: "ok", version: 1 });
+		mocks.getTelegramExpense.mockResolvedValue({ data: {}, kind: "ok", version: 1 });
+
+		await entrypoint.getTelegramExpenseContext(actorRequest);
+		await entrypoint.getTelegramBalance(actorRequest);
+		await entrypoint.listTelegramExpenses(listRequest);
+		await entrypoint.getTelegramExpense(detailRequest);
+
+		expect(mocks.getTelegramExpenseContext).toHaveBeenCalledWith(actorRequest, { database });
+		expect(mocks.getTelegramBalance).toHaveBeenCalledWith(actorRequest, { database });
+		expect(mocks.listTelegramExpenses).toHaveBeenCalledWith(listRequest, { database });
+		expect(mocks.getTelegramExpense).toHaveBeenCalledWith(detailRequest, { database });
 	});
 
 	it("transfers create and receipt-repair streams to the application service", async () => {

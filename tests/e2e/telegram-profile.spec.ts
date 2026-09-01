@@ -37,7 +37,7 @@ test("lets regular users manage a unique Telegram ID while hiding it from root",
 		await alvaroInput.fill(originalTelegramUserId);
 		await alvaroPage.getByRole("button", { name: "Guardar ID" }).click();
 		await expect(alvaroPage.getByRole("status")).toHaveText("Tu ID de Telegram fue guardado.");
-		await expect(alvaroPage.getByText("Configurado")).toBeVisible();
+		await expect(alvaroPage.getByText("Configurado", { exact: true })).toBeVisible();
 
 		await alvaroPage.reload();
 		await expect(alvaroPage.getByLabel("ID de usuario de Telegram")).toHaveValue(
@@ -66,7 +66,7 @@ test("lets regular users manage a unique Telegram ID while hiding it from root",
 		await expect(alvaroPage.getByRole("status")).toHaveText("Tu ID de Telegram fue eliminado.");
 		await alvaroPage.reload();
 		await expect(alvaroPage.getByLabel("ID de usuario de Telegram")).toHaveValue("");
-		await expect(alvaroPage.getByText("Configurado")).toHaveCount(0);
+		await expect(alvaroPage.getByText("Configurado", { exact: true })).toHaveCount(0);
 	} finally {
 		await Promise.allSettled([clearTelegramUserId(alvaroPage), clearTelegramUserId(camilaPage)]);
 		await Promise.all([alvaroContext.close(), camilaContext.close(), rootContext.close()]);

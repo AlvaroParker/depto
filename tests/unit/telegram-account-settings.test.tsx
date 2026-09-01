@@ -36,8 +36,25 @@ describe("Telegram account settings", () => {
 		expect(
 			screen.getByText(/no verificamos que esa cuenta de Telegram te pertenezca/i),
 		).toBeVisible();
-		expect(screen.getByText(/autorizas al bot a registrar gastos en tu nombre/)).toBeVisible();
+		expect(
+			screen.getByText(
+				/autorizas al bot a consultar tu información de gastos, saldos y deudas del hogar, y a registrar gastos en tu nombre/i,
+			),
+		).toBeVisible();
 		expect(screen.getByText(/Eliminarlo revoca ese acceso/)).toBeVisible();
+		expect(screen.getByText(/mensajes y comprobantes.+procesados por OpenAI/i)).toBeVisible();
+		expect(
+			screen.getByText(
+				/Cloudflare conserva.+estado conversacional activo.+período de inactividad configurado para el bot/i,
+			),
+		).toBeVisible();
+		expect(screen.getByText(/configurado para el bot.+luego lo elimina/i)).toBeVisible();
+		expect(
+			screen.getByText(
+				/colas operativas de entrega y reintento.+contenido de los mensajes.+política de retención/i,
+			),
+		).toBeVisible();
+		expect(screen.queryByText(/10 minutos/i)).not.toBeInTheDocument();
 		expect(screen.queryByText("Configurado")).not.toBeInTheDocument();
 	});
 
