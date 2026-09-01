@@ -21,11 +21,12 @@ function expenseCountLabel(count: number): string {
 
 function DebtAmounts({ debt }: { debt: PersonalDebtByParticipant }) {
 	return (
-		<div className="grid shrink-0 gap-1.5 text-right">
+		<div className="grid max-w-full min-w-0 gap-1.5 text-left sm:shrink-0 sm:text-right">
 			{debt.amountOwedMinor ? (
 				<div>
-					<p className="text-pending-strong flex items-center justify-end gap-1.5 text-xs font-semibold">
-						<ArrowUpRight aria-hidden size={13} /> Debes {formatMoney(debt.amountOwedMinor)}
+					<p className="text-pending-strong flex min-w-0 flex-wrap items-center gap-1.5 text-xs font-semibold [overflow-wrap:anywhere] sm:justify-end">
+						<ArrowUpRight aria-hidden className="shrink-0" size={13} /> Debes{" "}
+						{formatMoney(debt.amountOwedMinor)}
 					</p>
 					<p className="text-ink-faint mt-0.5 text-[0.7rem]">
 						{expenseCountLabel(debt.amountOwedExpenseCount)} pendiente
@@ -34,8 +35,9 @@ function DebtAmounts({ debt }: { debt: PersonalDebtByParticipant }) {
 				</div>
 			) : null}
 			{debt.amountDueToMeMinor ? (
-				<p className="text-positive-strong flex items-center justify-end gap-1.5 text-xs font-semibold">
-					<ArrowDownLeft aria-hidden size={13} /> Te debe {formatMoney(debt.amountDueToMeMinor)}
+				<p className="text-positive-strong flex min-w-0 flex-wrap items-center gap-1.5 text-xs font-semibold [overflow-wrap:anywhere] sm:justify-end">
+					<ArrowDownLeft aria-hidden className="shrink-0" size={13} /> Te debe{" "}
+					{formatMoney(debt.amountDueToMeMinor)}
 				</p>
 			) : null}
 		</div>
@@ -108,14 +110,14 @@ export function PersonalDebtOverview({
 	}
 
 	return (
-		<section className="border-line bg-paper mt-4 overflow-hidden rounded-3xl border">
+		<section className="border-line bg-paper mt-4 max-w-full min-w-0 overflow-hidden rounded-3xl border">
 			<header className="border-line border-b px-5 py-4 sm:px-6">
 				<h2 className="font-display text-2xl font-semibold">Deudas por persona</h2>
 				<p className="text-ink-muted mt-1 text-sm">Tus saldos activos, de mayor a menor.</p>
 			</header>
 			{success ? (
 				<p
-					className="border-positive/15 bg-positive/8 text-positive-strong flex items-center gap-2 border-b px-5 py-3 text-sm sm:px-6"
+					className="border-positive/15 bg-positive/8 text-positive-strong flex min-w-0 items-center gap-2 border-b px-5 py-3 text-sm [overflow-wrap:anywhere] sm:px-6"
 					role="status"
 				>
 					<CheckCircle2 aria-hidden size={16} /> {success}
@@ -127,8 +129,8 @@ export function PersonalDebtOverview({
 					className="divide-line max-h-80 [scrollbar-gutter:stable] divide-y overflow-y-auto overscroll-contain"
 				>
 					{debts.map((debt) => (
-						<li className="grid gap-3 px-5 py-4 sm:px-6" key={debt.participant.id}>
-							<div className="flex items-center justify-between gap-4">
+						<li className="grid min-w-0 gap-3 px-5 py-4 sm:px-6" key={debt.participant.id}>
+							<div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
 								<div className="flex min-w-0 items-center gap-3">
 									<span
 										aria-hidden
@@ -183,7 +185,7 @@ export function PersonalDebtOverview({
 						}
 					/>
 					{selectedDebt?.amountDueToMeMinor ? (
-						<p className="border-line bg-paper-strong text-ink-muted rounded-2xl border px-4 py-3 text-sm leading-5">
+						<p className="border-line bg-paper-strong text-ink-muted rounded-2xl border px-4 py-3 text-sm leading-5 [overflow-wrap:anywhere]">
 							{selectedDebt.participant.name} todavía te deberá{" "}
 							<strong className="text-ink">{formatMoney(selectedDebt.amountDueToMeMinor)}</strong>;
 							este pago no compensa esa deuda.
@@ -193,7 +195,7 @@ export function PersonalDebtOverview({
 						<span>Comprobante de pago (opcional)</span>
 						<input
 							accept={PAYMENT_PROOF_CONTENT_TYPES.join(",")}
-							className="border-line-strong bg-paper-strong file:bg-ink file:text-paper focus-visible:outline-accent min-h-12 rounded-xl border px-3 py-2 text-sm file:mr-3 file:rounded-full file:border-0 file:px-3 file:py-1.5 file:text-xs file:font-bold focus-visible:outline-2 focus-visible:outline-offset-2"
+							className="border-line-strong bg-paper-strong file:bg-ink file:text-paper focus-visible:outline-accent min-h-12 w-full max-w-full min-w-0 rounded-xl border px-3 py-2 text-sm file:mr-3 file:max-w-full file:rounded-full file:border-0 file:px-3 file:py-1.5 file:text-xs file:font-bold focus-visible:outline-2 focus-visible:outline-offset-2"
 							disabled={pending}
 							id="bulk-payment-proof"
 							onChange={(event) => {
@@ -216,11 +218,15 @@ export function PersonalDebtOverview({
 							{error}
 						</p>
 					) : null}
-					<div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+					<div className="flex min-w-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
 						<Button disabled={pending} onClick={closePayment} variant="ghost">
 							Cancelar
 						</Button>
-						<Button disabled={pending} onClick={submitPayment}>
+						<Button
+							className="max-w-full min-w-0 text-center [overflow-wrap:anywhere]"
+							disabled={pending}
+							onClick={submitPayment}
+						>
 							{pending ? <LoaderCircle aria-hidden className="animate-spin" size={16} /> : null}
 							{selectedDebt
 								? file

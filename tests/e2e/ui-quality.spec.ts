@@ -88,6 +88,17 @@ test("wraps long expense content without horizontal scrolling", async ({ page })
 		await expectNoHorizontalOverflow(page, `long expense detail at ${viewport.label}`);
 		await expect(page.getByRole("heading", { name })).toBeVisible();
 	}
+
+	for (const viewport of responsiveViewports.filter(({ width }) => width <= 390)) {
+		await page.setViewportSize(viewport);
+		for (const path of ["/", "/expenses"]) {
+			await page.goto(path);
+			await expectNoHorizontalOverflow(
+				page,
+				`${path} with long names and aggregate money values at ${viewport.label}`,
+			);
+		}
+	}
 });
 
 test("bounds long dialogs and keeps their controls reachable on short phones", async ({ page }) => {

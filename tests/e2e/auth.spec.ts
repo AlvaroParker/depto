@@ -6,7 +6,9 @@ test("redirects unauthenticated household pages to sign in", async ({ page }) =>
 	await expect(page).toHaveURL(/\/login/);
 	await expect(page.getByRole("heading", { level: 1, name: "Bienvenidos a casa" })).toBeVisible();
 	await expect(page.locator("h1")).toHaveCount(1);
-	await expect(page.getByText("Lo compartido, claro para todos.", { exact: true })).toBeVisible();
+	await expect(
+		page.locator("p").filter({ hasText: /^Lo compartido, claro para todos\.$/ }),
+	).toHaveCount(1);
 });
 
 test("shows one generic failure for invalid credentials", async ({ page }) => {

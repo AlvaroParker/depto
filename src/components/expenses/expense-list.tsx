@@ -61,7 +61,7 @@ export function ExpenseList({
 				const paidByPersonalParticipant = expense.payer.id === personalParticipantId;
 				return (
 					<Link
-						className="group border-line bg-paper hover:border-line-strong hover:shadow-card grid gap-4 rounded-2xl border p-4 transition sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:px-5"
+						className="group border-line bg-paper hover:border-line-strong hover:shadow-card grid max-w-full min-w-0 gap-4 rounded-2xl border p-4 transition sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:px-5"
 						href={`/expenses/${expense.id}`}
 						key={expense.id}
 					>
@@ -91,7 +91,7 @@ export function ExpenseList({
 								</p>
 							</div>
 						</div>
-						<div className="flex items-center justify-between gap-3 sm:block sm:text-right">
+						<div className="flex max-w-full min-w-0 items-center justify-between gap-3 [overflow-wrap:anywhere] sm:block sm:text-right [&>div]:max-w-full [&>div]:min-w-0">
 							{paidByPersonalParticipant && !personalShare ? (
 								<div>
 									<strong className="font-display text-xl">

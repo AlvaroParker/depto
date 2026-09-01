@@ -97,11 +97,17 @@ export function Dialog({ children, description, onClose, open, title }: DialogPr
 				<div className="animate-rise border-line bg-paper flex max-h-full w-full min-w-0 flex-col overflow-hidden rounded-t-3xl border shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:max-w-lg sm:rounded-3xl">
 					<div className="flex shrink-0 items-start justify-between gap-4 px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
 						<div className="min-w-0">
-							<h2 className="font-display text-ink text-2xl font-semibold" id={titleId}>
+							<h2
+								className="font-display text-ink text-2xl font-semibold [overflow-wrap:anywhere]"
+								id={titleId}
+							>
 								{title}
 							</h2>
 							{description ? (
-								<p className="text-ink-muted mt-1 text-sm" id={descriptionId}>
+								<p
+									className="text-ink-muted mt-1 text-sm [overflow-wrap:anywhere]"
+									id={descriptionId}
+								>
 									{description}
 								</p>
 							) : null}
