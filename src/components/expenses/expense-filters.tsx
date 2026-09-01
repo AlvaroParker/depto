@@ -137,25 +137,25 @@ export function ExpenseFilters({
 	return (
 		<form
 			aria-busy={pending}
-			className="border-line bg-paper mb-6 grid gap-3 rounded-2xl border p-3 sm:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_auto_auto_auto]"
+			className="border-line bg-paper mb-6 grid max-w-full min-w-0 gap-3 rounded-2xl border p-3 sm:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_auto_auto_auto]"
 			method="get"
 			onSubmit={submitSearch}
 		>
-			<label className="relative">
+			<label className="relative min-w-0">
 				<span className="sr-only">Buscar gastos</span>
 				<Search aria-hidden className="text-ink-faint absolute top-3.5 left-3" size={18} />
 				<input
-					className="border-line-strong bg-paper-strong/45 focus:border-accent focus:ring-accent/15 min-h-11 w-full rounded-xl border pr-3 pl-10 text-sm outline-none focus:ring-2"
+					className="border-line-strong bg-paper-strong/45 focus:border-accent focus:ring-accent/15 min-h-11 w-full max-w-full min-w-0 rounded-xl border pr-3 pl-10 text-sm outline-none focus:ring-2"
 					name="q"
 					onChange={(event) => updateSearch(event.target.value)}
 					placeholder="Buscar nombre o descripción"
 					value={values.q}
 				/>
 			</label>
-			<label>
+			<label className="min-w-0">
 				<span className="sr-only">Filtrar por categoría</span>
 				<select
-					className="border-line-strong bg-paper focus:border-accent focus:ring-accent/15 min-h-11 w-full rounded-xl border px-3 text-sm outline-none focus:ring-2"
+					className="border-line-strong bg-paper focus:border-accent focus:ring-accent/15 min-h-11 w-full max-w-full min-w-0 rounded-xl border px-3 text-sm outline-none focus:ring-2"
 					name="kind"
 					onChange={(event) => updateFilter("kind", event.target.value)}
 					value={values.kind}
@@ -168,10 +168,10 @@ export function ExpenseFilters({
 					))}
 				</select>
 			</label>
-			<label>
+			<label className="min-w-0">
 				<span className="sr-only">Filtrar por quién pagó</span>
 				<select
-					className="border-line-strong bg-paper focus:border-accent focus:ring-accent/15 min-h-11 w-full rounded-xl border px-3 text-sm outline-none focus:ring-2"
+					className="border-line-strong bg-paper focus:border-accent focus:ring-accent/15 min-h-11 w-full max-w-full min-w-0 rounded-xl border px-3 text-sm outline-none focus:ring-2"
 					name="payer"
 					onChange={(event) => updateFilter("payer", event.target.value)}
 					value={values.payer}
@@ -184,10 +184,10 @@ export function ExpenseFilters({
 					))}
 				</select>
 			</label>
-			<label>
+			<label className="min-w-0">
 				<span className="sr-only">Filtrar por estado</span>
 				<select
-					className="border-line-strong bg-paper focus:border-accent focus:ring-accent/15 min-h-11 w-full rounded-xl border px-3 text-sm outline-none focus:ring-2"
+					className="border-line-strong bg-paper focus:border-accent focus:ring-accent/15 min-h-11 w-full max-w-full min-w-0 rounded-xl border px-3 text-sm outline-none focus:ring-2"
 					name="pending"
 					onChange={(event) => updateFilter("pending", event.target.value)}
 					value={values.pending}
@@ -204,7 +204,7 @@ export function ExpenseFilters({
 					{activeFilters.map((filter) => (
 						<button
 							aria-label={`Quitar ${filter.label}`}
-							className="border-accent/20 bg-accent/8 text-accent-strong hover:bg-accent/14 focus:ring-accent/25 inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition outline-none focus:ring-2"
+							className="border-accent/20 bg-accent/8 text-accent-strong hover:bg-accent/14 focus:ring-accent/25 inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border px-3 text-left text-xs font-semibold transition outline-none focus:ring-2"
 							key={filter.key}
 							onClick={() => clearFilter(filter.key)}
 							type="button"
@@ -214,7 +214,7 @@ export function ExpenseFilters({
 						</button>
 					))}
 					<button
-						className="text-ink-muted hover:text-ink focus:ring-line-strong min-h-9 rounded-full px-2 text-xs font-semibold underline decoration-1 underline-offset-4 outline-none focus:ring-2"
+						className="text-ink-muted hover:text-ink focus:ring-line-strong min-h-11 rounded-full px-3 text-xs font-semibold underline decoration-1 underline-offset-4 outline-none focus:ring-2"
 						onClick={clearAllFilters}
 						type="button"
 					>

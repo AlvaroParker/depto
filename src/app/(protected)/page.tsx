@@ -20,16 +20,19 @@ function RecentExpenses({
 }) {
 	return (
 		<section className="mt-10">
-			<div className="mb-5 flex items-end justify-between gap-4">
-				<div>
-					<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">
+			<div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+				<div className="min-w-0">
+					<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 						Últimos movimientos
 					</p>
 					<h2 className="font-display mt-1 text-3xl font-semibold">
 						{participantId ? "Tus gastos recientes" : "Gastos recientes"}
 					</h2>
 				</div>
-				<Link className="text-accent shrink-0 text-sm font-semibold" href="/expenses">
+				<Link
+					className="text-accent-strong inline-flex min-h-11 items-center text-sm font-semibold whitespace-nowrap"
+					href="/expenses"
+				>
 					Ver todos
 				</Link>
 			</div>
@@ -64,8 +67,10 @@ export default async function DashboardPage() {
 			<div className="mx-auto max-w-6xl">
 				{dashboard.view === "personal" ? (
 					<>
-						<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">Tu resumen</p>
-						<h1 className="font-display mt-2 text-4xl font-semibold tracking-[-0.035em] sm:text-5xl">
+						<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
+							Tu resumen
+						</p>
+						<h1 className="font-display mt-2 max-w-full text-4xl font-semibold tracking-[-0.035em] [overflow-wrap:anywhere] sm:text-5xl">
 							Hola, {session.user.displayName}.
 						</h1>
 						<p className="text-ink-muted mt-3 max-w-xl text-sm leading-6">
@@ -84,7 +89,7 @@ export default async function DashboardPage() {
 					</>
 				) : (
 					<>
-						<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">
+						<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 							Resumen del hogar
 						</p>
 						<h1 className="font-display mt-2 text-4xl font-semibold tracking-[-0.035em] sm:text-5xl">

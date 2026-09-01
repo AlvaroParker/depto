@@ -34,13 +34,13 @@ function IconPicker({ error, idPrefix, onChange, value }: IconPickerProps) {
 	return (
 		<fieldset className="grid gap-3">
 			<legend className="text-sm font-medium">Icono</legend>
-			<div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+			<div className="grid grid-cols-2 gap-2 min-[300px]:grid-cols-3 sm:grid-cols-4">
 				{EXPENSE_KIND_ICON_OPTIONS.map((option) => {
 					const selected = option.iconKey === value;
 					return (
 						<label
 							className={cn(
-								"focus-within:ring-accent/20 relative grid min-h-16 cursor-pointer place-items-center gap-1 rounded-xl border px-1 py-2 text-center text-[0.65rem] font-medium transition focus-within:ring-3",
+								"focus-within:ring-accent/20 relative grid min-h-16 min-w-0 cursor-pointer place-items-center gap-1 rounded-xl border px-1 py-2 text-center text-[0.65rem] font-medium [overflow-wrap:anywhere] transition focus-within:ring-3",
 								selected
 									? "border-accent/40 bg-accent/10 text-accent-strong"
 									: "border-line bg-paper text-ink-muted hover:border-line-strong hover:text-ink",
@@ -147,20 +147,22 @@ export function ExpenseKindManagement({ initialKinds }: ExpenseKindManagementPro
 	}
 
 	return (
-		<div className="mt-8 grid gap-6 xl:grid-cols-[minmax(20rem,0.72fr)_minmax(0,1.28fr)]">
-			<section className="border-line bg-paper/85 rounded-3xl border p-6 shadow-[0_22px_60px_-48px_rgba(40,40,34,0.75)] sm:p-7">
-				<div className="flex items-start gap-4">
-					<span className="bg-accent/10 text-accent grid size-11 shrink-0 place-items-center rounded-2xl">
+		<div className="mt-8 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(20rem,0.72fr)_minmax(0,1.28fr)]">
+			<section className="border-line bg-paper/85 shadow-card max-w-full min-w-0 rounded-3xl border p-4 sm:p-7">
+				<div className="flex min-w-0 flex-wrap items-start gap-4">
+					<span className="bg-accent/10 text-accent-strong grid size-11 shrink-0 place-items-center rounded-2xl">
 						<Plus aria-hidden size={21} />
 					</span>
-					<div>
-						<h2 className="font-display text-2xl font-semibold">Nueva categoría</h2>
-						<p className="text-ink-muted mt-1 text-sm leading-6">
+					<div className="min-w-0 flex-1 basis-32">
+						<h2 className="font-display text-2xl font-semibold [overflow-wrap:anywhere]">
+							Nueva categoría
+						</h2>
+						<p className="text-ink-muted mt-1 text-sm leading-6 [overflow-wrap:anywhere]">
 							Crea una categoría y elige el símbolo que la acompañará en cada gasto.
 						</p>
 					</div>
 				</div>
-				<form className="mt-7 grid gap-5" onSubmit={submitCreate}>
+				<form className="mt-7 grid min-w-0 gap-5" onSubmit={submitCreate}>
 					<Field
 						error={fieldErrors.name?.[0]}
 						id="kind-name"
@@ -185,7 +187,7 @@ export function ExpenseKindManagement({ initialKinds }: ExpenseKindManagementPro
 						</p>
 					) : null}
 					<Button className="w-full" disabled={pending} type="submit">
-						<Plus aria-hidden size={18} /> {pending ? "Guardando…" : "Crear categoría"}
+						<Plus aria-hidden size={18} /> {pending ? "Creando categoría…" : "Crear categoría"}
 					</Button>
 				</form>
 			</section>
@@ -212,7 +214,7 @@ export function ExpenseKindManagement({ initialKinds }: ExpenseKindManagementPro
 							className="border-line bg-paper/90 flex min-w-0 items-center gap-3 rounded-2xl border p-4"
 							key={kind.id}
 						>
-							<span className="bg-accent/10 text-accent grid size-11 shrink-0 place-items-center rounded-xl">
+							<span className="bg-accent/10 text-accent-strong grid size-11 shrink-0 place-items-center rounded-xl">
 								<ExpenseKindIcon aria-hidden iconKey={kind.iconKey} size={20} />
 							</span>
 							<div className="min-w-0 flex-1">
@@ -264,12 +266,13 @@ export function ExpenseKindManagement({ initialKinds }: ExpenseKindManagementPro
 								{editError}
 							</p>
 						) : null}
-						<div className="flex justify-end gap-3">
+						<div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
 							<Button disabled={pending} onClick={closeEditor} type="button" variant="secondary">
 								Cancelar
 							</Button>
 							<Button disabled={pending} type="submit">
-								<Save aria-hidden size={17} /> {pending ? "Guardando…" : "Guardar cambios"}
+								<Save aria-hidden size={17} />
+								{pending ? "Guardando cambios de la categoría…" : "Guardar cambios"}
 							</Button>
 						</div>
 					</form>

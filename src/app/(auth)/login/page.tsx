@@ -32,27 +32,27 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 				<div className="border-accent/60 absolute top-52 -right-2 size-36 rounded-full border" />
 				<p className="text-paper/60 text-xs font-semibold tracking-[0.24em]">CUENTAS DE CASA</p>
 				<div className="relative max-w-xl">
-					<p className="font-display text-accent mb-6 text-lg italic">
+					<p className="font-display text-paper/80 mb-6 text-lg italic">
 						Gastos compartidos, cuentas claras
 					</p>
-					<h1 className="font-display text-6xl leading-[0.98] font-semibold tracking-[-0.04em]">
+					<p className="font-display text-6xl leading-[0.98] font-semibold tracking-[-0.04em]">
 						Lo compartido, claro para todos.
-					</h1>
+					</p>
 					<p className="text-paper/65 mt-7 max-w-md text-base leading-7">
 						Gastos, comprobantes y reembolsos en un solo cuaderno común.
 					</p>
 				</div>
-				<p className="text-paper/40 text-xs">Un registro privado para la casa.</p>
+				<p className="text-paper/65 text-xs">Un registro privado para la casa.</p>
 			</section>
 
 			<section className="flex items-center justify-center px-5 py-12 sm:px-10">
-				<div className="animate-rise border-line bg-paper/90 w-full max-w-md rounded-[2rem] border p-7 shadow-[0_30px_80px_-45px_rgba(40,40,34,0.65)] backdrop-blur sm:p-10">
-					<p className="text-accent text-xs font-bold tracking-[0.2em] lg:hidden">
+				<div className="animate-rise border-line bg-paper/90 shadow-card w-full max-w-md rounded-[2rem] border p-7 backdrop-blur sm:p-10">
+					<p className="text-accent-strong text-xs font-bold tracking-[0.2em] lg:hidden">
 						CUENTAS DE CASA
 					</p>
-					<h2 className="font-display text-ink mt-3 text-4xl font-semibold tracking-[-0.03em]">
+					<h1 className="font-display text-ink mt-3 text-4xl font-semibold tracking-[-0.03em]">
 						Bienvenidos a casa
-					</h2>
+					</h1>
 					<p className="text-ink-muted mt-3 mb-8 text-sm leading-6">
 						Ingresa con tu usuario para revisar los gastos compartidos.
 					</p>

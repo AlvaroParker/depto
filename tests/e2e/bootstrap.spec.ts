@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectNoAccessibilityViolations } from "./ui-quality";
 
 test("creates the one-time root account on a first deployment", async ({ page }) => {
 	if (!process.env.E2E_BOOTSTRAP) {
@@ -12,6 +13,7 @@ test("creates the one-time root account on a first deployment", async ({ page })
 	await page.goto("/login");
 	await expect(page).toHaveURL(/\/setup$/);
 	await expect(page.getByRole("heading", { name: "Crea el usuario root" })).toBeVisible();
+	await expectNoAccessibilityViolations(page, "/setup on a fresh deployment");
 
 	await page.getByLabel("Tu nombre").fill("Administradora raíz");
 	await page.getByLabel("Usuario root").fill("root-e2e");

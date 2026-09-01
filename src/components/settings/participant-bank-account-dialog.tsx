@@ -109,14 +109,14 @@ export function ParticipantBankAccountDialog({
 							) : (
 								<Trash2 aria-hidden size={16} />
 							)}
-							{pending ? "Eliminando…" : "Eliminar datos"}
+							{pending ? "Eliminando datos bancarios…" : "Eliminar datos bancarios"}
 						</Button>
 					</div>
 				</div>
 			) : (
 				<form action={submit} className="grid gap-5">
 					<div className="border-line bg-paper-strong flex items-center gap-3 rounded-2xl border px-4 py-3">
-						<span className="bg-accent/10 text-accent grid size-10 shrink-0 place-items-center rounded-xl">
+						<span className="bg-accent/10 text-accent-strong grid size-10 shrink-0 place-items-center rounded-xl">
 							<Landmark aria-hidden size={19} />
 						</span>
 						<div className="min-w-0">
@@ -180,7 +180,7 @@ export function ParticipantBankAccountDialog({
 					<div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-between">
 						{account ? (
 							<Button disabled={pending} onClick={() => setConfirmingRemoval(true)} variant="ghost">
-								<Trash2 aria-hidden size={16} /> Eliminar datos
+								<Trash2 aria-hidden size={16} /> Eliminar datos bancarios
 							</Button>
 						) : (
 							<span />
@@ -195,7 +195,7 @@ export function ParticipantBankAccountDialog({
 								) : (
 									<Save aria-hidden size={16} />
 								)}
-								{pending ? "Guardando…" : "Guardar datos"}
+								{pending ? "Guardando datos bancarios…" : "Guardar datos bancarios"}
 							</Button>
 						</div>
 					</div>

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -34,6 +34,12 @@ export const metadata: Metadata = {
 		description: "Gastos compartidos, comprobantes y reembolsos del hogar.",
 		title: "La cuenta de la casa",
 	},
+};
+
+export const viewport: Viewport = {
+	initialScale: 1,
+	viewportFit: "cover",
+	width: "device-width",
 };
 
 export default function RootLayout({

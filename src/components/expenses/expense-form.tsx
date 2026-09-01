@@ -281,7 +281,9 @@ export function ExpenseForm({
 				setReceiptProgress(null);
 				if (upload.err) {
 					setSavedId(result.val.id);
-					setFormError(`El gasto se guardó, pero el comprobante no: ${upload.val.message}`);
+					setFormError(
+						"El gasto se guardó sin el comprobante. Abre el gasto para volver a subir el archivo.",
+					);
 					return;
 				}
 			}
@@ -292,14 +294,14 @@ export function ExpenseForm({
 
 	return (
 		<form
-			className="grid gap-7"
+			className="grid max-w-full min-w-0 gap-7"
 			onSubmit={(event) => {
 				event.preventDefault();
 				submit(new FormData(event.currentTarget));
 			}}
 		>
-			<div className="grid gap-5 sm:grid-cols-2">
-				<div className="sm:col-span-2">
+			<div className="grid max-w-full min-w-0 gap-5 sm:grid-cols-2">
+				<div className="min-w-0 sm:col-span-2">
 					<Field
 						autoFocus
 						defaultValue={expense?.name}
@@ -312,11 +314,14 @@ export function ExpenseForm({
 						required
 					/>
 				</div>
-				<div className="sm:col-span-2">
-					<label className="text-ink grid gap-2 text-sm font-medium" htmlFor="kindId">
+				<div className="min-w-0 sm:col-span-2">
+					<label
+						className="text-ink grid max-w-full min-w-0 gap-2 text-sm font-medium"
+						htmlFor="kindId"
+					>
 						<span>Categoría</span>
-						<span className="grid grid-cols-[3rem_minmax(0,1fr)] gap-3">
-							<span className="border-accent/20 bg-accent/10 text-accent grid size-12 place-items-center rounded-xl border">
+						<span className="grid min-w-0 grid-cols-[3rem_minmax(0,1fr)] gap-3">
+							<span className="border-accent/20 bg-accent/10 text-accent-strong grid size-12 place-items-center rounded-xl border">
 								<ExpenseKindIcon
 									aria-hidden
 									iconKey={expenseKinds.find((kind) => kind.id === kindId)?.iconKey ?? "other"}
@@ -325,7 +330,7 @@ export function ExpenseForm({
 							</span>
 							<select
 								aria-invalid={Boolean(errors.kindId)}
-								className="border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 w-full rounded-xl border px-4 text-base outline-none focus:ring-3"
+								className="border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 w-full max-w-full min-w-0 rounded-xl border px-4 text-base outline-none focus:ring-3"
 								id="kindId"
 								name="kindId"
 								onChange={(event) => setKindId(event.target.value)}
@@ -344,12 +349,15 @@ export function ExpenseForm({
 						) : null}
 					</label>
 				</div>
-				<div className="sm:col-span-2">
-					<label className="text-ink grid gap-2 text-sm font-medium" htmlFor="receipt">
+				<div className="min-w-0 sm:col-span-2">
+					<label
+						className="text-ink grid max-w-full min-w-0 gap-2 text-sm font-medium"
+						htmlFor="receipt"
+					>
 						<span>Comprobante (opcional)</span>
 						<input
 							accept={RECEIPT_CONTENT_TYPES.join(",")}
-							className="border-line-strong bg-paper file:bg-paper-strong file:text-ink min-h-12 rounded-xl border px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:font-semibold"
+							className="border-line-strong bg-paper file:bg-paper-strong file:text-ink min-h-12 w-full max-w-full min-w-0 rounded-xl border px-3 py-2 text-sm file:mr-3 file:max-w-full file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:font-semibold"
 							id="receipt"
 							name="receipt"
 							type="file"
@@ -373,11 +381,11 @@ export function ExpenseForm({
 					required
 					value={amountValue}
 				/>
-				<div className="grid gap-2 text-sm font-medium">
+				<div className="grid max-w-full min-w-0 gap-2 text-sm font-medium">
 					<label htmlFor="paidByParticipantId">¿Quién pagó?</label>
 					<select
 						aria-invalid={Boolean(errors.paidByParticipantId)}
-						className="border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 w-full rounded-xl border px-4 text-base outline-none focus:ring-3 disabled:opacity-60"
+						className="border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 w-full max-w-full min-w-0 rounded-xl border px-4 text-base outline-none focus:ring-3 disabled:opacity-60"
 						disabled={financialFieldsLocked}
 						id="paidByParticipantId"
 						name="paidByParticipantId"
@@ -399,20 +407,20 @@ export function ExpenseForm({
 					) : null}
 				</div>
 
-				<fieldset className="border-line bg-paper-strong/45 grid gap-3 rounded-2xl border p-4 sm:col-span-2">
+				<fieldset className="border-line bg-paper-strong/45 grid max-w-full min-w-0 gap-3 rounded-2xl border p-4 sm:col-span-2">
 					<legend className="px-1 text-sm font-semibold">¿Entre quiénes se divide?</legend>
 					<p className="text-ink-muted flex items-center gap-2 text-xs leading-5">
 						<UsersRound aria-hidden size={16} /> Cada persona seleccionada recibe una parte. Quien
 						pagó puede quedar fuera, salvo en una cuenta abierta.
 					</p>
-					<div className="grid gap-2 sm:grid-cols-2">
+					<div className="grid min-w-0 gap-2 sm:grid-cols-2">
 						{participants.map((participant) => {
 							const selected = participantIds.includes(participant.id);
 							const requiredOpenPayer = splitMode === "open" && participant.id === payerId;
 							const selectionLocked = financialFieldsLocked || requiredOpenPayer;
 							return (
 								<label
-									className={`focus-within:ring-accent/20 relative flex min-h-12 items-center gap-3 rounded-xl border px-4 py-3 transition-colors focus-within:ring-3 ${
+									className={`focus-within:ring-accent/20 relative flex min-h-12 min-w-0 items-center gap-3 rounded-xl border px-4 py-3 transition-colors focus-within:ring-3 ${
 										selected
 											? "border-accent/45 bg-accent/8 text-ink"
 											: "border-line bg-paper text-ink-muted"
@@ -442,7 +450,9 @@ export function ExpenseForm({
 									>
 										{selected ? <Check aria-hidden size={14} strokeWidth={3} /> : null}
 									</span>
-									<span className="font-medium">{participant.name}</span>
+									<span className="min-w-0 font-medium [overflow-wrap:anywhere]">
+										{participant.name}
+									</span>
 								</label>
 							);
 						})}
@@ -454,9 +464,9 @@ export function ExpenseForm({
 					) : null}
 				</fieldset>
 
-				<fieldset className="border-line grid gap-3 rounded-2xl border p-4 sm:col-span-2">
+				<fieldset className="border-line grid max-w-full min-w-0 gap-3 rounded-2xl border p-4 sm:col-span-2">
 					<legend className="px-1 text-sm font-semibold">¿Cómo se divide?</legend>
-					<div className="grid gap-2 sm:grid-cols-3">
+					<div className="grid min-w-0 gap-2 sm:grid-cols-3">
 						{splitModeOptions.map((option) => {
 							const selected = splitMode === option.value;
 							const optionDisabled =
@@ -464,7 +474,7 @@ export function ExpenseForm({
 							const Icon = option.icon;
 							return (
 								<label
-									className={`relative grid min-h-32 gap-2 rounded-xl border p-4 transition ${
+									className={`relative grid min-h-32 min-w-0 gap-2 rounded-xl border p-4 transition ${
 										selected ? "border-accent/50 bg-accent/8" : "border-line bg-paper"
 									} ${optionDisabled ? "cursor-not-allowed opacity-60" : "hover:border-line-strong cursor-pointer"}`}
 									key={option.value}
@@ -479,7 +489,7 @@ export function ExpenseForm({
 									/>
 									<Icon
 										aria-hidden
-										className={selected ? "text-accent" : "text-ink-faint"}
+										className={selected ? "text-accent-strong" : "text-ink-faint"}
 										size={20}
 									/>
 									<strong className="text-sm">{option.label}</strong>
@@ -501,20 +511,20 @@ export function ExpenseForm({
 				</fieldset>
 
 				{splitMode !== "equal" ? (
-					<fieldset className="border-accent/20 bg-accent/5 grid gap-4 rounded-2xl border p-4 sm:col-span-2">
+					<fieldset className="border-accent/20 bg-accent/5 grid max-w-full min-w-0 gap-4 rounded-2xl border p-4 sm:col-span-2">
 						<legend className="px-1 text-sm font-semibold">
 							{splitMode === "custom" ? "Montos por persona" : "Montos iniciales"}
 						</legend>
-						<div className="grid gap-3">
+						<div className="grid min-w-0 gap-3">
 							{selectedParticipants.map((participant) => {
 								const isOpenPayer = splitMode === "open" && participant.id === payerId;
 								return (
 									<label
-										className="border-line bg-paper grid gap-2 rounded-xl border p-3 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center"
+										className="border-line bg-paper grid min-w-0 gap-2 rounded-xl border p-3 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center"
 										htmlFor={`share-${participant.id}`}
 										key={participant.id}
 									>
-										<span>
+										<span className="min-w-0">
 											<strong className="block text-sm">{participant.name}</strong>
 											<span className="text-ink-muted text-xs">
 												{isOpenPayer ? "Cubre el saldo restante" : "Monto en CLP"}
@@ -522,7 +532,7 @@ export function ExpenseForm({
 										</span>
 										<input
 											aria-label={`Monto de ${participant.name}`}
-											className="border-line-strong bg-paper-strong text-ink focus:border-accent focus:ring-accent/15 min-h-11 rounded-xl border px-3 text-right text-base font-semibold outline-none focus:ring-3 disabled:opacity-60"
+											className="border-line-strong bg-paper-strong text-ink focus:border-accent focus:ring-accent/15 min-h-11 w-full max-w-full min-w-0 rounded-xl border px-3 text-right text-base font-semibold outline-none focus:ring-3 disabled:opacity-60"
 											disabled={financialFieldsLocked || isOpenPayer}
 											id={`share-${participant.id}`}
 											inputMode="numeric"
@@ -566,7 +576,7 @@ export function ExpenseForm({
 				) : null}
 
 				{!expense ? (
-					<fieldset className="border-positive/20 bg-positive/5 grid gap-3 rounded-2xl border p-4 sm:col-span-2">
+					<fieldset className="border-positive/20 bg-positive/5 grid max-w-full min-w-0 gap-3 rounded-2xl border p-4 sm:col-span-2">
 						<legend className="px-1 text-sm font-semibold">¿Quién ya pagó su parte?</legend>
 						<p className="text-ink-muted flex items-start gap-2 text-xs leading-5">
 							<BadgeCheck aria-hidden className="text-positive mt-0.5" size={16} />
@@ -574,13 +584,13 @@ export function ExpenseForm({
 							indicado arriba.
 						</p>
 						{payerId && eligibleInitialPaidParticipants.length > 0 ? (
-							<div className="grid gap-2 sm:grid-cols-2">
+							<div className="grid min-w-0 gap-2 sm:grid-cols-2">
 								{eligibleInitialPaidParticipants.map((participant) => {
 									const paid = initialPaidParticipantIds.includes(participant.id);
 									const shareAmount = resolvedShareAmounts[participant.id] ?? 0;
 									return (
 										<label
-											className={`flex min-h-12 items-center gap-3 rounded-xl border px-4 py-3 ${
+											className={`flex min-h-12 min-w-0 items-center gap-3 rounded-xl border px-4 py-3 ${
 												paid ? "border-positive/40 bg-positive/10" : "border-line bg-paper"
 											} ${shareAmount === 0 ? "cursor-not-allowed opacity-55" : "cursor-pointer"}`}
 											key={participant.id}
@@ -598,7 +608,7 @@ export function ExpenseForm({
 												}
 												type="checkbox"
 											/>
-											<span>
+											<span className="min-w-0">
 												<strong className="block text-sm">{participant.name}</strong>
 												<span className="text-ink-muted text-xs">{formatMoney(shareAmount)}</span>
 											</span>
@@ -613,7 +623,7 @@ export function ExpenseForm({
 					</fieldset>
 				) : null}
 
-				<div className="relative">
+				<div className="relative min-w-0">
 					<Field
 						className="pr-11"
 						defaultValue={expense?.expenseDate ?? defaultDate}
@@ -630,7 +640,7 @@ export function ExpenseForm({
 						size={18}
 					/>
 				</div>
-				<div className="sm:col-span-2">
+				<div className="min-w-0 sm:col-span-2">
 					<TextareaField
 						defaultValue={expense?.description ?? ""}
 						error={errors.description?.[0]}
@@ -642,12 +652,12 @@ export function ExpenseForm({
 					/>
 				</div>
 				{!expense ? (
-					<label className="border-line bg-paper-strong/55 focus-within:ring-accent/20 flex cursor-pointer items-center justify-between gap-4 rounded-2xl border p-4 transition focus-within:ring-3 sm:col-span-2">
+					<label className="border-line bg-paper-strong/55 focus-within:ring-accent/20 flex min-w-0 cursor-pointer items-center justify-between gap-4 rounded-2xl border p-4 transition focus-within:ring-3 sm:col-span-2">
 						<span className="flex min-w-0 items-start gap-3">
-							<span className="bg-accent/10 text-accent mt-0.5 grid size-9 shrink-0 place-items-center rounded-full">
+							<span className="bg-accent/10 text-accent-strong mt-0.5 grid size-9 shrink-0 place-items-center rounded-full">
 								<Mail aria-hidden size={17} />
 							</span>
-							<span>
+							<span className="min-w-0">
 								<strong className="block text-sm">Enviar notificaciones por correo</strong>
 								<span className="text-ink-muted mt-1 block text-xs leading-5">
 									Avisa a las personas participantes cuando guardes el gasto.
@@ -686,7 +696,7 @@ export function ExpenseForm({
 				<label className="border-warning/25 bg-warning/8 grid grid-cols-[auto_1fr] gap-3 rounded-2xl border p-4 text-sm">
 					<input className="mt-1 size-4" name="resetPaidReimbursements" type="checkbox" />
 					<span>
-						<strong className="block">Confirmar recálculo financiero</strong>
+						<strong className="text-warning-strong block">Confirmar recálculo financiero</strong>
 						<span className="text-ink-muted mt-1 block leading-6">
 							Los cambios financieros reiniciarán reembolsos pagados y eliminarán sus comprobantes.
 						</span>
@@ -712,12 +722,18 @@ export function ExpenseForm({
 						className="bg-accent text-accent-foreground inline-flex min-h-11 items-center justify-center rounded-full px-5 text-sm font-semibold"
 						href={`/expenses/${savedId}`}
 					>
-						Ver gasto y reintentar
+						Ir al gasto para subirlo
 					</a>
 				) : null}
 				<Button disabled={pending || Boolean(savedId)} type="submit">
 					<Save aria-hidden size={18} />{" "}
-					{pending ? "Guardando…" : expense ? "Guardar cambios" : "Guardar gasto"}
+					{pending
+						? expense
+							? "Guardando cambios del gasto…"
+							: "Guardando gasto…"
+						: expense
+							? "Guardar cambios"
+							: "Guardar gasto"}
 				</Button>
 				{receiptProgress !== null ? (
 					<span className="text-ink-muted self-center text-sm">

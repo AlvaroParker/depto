@@ -10,14 +10,14 @@ function expenseCountLabel(count: number): string {
 export function PersonalObligations({ summary }: { summary: PersonalDashboardSummary }) {
 	const allClear = summary.owedExpenseCount === 0 && summary.dueToMeExpenseCount === 0;
 	return (
-		<section className="border-line bg-paper mt-9 overflow-hidden rounded-3xl border shadow-sm">
-			<div className="grid lg:grid-cols-[1.35fr_0.65fr]">
-				<div className="bg-ink text-paper relative overflow-hidden p-6 sm:p-8">
+		<section className="border-line bg-paper mt-9 max-w-full min-w-0 overflow-hidden rounded-3xl border shadow-sm">
+			<div className="grid min-w-0 lg:grid-cols-[1.35fr_0.65fr]">
+				<div className="bg-ink text-paper relative min-w-0 overflow-hidden p-6 sm:p-8">
 					<div
 						aria-hidden
-						className="bg-accent/18 absolute -top-20 -right-16 size-56 rounded-full blur-2xl"
+						className="bg-accent/18 absolute -top-16 right-0 size-44 rounded-full blur-2xl sm:-top-20 sm:size-56"
 					/>
-					<div className="relative">
+					<div className="relative min-w-0">
 						<p className="text-paper/60 flex items-center gap-2 text-xs font-bold tracking-[0.18em] uppercase">
 							{summary.owedExpenseCount ? (
 								<ArrowUpRight aria-hidden size={16} />
@@ -29,7 +29,7 @@ export function PersonalObligations({ summary }: { summary: PersonalDashboardSum
 						<h2 className="font-display mt-5 text-2xl font-semibold">
 							{summary.owedExpenseCount ? "Debes" : "No debes nada"}
 						</h2>
-						<p className="font-display mt-1 text-5xl font-semibold tracking-[-0.04em] sm:text-6xl">
+						<p className="font-display mt-1 max-w-full text-[clamp(2rem,12vw,3.75rem)] leading-none font-semibold tracking-[-0.04em] [overflow-wrap:anywhere]">
 							{formatMoney(summary.amountOwedMinor)}
 						</p>
 						<p className="text-paper/65 mt-3 text-sm">
@@ -49,12 +49,12 @@ export function PersonalObligations({ summary }: { summary: PersonalDashboardSum
 						) : null}
 					</div>
 				</div>
-				<div className="bg-paper-strong/55 flex flex-col justify-between p-6 sm:p-8">
-					<div>
+				<div className="bg-paper-strong/55 flex min-w-0 flex-col justify-between p-6 sm:p-8">
+					<div className="min-w-0">
 						<p className="text-positive-strong flex items-center gap-2 text-xs font-bold tracking-[0.16em] uppercase">
 							<ArrowDownLeft aria-hidden size={16} /> Te deben
 						</p>
-						<p className="font-display mt-4 text-3xl font-semibold">
+						<p className="font-display mt-4 max-w-full text-[clamp(1.75rem,8vw,1.875rem)] leading-tight font-semibold [overflow-wrap:anywhere]">
 							{formatMoney(summary.amountDueToMeMinor)}
 						</p>
 						<p className="text-ink-muted mt-2 text-sm leading-6">

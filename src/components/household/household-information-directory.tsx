@@ -124,10 +124,10 @@ function HouseholdInformationForm({
 		<div className="grid gap-5">
 			<fieldset className="grid gap-3">
 				<legend className="text-sm font-medium">Comenzar con</legend>
-				<div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+				<div className="grid grid-cols-1 gap-2 min-[240px]:grid-cols-2 sm:grid-cols-5">
 					{presets.map((preset) => (
 						<button
-							className="border-line bg-paper hover:border-accent/40 focus-visible:outline-accent grid min-h-20 place-items-center gap-1.5 rounded-xl border px-2 py-3 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2"
+							className="border-line bg-paper hover:border-accent/40 focus-visible:outline-accent grid min-h-20 min-w-0 place-items-center gap-1.5 rounded-xl border px-2 py-3 text-xs font-semibold [overflow-wrap:anywhere] transition focus-visible:outline-2 focus-visible:outline-offset-2"
 							key={preset.label}
 							onClick={() =>
 								onChange({ ...draft, iconKey: preset.iconKey, title: preset.title || draft.title })
@@ -417,12 +417,12 @@ export function HouseholdInformationDirectory({
 				<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 					{items.map((item, index) => (
 						<article
-							className="animate-rise border-line bg-paper/88 group relative flex min-w-0 flex-col overflow-hidden rounded-3xl border p-5 shadow-[0_24px_65px_-52px_rgba(40,40,34,0.8)] sm:p-6"
+							className="animate-rise border-line bg-paper/88 shadow-card group relative flex min-w-0 flex-col overflow-hidden rounded-3xl border p-5 sm:p-6"
 							key={item.id}
 							style={{ animationDelay: `${Math.min(index, 6) * 45}ms` }}
 						>
 							<div className="flex items-start gap-4">
-								<span className="bg-accent/10 text-accent grid size-12 shrink-0 place-items-center rounded-2xl">
+								<span className="bg-accent/10 text-accent-strong grid size-12 shrink-0 place-items-center rounded-2xl">
 									<ExpenseKindIcon aria-hidden iconKey={item.iconKey} size={23} />
 								</span>
 								<div className="min-w-0 flex-1">
@@ -480,7 +480,7 @@ export function HouseholdInformationDirectory({
 										</p>
 										{field.displayType === "link" ? (
 											<a
-												className="text-accent decoration-accent/30 mt-1 inline-flex items-center gap-1.5 text-sm font-semibold break-all underline underline-offset-4"
+												className="text-accent-strong decoration-accent/30 mt-1 inline-flex items-center gap-1.5 text-sm font-semibold break-all underline underline-offset-4"
 												href={field.value}
 												rel="noreferrer"
 												target="_blank"
@@ -557,12 +557,12 @@ export function HouseholdInformationDirectory({
 							{formError}
 						</p>
 					) : null}
-					<div className="bg-paper border-line sticky bottom-0 mt-6 flex justify-end gap-3 border-t py-4">
+					<div className="bg-paper border-line sticky bottom-0 mt-6 flex flex-col-reverse items-stretch gap-3 border-t py-4 sm:flex-row sm:justify-end">
 						<Button disabled={pending} onClick={closeEditor} variant="secondary">
 							Cancelar
 						</Button>
 						<Button disabled={pending} type="submit">
-							<Save aria-hidden size={17} /> {pending ? "Guardando…" : "Guardar"}
+							<Save aria-hidden size={17} /> {pending ? "Guardando dato…" : "Guardar dato"}
 						</Button>
 					</div>
 				</form>
@@ -578,12 +578,12 @@ export function HouseholdInformationDirectory({
 				open={Boolean(archivingItem)}
 				title="Archivar dato"
 			>
-				<div className="flex justify-end gap-3">
+				<div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
 					<Button disabled={pending} onClick={() => setArchivingItem(null)} variant="secondary">
 						Cancelar
 					</Button>
 					<Button disabled={pending} onClick={confirmArchive} variant="danger">
-						<Archive aria-hidden size={17} /> {pending ? "Archivando…" : "Archivar"}
+						<Archive aria-hidden size={17} /> {pending ? "Archivando dato…" : "Archivar dato"}
 					</Button>
 				</div>
 			</Dialog>

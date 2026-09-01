@@ -6,6 +6,12 @@ import { defineConfig, devices } from "@playwright/test";
 
 const e2ePassword = process.env.E2E_PASSWORD ?? `e2e-${randomUUID()}`;
 process.env.E2E_PASSWORD = e2ePassword;
+const e2ePort = Number.parseInt(process.env.E2E_PORT ?? "3000", 10);
+if (!Number.isInteger(e2ePort) || e2ePort < 1 || e2ePort > 65_535) {
+	throw new Error("E2E_PORT must be an integer between 1 and 65535.");
+}
+const e2eBaseUrl = `http://127.0.0.1:${e2ePort}`;
+process.env.E2E_BASE_URL = e2eBaseUrl;
 const browserCache = path.join(homedir(), ".cache/ms-playwright");
 const fallbackChromium = existsSync(browserCache)
 	? readdirSync(browserCache)
@@ -24,20 +30,20 @@ export default defineConfig({
 	workers: 1,
 	testDir: "./tests/e2e",
 	use: {
-		baseURL: "http://127.0.0.1:3000",
+		baseURL: e2eBaseUrl,
 		launchOptions: fallbackChromium ? { executablePath: fallbackChromium } : undefined,
 		screenshot: "only-on-failure",
 		trace: "retain-on-failure",
 	},
 	webServer: {
-		command: "pnpm db:reset:local && pnpm dev",
+		command: `pnpm db:reset:local && pnpm dev --port ${e2ePort}`,
 		env: {
-			APP_BASE_URL: "http://127.0.0.1:3000",
+			APP_BASE_URL: e2eBaseUrl,
 			AUTH_SECRET: randomBytes(32).toString("base64url"),
 			E2E_PASSWORD: e2ePassword,
 		},
 		reuseExistingServer: false,
-		url: "http://127.0.0.1:3000/login",
+		url: `${e2eBaseUrl}/login`,
 	},
 	projects: [
 		{
@@ -46,6 +52,7 @@ export default defineConfig({
 		},
 		{
 			name: "mobile-chrome",
+			testIgnore: /ui-quality\.spec\.ts/,
 			use: { ...devices["Pixel 7"] },
 		},
 	],

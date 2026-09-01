@@ -38,7 +38,7 @@ export function AppShell({ children, user }: AppShellProps) {
 	const navigationHrefs = navigation.map(({ href }) => href);
 	const mobileNavigationHrefs = baseNavigation.map(({ href }) => href);
 	return (
-		<div className="mx-auto min-h-screen max-w-[92rem] lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
+		<div className="mx-auto min-h-dvh max-w-[92rem] lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
 			<aside className="border-line bg-paper/72 sticky top-0 hidden h-screen border-r px-5 py-7 backdrop-blur lg:flex lg:flex-col">
 				<Link className="flex items-center gap-3 px-2" href="/">
 					<span className="bg-accent text-accent-foreground grid size-10 place-items-center rounded-2xl">
@@ -84,15 +84,22 @@ export function AppShell({ children, user }: AppShellProps) {
 					<SignOutButton />
 				</div>
 			</aside>
-			<div className="min-w-0 pb-24 lg:pb-0">{children}</div>
+			<div className="min-w-0 pb-[calc(6rem+env(safe-area-inset-bottom))] max-[299px]:pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
+				{children}
+			</div>
 			<nav
 				aria-label="Principal"
-				className="border-line bg-paper/94 fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-2xl border p-1.5 shadow-[0_18px_50px_-22px_rgba(40,40,34,0.65)] backdrop-blur lg:hidden"
+				className="border-line bg-paper/94 shadow-card fixed z-40 flex flex-wrap rounded-2xl border p-1.5 backdrop-blur lg:hidden"
+				style={{
+					bottom: "max(0.75rem, env(safe-area-inset-bottom))",
+					left: "max(0.75rem, env(safe-area-inset-left))",
+					right: "max(0.75rem, env(safe-area-inset-right))",
+				}}
 			>
 				{baseNavigation.slice(0, 2).map(({ href, icon: Icon, label }) => (
 					<ActiveNavigationLink
 						activeClassName="bg-accent/10 text-accent-strong"
-						className="text-ink-muted grid min-h-12 place-items-center gap-0.5 rounded-xl text-[0.65rem] font-semibold transition"
+						className="text-ink-muted flex min-h-14 min-w-12 flex-1 basis-13 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-center text-[0.65rem] leading-tight font-semibold transition"
 						href={href}
 						key={href}
 						navigationHrefs={mobileNavigationHrefs}
@@ -101,7 +108,7 @@ export function AppShell({ children, user }: AppShellProps) {
 					</ActiveNavigationLink>
 				))}
 				<Link
-					className="bg-accent text-accent-foreground grid min-h-12 place-items-center gap-0.5 rounded-xl text-[0.65rem] font-semibold"
+					className="bg-accent text-accent-foreground flex min-h-14 min-w-12 flex-1 basis-13 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-center text-[0.65rem] leading-tight font-semibold"
 					href="/expenses/new"
 				>
 					<Plus aria-hidden size={19} /> Agregar
@@ -109,7 +116,7 @@ export function AppShell({ children, user }: AppShellProps) {
 				{baseNavigation.slice(2).map(({ href, icon: Icon, label }) => (
 					<ActiveNavigationLink
 						activeClassName="bg-accent/10 text-accent-strong"
-						className="text-ink-muted grid min-h-12 place-items-center gap-0.5 rounded-xl text-[0.62rem] font-semibold transition"
+						className="text-ink-muted flex min-h-14 min-w-12 flex-1 basis-13 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-center text-[0.62rem] leading-tight font-semibold transition"
 						href={href}
 						key={href}
 						navigationHrefs={mobileNavigationHrefs}

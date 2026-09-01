@@ -29,7 +29,12 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 	const session = await auth();
 	if (!session?.user) redirect(`/login?callbackUrl=${encodeURIComponent(currentUrl)}`);
 	if (session.user.role !== "user" || !session.user.participantId) {
-		return <p className="p-8">Solo los usuarios participantes pueden conectar aplicaciones.</p>;
+		return (
+			<p className="text-ink-muted mx-auto max-w-xl p-8 text-sm leading-6">
+				Esta cuenta no puede conectar aplicaciones. Ingresa con una cuenta vinculada a una persona
+				de la casa.
+			</p>
+		);
 	}
 	const client = await findOAuthClient(fields.client_id);
 	const scopes = parseOAuthScopes(fields.scope);
@@ -37,7 +42,11 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 	try {
 		origin = getOAuthOrigin();
 	} catch {
-		return <p className="p-8">La autorización no está disponible.</p>;
+		return (
+			<p className="text-ink-muted mx-auto max-w-xl p-8 text-sm leading-6">
+				No pudimos iniciar la conexión. Vuelve a la aplicación e inténtalo nuevamente.
+			</p>
+		);
 	}
 	const valid =
 		client.ok &&
@@ -51,7 +60,12 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 		/^[A-Za-z0-9_-]{43}$/.test(fields.code_challenge) &&
 		scopes;
 	if (!valid || !scopes || !client.ok || !client.val) {
-		return <p className="p-8">La solicitud de autorización no es válida.</p>;
+		return (
+			<p className="text-ink-muted mx-auto max-w-xl p-8 text-sm leading-6">
+				Esta solicitud de conexión no es válida o ya venció. Vuelve a la aplicación e inicia la
+				conexión nuevamente.
+			</p>
+		);
 	}
 	return <ConsentForm clientName={client.val.name} fields={fields} scopes={scopes} />;
 }

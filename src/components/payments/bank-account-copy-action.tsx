@@ -27,7 +27,7 @@ export function BankAccountCopyAction({ details }: BankAccountCopyActionProps) {
 		<div className="border-line bg-paper-strong rounded-2xl border px-4 py-4">
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div className="flex min-w-0 items-center gap-3">
-					<span className="bg-accent/10 text-accent grid size-10 shrink-0 place-items-center rounded-xl">
+					<span className="bg-accent/10 text-accent-strong grid size-10 shrink-0 place-items-center rounded-xl">
 						<Landmark aria-hidden size={18} />
 					</span>
 					<div className="min-w-0">

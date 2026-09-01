@@ -26,12 +26,15 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
 	if (!expense.val) notFound();
 	return (
 		<main className="mx-auto max-w-3xl px-4 py-7 sm:px-7 sm:py-10">
-			<Link className="text-ink-muted hover:text-ink text-sm" href={`/expenses/${id}`}>
+			<Link
+				className="text-ink-muted hover:text-ink inline-flex min-h-11 items-center text-sm"
+				href={`/expenses/${id}`}
+			>
 				← Volver al gasto
 			</Link>
-			<header className="mt-6 mb-8 flex items-end justify-between gap-4">
+			<header className="mt-6 mb-8 flex flex-wrap items-end justify-between gap-4">
 				<div>
-					<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">
+					<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 						Corrección segura
 					</p>
 					<h1 className="font-display mt-2 text-4xl font-semibold tracking-[-0.03em]">
@@ -40,7 +43,7 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
 				</div>
 				<DeleteExpenseButton expenseId={id} expenseName={expense.val.name} />
 			</header>
-			<section className="border-line bg-paper rounded-[1.75rem] border p-5 sm:p-8">
+			<section className="border-line bg-paper min-w-0 rounded-[1.75rem] border p-5 sm:p-8">
 				<ExpenseForm
 					canEditFinancials={session.user.role === "root" || session.user.role === "admin"}
 					defaultDate={expense.val.expenseDate}

@@ -36,12 +36,19 @@ export function ReceiptField({ expenseId }: { expenseId: string }) {
 		<div>
 			<input
 				accept={RECEIPT_CONTENT_TYPES.join(",")}
+				aria-hidden="true"
 				className="sr-only"
-				onChange={(event) => void select(event.target.files?.[0])}
+				onChange={(event) => {
+					const file = event.target.files?.[0];
+					event.target.value = "";
+					void select(file);
+				}}
 				ref={input}
+				tabIndex={-1}
 				type="file"
 			/>
 			<Button
+				aria-busy={progress !== null}
 				disabled={progress !== null}
 				onClick={() => input.current?.click()}
 				variant="secondary"
@@ -53,6 +60,9 @@ export function ReceiptField({ expenseId }: { expenseId: string }) {
 				)}
 				{progress !== null ? `Subiendo ${progress}%` : "Subir comprobante"}
 			</Button>
+			<p aria-live="polite" className="sr-only" role="status">
+				{progress !== null ? `Subiendo comprobante: ${progress}%` : ""}
+			</p>
 			{error ? (
 				<p className="text-danger mt-2 text-sm" role="alert">
 					{error}

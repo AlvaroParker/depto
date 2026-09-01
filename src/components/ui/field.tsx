@@ -17,7 +17,7 @@ interface FieldShellProps {
 function FieldShell({ children, error, hint, id, label }: FieldShellProps) {
 	const message = error ?? hint;
 	return (
-		<div className="text-ink grid gap-2 text-sm font-medium">
+		<div className="text-ink grid max-w-full min-w-0 gap-2 text-sm font-medium">
 			<label htmlFor={id}>{label}</label>
 			{children}
 			{message ? (
@@ -46,7 +46,7 @@ export function Field({ className, error, hint, id, label, ...props }: FieldProp
 				aria-describedby={error || hint ? `${id}-message` : undefined}
 				aria-invalid={Boolean(error)}
 				className={cn(
-					"border-line-strong bg-paper text-ink placeholder:text-ink-faint focus:border-accent focus:ring-accent/15 min-h-12 w-full rounded-xl border px-4 text-base transition outline-none focus:ring-3",
+					"border-line-strong bg-paper text-ink placeholder:text-ink-faint focus:border-accent focus:ring-accent/15 min-h-12 w-full max-w-full min-w-0 rounded-xl border px-4 text-base transition outline-none focus:ring-3",
 					error && "border-danger focus:border-danger focus:ring-danger/15",
 					className,
 				)}
@@ -72,7 +72,7 @@ export function SelectField({ className, error, hint, id, label, ...props }: Sel
 				aria-invalid={Boolean(error)}
 				aria-label={label}
 				className={cn(
-					"border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 w-full rounded-xl border px-4 text-base transition outline-none focus:ring-3",
+					"border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 w-full max-w-full min-w-0 rounded-xl border px-4 text-base transition outline-none focus:ring-3",
 					error && "border-danger focus:border-danger focus:ring-danger/15",
 					className,
 				)}
@@ -97,7 +97,7 @@ export function TextareaField({ className, error, hint, id, label, ...props }: T
 				aria-describedby={error || hint ? `${id}-message` : undefined}
 				aria-invalid={Boolean(error)}
 				className={cn(
-					"border-line-strong bg-paper text-ink placeholder:text-ink-faint focus:border-accent focus:ring-accent/15 min-h-28 w-full resize-y rounded-xl border px-4 py-3 text-base transition outline-none focus:ring-3",
+					"border-line-strong bg-paper text-ink placeholder:text-ink-faint focus:border-accent focus:ring-accent/15 min-h-28 w-full max-w-full min-w-0 resize-y rounded-xl border px-4 py-3 text-base transition outline-none focus:ring-3",
 					error && "border-danger focus:border-danger focus:ring-danger/15",
 					className,
 				)}

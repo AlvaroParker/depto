@@ -17,15 +17,15 @@ export default async function UsersPage() {
 	return (
 		<main className="px-4 py-7 sm:px-7 lg:px-12 lg:py-11">
 			<div className="mx-auto max-w-6xl">
-				<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">
+				<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 					Control de acceso
 				</p>
 				<h1 className="font-display mt-2 text-4xl font-semibold tracking-[-0.035em] sm:text-5xl">
 					Las llaves de la casa.
 				</h1>
 				<p className="text-ink-muted mt-3 max-w-2xl text-sm leading-6">
-					Crea administradores y usuarios, y actualiza los datos de acceso de las cuentas de
-					usuario. Al eliminar un acceso, sus registros financieros permanecen intactos.
+					Crea accesos para administradores y usuarios, y actualiza sus datos. Al eliminar un
+					acceso, sus registros financieros permanecen intactos.
 				</p>
 				<UserManagement currentUserId={session.user.id} initialUsers={users.val} />
 			</div>

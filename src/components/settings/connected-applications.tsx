@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import type { OAuthGrantSummary } from "@/lib/types/oauth";
 
 const scopeLabels: Record<string, string> = {
@@ -13,22 +14,39 @@ const scopeLabels: Record<string, string> = {
 
 export function ConnectedApplications({ initialGrants }: { initialGrants: OAuthGrantSummary[] }) {
 	const [grants, setGrants] = useState(initialGrants);
+	const [disconnectingGrant, setDisconnectingGrant] = useState<OAuthGrantSummary | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [notice, setNotice] = useState<string | null>(null);
 	const [pending, startTransition] = useTransition();
 
-	function disconnect(grant: OAuthGrantSummary) {
-		if (!window.confirm(`¿Desconectar ${grant.clientName}?`)) return;
+	function disconnect() {
+		if (!disconnectingGrant) return;
+		const grant = disconnectingGrant;
 		setError(null);
 		startTransition(async () => {
-			const response = await fetch(`/api/oauth/grants/${encodeURIComponent(grant.id)}`, {
-				method: "DELETE",
-			});
-			if (!response.ok) {
-				setError("No pudimos desconectar la aplicación. Inténtalo nuevamente.");
-				return;
+			try {
+				const response = await fetch(`/api/oauth/grants/${encodeURIComponent(grant.id)}`, {
+					method: "DELETE",
+				});
+				if (!response.ok) {
+					setError(`No pudimos desconectar ${grant.clientName}. Inténtalo nuevamente.`);
+					return;
+				}
+				setGrants((current) => current.filter(({ id }) => id !== grant.id));
+				setDisconnectingGrant(null);
+				setNotice(`La aplicación ${grant.clientName} fue desconectada.`);
+			} catch {
+				setError(
+					`No pudimos desconectar ${grant.clientName}. Revisa tu conexión e inténtalo nuevamente.`,
+				);
 			}
-			setGrants((current) => current.filter(({ id }) => id !== grant.id));
 		});
+	}
+
+	function closeDialog() {
+		if (pending) return;
+		setDisconnectingGrant(null);
+		setError(null);
 	}
 
 	return (
@@ -39,22 +57,22 @@ export function ConnectedApplications({ initialGrants }: { initialGrants: OAuthG
 			<p className="text-ink-muted mt-2 text-sm">
 				Estas aplicaciones pueden acceder a tu información según los permisos que aprobaste.
 			</p>
-			{error ? (
-				<p className="mt-4 text-sm text-red-700" role="alert">
-					{error}
+			{notice ? (
+				<p className="text-positive-strong mt-4 text-sm" role="status">
+					{notice}
 				</p>
 			) : null}
 			{grants.length === 0 ? (
 				<p className="border-line bg-paper text-ink-muted mt-5 rounded-2xl border p-5 text-sm">
-					No tienes aplicaciones conectadas.
+					No hay aplicaciones conectadas. Las aplicaciones que autorices aparecerán aquí.
 				</p>
 			) : (
 				<ul className="mt-5 space-y-4">
 					{grants.map((grant) => (
 						<li className="border-line bg-paper rounded-2xl border p-5" key={grant.id}>
 							<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-								<div>
-									<h3 className="font-bold">{grant.clientName}</h3>
+								<div className="min-w-0 flex-1">
+									<h3 className="font-bold break-words">{grant.clientName}</h3>
 									<p className="text-ink-muted mt-1 text-xs">
 										Conectada el {new Date(grant.createdAt).toLocaleString("es-CL")}
 									</p>
@@ -67,7 +85,7 @@ export function ConnectedApplications({ initialGrants }: { initialGrants: OAuthG
 									<ul aria-label="Permisos concedidos" className="mt-3 flex flex-wrap gap-2">
 										{grant.scopes.map((scope) => (
 											<li
-												className="bg-accent/10 text-accent rounded-full px-3 py-1 text-xs"
+												className="bg-accent/10 text-accent-strong rounded-full px-3 py-1 text-xs"
 												key={scope}
 											>
 												{scopeLabels[scope] ?? scope}
@@ -77,17 +95,45 @@ export function ConnectedApplications({ initialGrants }: { initialGrants: OAuthG
 								</div>
 								<Button
 									disabled={pending}
-									onClick={() => disconnect(grant)}
+									onClick={() => {
+										setError(null);
+										setNotice(null);
+										setDisconnectingGrant(grant);
+									}}
 									type="button"
 									variant="secondary"
 								>
-									Desconectar
+									Desconectar aplicación
 								</Button>
 							</div>
 						</li>
 					))}
 				</ul>
 			)}
+			<Dialog
+				description={
+					disconnectingGrant
+						? `${disconnectingGrant.clientName} dejará de acceder a tu información y de actuar en tu nombre.`
+						: undefined
+				}
+				onClose={closeDialog}
+				open={Boolean(disconnectingGrant)}
+				title="Desconectar aplicación"
+			>
+				{error ? (
+					<p className="text-danger mb-4 text-sm" role="alert">
+						{error}
+					</p>
+				) : null}
+				<div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+					<Button disabled={pending} onClick={closeDialog} variant="secondary">
+						Cancelar
+					</Button>
+					<Button disabled={pending} onClick={disconnect} variant="danger">
+						{pending ? "Desconectando aplicación…" : "Desconectar aplicación"}
+					</Button>
+				</div>
+			</Dialog>
 		</section>
 	);
 }

@@ -4,8 +4,8 @@
 	--paper: #f6f1e7;
 	--paper-strong: #eee5d7;
 	--ink: #282822;
-	--ink-muted: #69685e;
-	--ink-faint: #979386;
+	--ink-muted: #5f5d54;
+	--ink-faint: #68675d;
 	--line: #ddd3c4;
 	--line-strong: #c9bcaa;
 	--accent: #bd5039;
@@ -23,6 +23,8 @@
 @theme inline {
 	--color-paper: var(--paper);
 	--color-paper-strong: var(--paper-strong);
+	--color-canvas: var(--paper);
+	--color-background: var(--paper);
 	--color-ink: var(--ink);
 	--color-ink-muted: var(--ink-muted);
 	--color-ink-faint: var(--ink-faint);
@@ -35,8 +37,11 @@
 	--color-positive-strong: var(--positive-strong);
 	--color-pending: var(--pending);
 	--color-pending-strong: var(--pending-strong);
+	--color-warning: var(--pending);
+	--color-warning-strong: var(--pending-strong);
 	--color-danger: var(--danger);
 	--color-danger-strong: var(--danger-strong);
+	--shadow-card: 0 18px 44px -28px rgb(40 40 34 / 35%);
 	--font-sans: var(--font-geist-sans);
 	--font-mono: var(--font-geist-mono);
 	--font-display: Georgia, "Times New Roman", serif;
@@ -52,7 +57,6 @@ html {
 }
 
 body {
-	overflow-x: clip;
 	min-height: 100vh;
 	margin: 0;
 	background:

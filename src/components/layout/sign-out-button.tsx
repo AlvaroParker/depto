@@ -3,16 +3,23 @@
 import { LogOut } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/util/cn";
 
-export function SignOutButton() {
+interface SignOutButtonProps {
+	className?: string;
+	showLabel?: boolean;
+}
+
+export function SignOutButton({ className, showLabel = false }: SignOutButtonProps) {
 	return (
 		<Button
-			aria-label="Cerrar sesión"
-			className="size-11 p-0"
+			aria-label={showLabel ? undefined : "Cerrar sesión"}
+			className={cn(showLabel ? "w-full" : "size-11 p-0", className)}
 			onClick={() => signOut({ redirectTo: "/login" })}
 			variant="ghost"
 		>
 			<LogOut aria-hidden size={19} />
+			{showLabel ? "Cerrar sesión" : null}
 		</Button>
 	);
 }

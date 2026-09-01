@@ -19,7 +19,7 @@ test("lets managers publish household information that regular users can read", 
 	await createDialog.getByRole("button", { name: "Agregar campo" }).click();
 	await createDialog.getByLabel("Etiqueta 1").fill("Medidor");
 	await createDialog.getByLabel("Valor").fill("M-42");
-	await createDialog.getByRole("button", { name: "Guardar", exact: true }).click();
+	await createDialog.getByRole("button", { name: "Guardar dato", exact: true }).click();
 	await expect(createDialog).not.toBeVisible();
 	await expect(page.getByRole("heading", { name: title })).toBeVisible();
 	await expect(page.getByText("0012345", { exact: true })).toBeVisible();
@@ -58,12 +58,15 @@ test("lets managers publish household information that regular users can read", 
 	await page.getByRole("button", { name: `Editar ${title}` }).click();
 	const editDialog = page.getByRole("dialog", { name: "Editar dato de la casa" });
 	await editDialog.getByLabel("Empresa o proveedor").fill(updatedProvider);
-	await editDialog.getByRole("button", { name: "Guardar", exact: true }).click();
+	await editDialog.getByRole("button", { name: "Guardar dato", exact: true }).click();
 	await expect(editDialog).not.toBeVisible();
 	await expect(page.getByText(updatedProvider, { exact: true })).toBeVisible();
 
 	await page.getByRole("button", { name: `Archivar ${title}` }).click();
 	const archiveDialog = page.getByRole("dialog", { name: "Archivar dato" });
-	await archiveDialog.getByRole("button", { name: "Archivar", exact: true }).click();
+	await archiveDialog.getByRole("button", { name: "Archivar dato", exact: true }).click();
+	const archiveNotice = page.getByRole("status");
+	await expect(archiveNotice).toHaveText(`“${title}” fue archivado.`);
+	await expect(archiveNotice).toBeFocused();
 	await expect(page.getByRole("heading", { name: title })).not.toBeVisible();
 });

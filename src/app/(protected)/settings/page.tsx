@@ -2,6 +2,7 @@ import { KeyRound, Tags } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@/auth";
+import { SignOutButton } from "@/components/layout/sign-out-button";
 import { ConnectedApplications } from "@/components/settings/connected-applications";
 import { TelegramAccountSettings } from "@/components/settings/telegram-account-settings";
 import { canManageUsers } from "@/lib/const/roles";
@@ -30,13 +31,13 @@ export default async function SettingsPage() {
 	return (
 		<main className="px-5 py-8 sm:px-8 lg:px-12 lg:py-11">
 			<div className="mx-auto max-w-3xl">
-				<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">Ajustes</p>
+				<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">Ajustes</p>
 				<h1 className="font-display mt-2 text-4xl font-semibold">
 					{canManage ? "La casa" : "Tu cuenta"}
 				</h1>
 				<p className="text-ink-muted mt-3">
 					{canManage
-						? "Cada gasto se divide entre las personas que participan en él."
+						? "Administra los accesos y las categorías que usa el hogar."
 						: "Administra tus datos personales y las aplicaciones que pueden acceder a tu cuenta."}
 				</p>
 				{canManage ? (
@@ -45,7 +46,7 @@ export default async function SettingsPage() {
 							className="border-line bg-paper hover:border-accent/35 flex items-center gap-4 rounded-2xl border p-5 transition"
 							href="/settings/users"
 						>
-							<span className="bg-accent/10 text-accent grid size-11 place-items-center rounded-2xl">
+							<span className="bg-accent/10 text-accent-strong grid size-11 place-items-center rounded-2xl">
 								<KeyRound aria-hidden size={21} />
 							</span>
 							<span>
@@ -77,6 +78,9 @@ export default async function SettingsPage() {
 						<ConnectedApplications initialGrants={grants} />
 					</>
 				) : null}
+				<div className="border-line mt-8 border-t pt-6 lg:hidden">
+					<SignOutButton showLabel />
+				</div>
 			</div>
 		</main>
 	);

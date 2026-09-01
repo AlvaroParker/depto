@@ -43,17 +43,17 @@ export default async function SetupPage() {
 						))}
 					</ul>
 				</div>
-				<p className="text-paper/40 mt-14 text-xs lg:mt-0">Configuración única y privada.</p>
+				<p className="text-paper/65 mt-14 text-xs lg:mt-0">Configuración única y privada.</p>
 			</section>
 
 			<section className="flex items-center justify-center px-5 py-12 sm:px-10">
 				<div className="animate-rise w-full max-w-2xl">
 					<div className="mb-8 flex items-start gap-4">
-						<span className="border-accent/20 bg-accent/10 text-accent grid size-11 shrink-0 place-items-center rounded-2xl border">
+						<span className="border-accent/20 bg-accent/10 text-accent-strong grid size-11 shrink-0 place-items-center rounded-2xl border">
 							<ShieldCheck aria-hidden size={22} />
 						</span>
 						<div>
-							<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">
+							<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 								Paso único
 							</p>
 							<h2 className="font-display mt-1 text-4xl font-semibold tracking-[-0.03em]">
@@ -64,7 +64,7 @@ export default async function SetupPage() {
 							</p>
 						</div>
 					</div>
-					<div className="border-line bg-paper/88 rounded-[2rem] border p-6 shadow-[0_30px_80px_-48px_rgba(40,40,34,0.7)] backdrop-blur sm:p-9">
+					<div className="border-line bg-paper/88 shadow-card rounded-[2rem] border p-6 backdrop-blur sm:p-9">
 						<BootstrapForm />
 					</div>
 				</div>

@@ -9,9 +9,11 @@ export default function HouseholdError({ reset }: { reset: () => void }) {
 				<h1 className="font-display text-3xl font-semibold">
 					No pudimos abrir la libreta de la casa
 				</h1>
-				<p className="text-ink-muted mt-2 text-sm">Inténtalo nuevamente en un momento.</p>
+				<p className="text-ink-muted mt-2 text-sm">
+					Vuelve a cargar la libreta. Si el problema continúa, inténtalo más tarde.
+				</p>
 				<Button className="mt-5" onClick={reset}>
-					Reintentar
+					Volver a cargar la libreta
 				</Button>
 			</div>
 		</main>

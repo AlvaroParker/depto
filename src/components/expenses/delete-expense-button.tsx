@@ -32,7 +32,7 @@ export function DeleteExpenseButton({
 	return (
 		<>
 			<Button onClick={() => setOpen(true)} variant="danger">
-				<Trash2 aria-hidden size={16} /> Eliminar
+				<Trash2 aria-hidden size={16} /> Eliminar gasto
 			</Button>
 			<Dialog
 				description={`“${expenseName}” dejará de aparecer en listas y balances. El comprobante se conservará para auditoría.`}
@@ -40,12 +40,12 @@ export function DeleteExpenseButton({
 				open={open}
 				title="¿Eliminar este gasto?"
 			>
-				<div className="flex justify-end gap-3">
+				<div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
 					<Button disabled={pending} onClick={() => setOpen(false)} variant="secondary">
 						Cancelar
 					</Button>
 					<Button disabled={pending} onClick={remove} variant="danger">
-						{pending ? "Eliminando…" : "Sí, eliminar"}
+						{pending ? "Eliminando gasto…" : "Eliminar gasto"}
 					</Button>
 				</div>
 				{error ? (

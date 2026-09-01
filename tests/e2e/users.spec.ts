@@ -34,6 +34,22 @@ test("blocks regular users from account administration", async ({ page }) => {
 	await expect(page).toHaveURL(/\/settings$/);
 });
 
+test("keeps keyboard focus inside account dialogs and restores the trigger", async ({ page }) => {
+	await signIn(page, "root-e2e");
+	await page.goto("/settings/users");
+	const trigger = page.getByRole("button", { name: "Editar a Alvaro" });
+
+	await trigger.click();
+	const dialog = page.getByRole("dialog", { name: "Editar acceso" });
+	await expect(dialog.getByRole("button", { name: "Cerrar" })).toBeFocused();
+	await page.keyboard.press("Shift+Tab");
+	expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
+	await page.keyboard.press("Escape");
+
+	await expect(dialog).not.toBeVisible();
+	await expect(trigger).toBeFocused();
+});
+
 test("lets managers add, edit, and remove participant bank details", async ({ page }) => {
 	const suffix = `${Date.now()}-${Math.round(Math.random() * 10_000)}`;
 	const username = `bank-${suffix}`;
@@ -61,7 +77,7 @@ test("lets managers add, edit, and remove participant bank details", async ({ pa
 	await dialog.getByLabel("Tipo de cuenta").selectOption("Cuenta Vista");
 	await dialog.getByLabel("Número de cuenta").fill("001234");
 	await dialog.getByLabel("Banco").fill("Banco inicial");
-	await dialog.getByRole("button", { name: "Guardar datos" }).click();
+	await dialog.getByRole("button", { name: "Guardar datos bancarios" }).click();
 	await expect(page.getByRole("status")).toContainText(
 		`Datos bancarios de ${displayName} actualizados`,
 	);
@@ -74,7 +90,7 @@ test("lets managers add, edit, and remove participant bank details", async ({ pa
 	await expect(dialog.getByLabel("RUT")).toHaveValue("18.972.631-7");
 	await dialog.getByLabel("Tipo de cuenta").selectOption("Cuenta Corriente");
 	await dialog.getByLabel("Banco").fill("Banco actualizado");
-	await dialog.getByRole("button", { name: "Guardar datos" }).click();
+	await dialog.getByRole("button", { name: "Guardar datos bancarios" }).click();
 	await expect(
 		userCard.getByText("Banco actualizado · Cuenta Corriente", { exact: true }),
 	).toBeVisible();
@@ -82,9 +98,9 @@ test("lets managers add, edit, and remove participant bank details", async ({ pa
 	await userCard
 		.getByRole("button", { name: `Administrar datos bancarios de ${displayName}` })
 		.click();
-	await page.getByRole("button", { name: "Eliminar datos", exact: true }).click();
+	await page.getByRole("button", { name: "Eliminar datos bancarios", exact: true }).click();
 	const removal = page.getByRole("dialog", { name: "Eliminar datos bancarios" });
-	await removal.getByRole("button", { name: "Eliminar datos" }).click();
+	await removal.getByRole("button", { name: "Eliminar datos bancarios" }).click();
 	await expect(userCard.getByText("Datos bancarios pendientes", { exact: true })).toBeVisible();
 });
 
@@ -214,8 +230,14 @@ test("lets an admin create users and other admins while protecting root", async 
 	}
 
 	for (const name of ["Usuario temporal", "Otra administradora"]) {
-		await page.getByRole("button", { name: `Eliminar a ${name}` }).click();
-		await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+		await page.getByRole("button", { name: `Eliminar acceso de ${name}` }).click();
+		await page
+			.getByRole("dialog", { name: "Eliminar acceso" })
+			.getByRole("button", { name: "Eliminar acceso" })
+			.click();
+		const notice = page.getByRole("status");
+		await expect(notice).toHaveText(`El acceso de ${name} fue eliminado.`);
+		await expect(notice).toBeFocused();
 		await expect(page.getByText(name, { exact: true })).not.toBeVisible();
 	}
 
