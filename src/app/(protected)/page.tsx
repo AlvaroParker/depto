@@ -70,7 +70,7 @@ export default async function DashboardPage() {
 						<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 							Tu resumen
 						</p>
-						<h1 className="font-display mt-2 text-4xl font-semibold tracking-[-0.035em] sm:text-5xl">
+						<h1 className="font-display mt-2 max-w-full text-4xl font-semibold tracking-[-0.035em] [overflow-wrap:anywhere] sm:text-5xl">
 							Hola, {session.user.displayName}.
 						</h1>
 						<p className="text-ink-muted mt-3 max-w-xl text-sm leading-6">

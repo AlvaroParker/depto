@@ -13,15 +13,18 @@ const scopeLabels: Record<string, string> = {
 
 export function ConsentForm({ clientName, fields, scopes }: ConsentFormProps) {
 	return (
-		<main className="bg-canvas text-ink min-h-screen px-5 py-12">
+		<main className="bg-canvas text-ink min-h-screen px-4 py-7 sm:px-5 sm:py-12">
 			<section
 				aria-labelledby="consent-title"
-				className="border-line bg-paper mx-auto max-w-lg rounded-3xl border p-7 shadow-sm"
+				className="border-line bg-paper mx-auto max-w-lg rounded-3xl border p-5 shadow-sm sm:p-7"
 			>
 				<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 					Conexión segura
 				</p>
-				<h1 id="consent-title" className="font-display mt-2 text-3xl font-semibold">
+				<h1
+					id="consent-title"
+					className="font-display mt-2 max-w-full text-3xl font-semibold [overflow-wrap:anywhere]"
+				>
 					¿Conectar {clientName}?
 				</h1>
 				<p className="text-ink-muted mt-3">
@@ -45,7 +48,7 @@ export function ConsentForm({ clientName, fields, scopes }: ConsentFormProps) {
 						<input key={name} name={name} type="hidden" value={value} />
 					))}
 					<button
-						className="bg-accent text-accent-foreground focus-visible:ring-accent rounded-xl px-5 py-3 font-bold focus-visible:ring-2 focus-visible:ring-offset-2"
+						className="bg-accent text-accent-foreground focus-visible:ring-accent max-w-full rounded-xl px-5 py-3 font-bold [overflow-wrap:anywhere] focus-visible:ring-2 focus-visible:ring-offset-2"
 						name="decision"
 						type="submit"
 						value="approve"
@@ -53,7 +56,7 @@ export function ConsentForm({ clientName, fields, scopes }: ConsentFormProps) {
 						Permitir conexión
 					</button>
 					<button
-						className="border-line focus-visible:ring-accent rounded-xl border px-5 py-3 font-bold focus-visible:ring-2 focus-visible:ring-offset-2"
+						className="border-line focus-visible:ring-accent max-w-full rounded-xl border px-5 py-3 font-bold [overflow-wrap:anywhere] focus-visible:ring-2 focus-visible:ring-offset-2"
 						name="decision"
 						type="submit"
 						value="deny"

@@ -235,6 +235,9 @@ test("lets an admin create users and other admins while protecting root", async 
 			.getByRole("dialog", { name: "Eliminar acceso" })
 			.getByRole("button", { name: "Eliminar acceso" })
 			.click();
+		const notice = page.getByRole("status");
+		await expect(notice).toHaveText(`El acceso de ${name} fue eliminado.`);
+		await expect(notice).toBeFocused();
 		await expect(page.getByText(name, { exact: true })).not.toBeVisible();
 	}
 

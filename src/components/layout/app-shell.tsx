@@ -84,7 +84,9 @@ export function AppShell({ children, user }: AppShellProps) {
 					<SignOutButton />
 				</div>
 			</aside>
-			<div className="min-w-0 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</div>
+			<div className="min-w-0 pb-[calc(6rem+env(safe-area-inset-bottom))] max-[299px]:pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
+				{children}
+			</div>
 			<nav
 				aria-label="Principal"
 				className="border-line bg-paper/94 shadow-card fixed z-40 flex flex-wrap rounded-2xl border p-1.5 backdrop-blur lg:hidden"

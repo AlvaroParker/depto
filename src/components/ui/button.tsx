@@ -9,7 +9,7 @@ export function Button({ className, type = "button", variant = "primary", ...pro
 	return (
 		<button
 			className={cn(
-				"inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-55",
+				"inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded-full px-5 text-center text-sm font-semibold [overflow-wrap:anywhere] transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-55",
 				variant === "primary" &&
 					"bg-accent text-accent-foreground hover:bg-accent-strong focus-visible:outline-accent shadow-[0_8px_24px_-12px_var(--shadow-accent)] hover:-translate-y-0.5",
 				variant === "secondary" &&

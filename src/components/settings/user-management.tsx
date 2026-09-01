@@ -166,20 +166,22 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 	}
 
 	return (
-		<div className="mt-8 grid gap-6 xl:grid-cols-[minmax(20rem,0.72fr)_minmax(0,1.28fr)]">
-			<section className="border-line bg-paper/85 shadow-card rounded-3xl border p-6 sm:p-7">
-				<div className="flex items-start gap-4">
+		<div className="mt-8 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(20rem,0.72fr)_minmax(0,1.28fr)]">
+			<section className="border-line bg-paper/85 shadow-card max-w-full min-w-0 rounded-3xl border p-4 sm:p-7">
+				<div className="flex min-w-0 flex-wrap items-start gap-4">
 					<span className="bg-accent/10 text-accent-strong grid size-11 shrink-0 place-items-center rounded-2xl">
 						<UserPlus aria-hidden size={21} />
 					</span>
-					<div>
-						<h2 className="font-display text-2xl font-semibold">Nuevo acceso</h2>
-						<p className="text-ink-muted mt-1 text-sm leading-6">
+					<div className="min-w-0 flex-1 basis-32">
+						<h2 className="font-display text-2xl font-semibold [overflow-wrap:anywhere]">
+							Nuevo acceso
+						</h2>
+						<p className="text-ink-muted mt-1 text-sm leading-6 [overflow-wrap:anywhere]">
 							Los administradores crean accesos y mantienen al día las cuentas de usuario.
 						</p>
 					</div>
 				</div>
-				<form className="mt-7 grid gap-5" id="create-user-form" onSubmit={submitCreateForm}>
+				<form className="mt-7 grid min-w-0 gap-5" id="create-user-form" onSubmit={submitCreateForm}>
 					<Field
 						error={fieldErrors.displayName?.[0]}
 						id="displayName"
@@ -381,7 +383,7 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 				open={Boolean(deletingUser)}
 				title="Eliminar acceso"
 			>
-				<div className="flex justify-end gap-3">
+				<div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
 					<Button disabled={pending} onClick={() => setDeletingUser(null)} variant="secondary">
 						Cancelar
 					</Button>
@@ -451,7 +453,7 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 								{editError}
 							</p>
 						) : null}
-						<div className="flex justify-end gap-3 pt-1">
+						<div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
 							<Button disabled={pending} onClick={closeEditor} variant="secondary">
 								Cancelar
 							</Button>

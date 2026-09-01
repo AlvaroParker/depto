@@ -89,15 +89,18 @@ export function TelegramAccountSettings({ initialTelegramUserId }: TelegramAccou
 		<>
 			<section
 				aria-labelledby="telegram-settings-title"
-				className="border-line bg-paper/85 shadow-card mt-8 rounded-3xl border p-5 sm:p-7"
+				className="border-line bg-paper/85 shadow-card mt-8 max-w-full min-w-0 rounded-3xl border p-4 sm:p-7"
 			>
-				<div className="flex items-start gap-4">
+				<div className="flex min-w-0 flex-wrap items-start gap-4">
 					<span className="bg-accent/10 text-accent-strong grid size-11 shrink-0 place-items-center rounded-2xl">
 						<MessageCircle aria-hidden size={21} />
 					</span>
-					<div className="min-w-0 flex-1">
+					<div className="min-w-0 flex-1 basis-32">
 						<div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-							<h2 id="telegram-settings-title" className="font-display text-2xl font-semibold">
+							<h2
+								id="telegram-settings-title"
+								className="font-display text-2xl font-semibold [overflow-wrap:anywhere]"
+							>
 								Telegram
 							</h2>
 							{savedTelegramUserId ? (
@@ -107,7 +110,7 @@ export function TelegramAccountSettings({ initialTelegramUserId }: TelegramAccou
 								</span>
 							) : null}
 						</div>
-						<p className="text-ink-muted mt-1 text-sm leading-6">
+						<p className="text-ink-muted mt-1 text-sm leading-6 [overflow-wrap:anywhere]">
 							Guarda el ID numérico de tu cuenta para registrar gastos desde el bot.
 						</p>
 					</div>

@@ -41,6 +41,35 @@ export async function expectNoHorizontalOverflow(page: Page, context: string): P
 	).toBeLessThanOrEqual(1);
 }
 
+export async function expectNoHorizontalOverflowWithin(
+	locator: Locator,
+	context: string,
+): Promise<void> {
+	const offenders = await locator.evaluate((root) =>
+		[root, ...root.querySelectorAll("*")]
+			.flatMap((element) => {
+				if (!(element instanceof HTMLElement)) return [];
+				if (["INPUT", "SELECT", "TEXTAREA"].includes(element.tagName)) return [];
+				const overflow = element.scrollWidth - element.clientWidth;
+				return overflow > 1
+					? [
+							{
+								className: element.className.toString().slice(0, 120),
+								overflow,
+								tagName: element.tagName,
+							},
+						]
+					: [];
+			})
+			.slice(0, 5),
+	);
+
+	expect(
+		offenders,
+		`${context} contained horizontal overflow: ${JSON.stringify(offenders)}`,
+	).toEqual([]);
+}
+
 export async function expectMinimumTouchTarget(
 	locator: Locator,
 	context: string,

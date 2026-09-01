@@ -65,5 +65,8 @@ test("lets managers publish household information that regular users can read", 
 	await page.getByRole("button", { name: `Archivar ${title}` }).click();
 	const archiveDialog = page.getByRole("dialog", { name: "Archivar dato" });
 	await archiveDialog.getByRole("button", { name: "Archivar dato", exact: true }).click();
+	const archiveNotice = page.getByRole("status");
+	await expect(archiveNotice).toHaveText(`“${title}” fue archivado.`);
+	await expect(archiveNotice).toBeFocused();
 	await expect(page.getByRole("heading", { name: title })).not.toBeVisible();
 });

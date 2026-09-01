@@ -43,7 +43,7 @@ export default async function SetupPage() {
 						))}
 					</ul>
 				</div>
-				<p className="text-paper/40 mt-14 text-xs lg:mt-0">Configuración única y privada.</p>
+				<p className="text-paper/65 mt-14 text-xs lg:mt-0">Configuración única y privada.</p>
 			</section>
 
 			<section className="flex items-center justify-center px-5 py-12 sm:px-10">

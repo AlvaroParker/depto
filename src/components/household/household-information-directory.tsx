@@ -124,10 +124,10 @@ function HouseholdInformationForm({
 		<div className="grid gap-5">
 			<fieldset className="grid gap-3">
 				<legend className="text-sm font-medium">Comenzar con</legend>
-				<div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+				<div className="grid grid-cols-1 gap-2 min-[240px]:grid-cols-2 sm:grid-cols-5">
 					{presets.map((preset) => (
 						<button
-							className="border-line bg-paper hover:border-accent/40 focus-visible:outline-accent grid min-h-20 place-items-center gap-1.5 rounded-xl border px-2 py-3 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2"
+							className="border-line bg-paper hover:border-accent/40 focus-visible:outline-accent grid min-h-20 min-w-0 place-items-center gap-1.5 rounded-xl border px-2 py-3 text-xs font-semibold [overflow-wrap:anywhere] transition focus-visible:outline-2 focus-visible:outline-offset-2"
 							key={preset.label}
 							onClick={() =>
 								onChange({ ...draft, iconKey: preset.iconKey, title: preset.title || draft.title })
@@ -557,7 +557,7 @@ export function HouseholdInformationDirectory({
 							{formError}
 						</p>
 					) : null}
-					<div className="bg-paper border-line sticky bottom-0 mt-6 flex justify-end gap-3 border-t py-4">
+					<div className="bg-paper border-line sticky bottom-0 mt-6 flex flex-col-reverse items-stretch gap-3 border-t py-4 sm:flex-row sm:justify-end">
 						<Button disabled={pending} onClick={closeEditor} variant="secondary">
 							Cancelar
 						</Button>
@@ -578,7 +578,7 @@ export function HouseholdInformationDirectory({
 				open={Boolean(archivingItem)}
 				title="Archivar dato"
 			>
-				<div className="flex justify-end gap-3">
+				<div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
 					<Button disabled={pending} onClick={() => setArchivingItem(null)} variant="secondary">
 						Cancelar
 					</Button>

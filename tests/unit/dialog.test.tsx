@@ -53,6 +53,7 @@ describe("Dialog", () => {
 		const trigger = screen.getByRole("button", { name: "Abrir diálogo" });
 
 		expect(container.querySelector("dialog")).not.toHaveAttribute("open");
+		expect(screen.queryByText("Confirmar")).not.toBeInTheDocument();
 		await user.click(trigger);
 
 		const dialog = screen.getByRole("dialog", { name: "Confirmar cambio" });
@@ -66,6 +67,46 @@ describe("Dialog", () => {
 		expect(trigger).toHaveFocus();
 		expect(document.body.style.overflow).toBe("");
 		expect(container.querySelector("dialog")).toBeInTheDocument();
+		expect(screen.queryByText("Confirmar")).not.toBeInTheDocument();
+	});
+
+	it("moves focus to a stable status when a successful action removes its trigger", async () => {
+		function RemovalHarness() {
+			const [itemVisible, setItemVisible] = useState(true);
+			const [notice, setNotice] = useState("");
+			const [open, setOpen] = useState(false);
+			return (
+				<main>
+					<h1>Administrar elementos</h1>
+					{notice ? <p role="status">{notice}</p> : null}
+					{itemVisible ? (
+						<button onClick={() => setOpen(true)} type="button">
+							Eliminar elemento
+						</button>
+					) : null}
+					<Dialog onClose={() => setOpen(false)} open={open} title="Confirmar eliminación">
+						<button
+							onClick={() => {
+								setItemVisible(false);
+								setNotice("Elemento eliminado.");
+								setOpen(false);
+							}}
+							type="button"
+						>
+							Confirmar eliminación
+						</button>
+					</Dialog>
+				</main>
+			);
+		}
+
+		const user = userEvent.setup();
+		render(<RemovalHarness />);
+		await user.click(screen.getByRole("button", { name: "Eliminar elemento" }));
+		await user.click(screen.getByRole("button", { name: "Confirmar eliminación" }));
+
+		const status = await screen.findByRole("status");
+		await waitFor(() => expect(status).toHaveFocus());
 	});
 
 	it("routes the native Escape cancellation through the controlled close callback", async () => {
