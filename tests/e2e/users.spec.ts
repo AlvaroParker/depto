@@ -34,6 +34,22 @@ test("blocks regular users from account administration", async ({ page }) => {
 	await expect(page).toHaveURL(/\/settings$/);
 });
 
+test("keeps keyboard focus inside account dialogs and restores the trigger", async ({ page }) => {
+	await signIn(page, "root-e2e");
+	await page.goto("/settings/users");
+	const trigger = page.getByRole("button", { name: "Editar a Alvaro" });
+
+	await trigger.click();
+	const dialog = page.getByRole("dialog", { name: "Editar acceso" });
+	await expect(dialog.getByRole("button", { name: "Cerrar" })).toBeFocused();
+	await page.keyboard.press("Shift+Tab");
+	expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
+	await page.keyboard.press("Escape");
+
+	await expect(dialog).not.toBeVisible();
+	await expect(trigger).toBeFocused();
+});
+
 test("lets managers add, edit, and remove participant bank details", async ({ page }) => {
 	const suffix = `${Date.now()}-${Math.round(Math.random() * 10_000)}`;
 	const username = `bank-${suffix}`;

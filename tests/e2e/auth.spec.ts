@@ -24,6 +24,15 @@ test("signs in a managed active household user", async ({ page }) => {
 	await expect(page.getByText("Tu resumen", { exact: true })).toBeVisible();
 });
 
+test("signs out from account settings below the desktop breakpoint", async ({ page }) => {
+	await page.setViewportSize({ height: 1024, width: 768 });
+	await signIn(page, "camila");
+	await page.goto("/settings");
+
+	await page.getByRole("button", { name: "Cerrar sesión" }).click();
+	await expect(page).toHaveURL(/\/login$/);
+});
+
 test("returns no household data from unauthenticated APIs", async ({ request }) => {
 	for (const path of [
 		"/api/dashboard",

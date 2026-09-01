@@ -2,6 +2,7 @@ import { KeyRound, Tags } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@/auth";
+import { SignOutButton } from "@/components/layout/sign-out-button";
 import { ConnectedApplications } from "@/components/settings/connected-applications";
 import { TelegramAccountSettings } from "@/components/settings/telegram-account-settings";
 import { canManageUsers } from "@/lib/const/roles";
@@ -77,6 +78,9 @@ export default async function SettingsPage() {
 						<ConnectedApplications initialGrants={grants} />
 					</>
 				) : null}
+				<div className="border-line mt-8 border-t pt-6 lg:hidden">
+					<SignOutButton showLabel />
+				</div>
 			</div>
 		</main>
 	);
