@@ -40,9 +40,12 @@ describe("Telegram account settings", () => {
 		expect(screen.getByText(/Eliminarlo revoca ese acceso/)).toBeVisible();
 		expect(screen.getByText(/mensajes y comprobantes.+procesados por OpenAI/i)).toBeVisible();
 		expect(
-			screen.getByText(/Cloudflare conserva.+conversación activa.+hasta 10 minutos/i),
+			screen.getByText(
+				/Cloudflare conserva.+conversación activa.+período de inactividad configurado para el bot/i,
+			),
 		).toBeVisible();
-		expect(screen.getByText(/10 minutos.+luego lo elimina/i)).toBeVisible();
+		expect(screen.getByText(/configurado para el bot.+luego lo elimina/i)).toBeVisible();
+		expect(screen.queryByText(/10 minutos/i)).not.toBeInTheDocument();
 		expect(screen.queryByText("Configurado")).not.toBeInTheDocument();
 	});
 
