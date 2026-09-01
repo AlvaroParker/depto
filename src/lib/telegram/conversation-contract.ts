@@ -17,6 +17,15 @@ export const GetTelegramExpenseContextRequestSchema = TelegramConversationActorR
 
 export const GetTelegramBalanceRequestSchema = TelegramConversationActorRequestSchema;
 
+export const TelegramDebtDirectionSchema = z.enum(["due_to_caller", "owed_by_caller"]);
+
+export const GetTelegramDebtBreakdownRequestSchema = TelegramConversationActorRequestSchema.extend({
+	counterpartyId: z.string().trim().min(1),
+	direction: TelegramDebtDirectionSchema,
+	page: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+	pageSize: z.number().int().min(1).max(10),
+}).strict();
+
 export const TelegramExpenseListQuerySchema = z
 	.object({
 		kindId: z.string().trim().min(1).optional(),
@@ -40,8 +49,10 @@ export type GetTelegramExpenseContextRequest = z.infer<
 	typeof GetTelegramExpenseContextRequestSchema
 >;
 export type GetTelegramBalanceRequest = z.infer<typeof GetTelegramBalanceRequestSchema>;
+export type GetTelegramDebtBreakdownRequest = z.infer<typeof GetTelegramDebtBreakdownRequestSchema>;
 export type ListTelegramExpensesRequest = z.input<typeof ListTelegramExpensesRequestSchema>;
 export type GetTelegramExpenseRequest = z.infer<typeof GetTelegramExpenseRequestSchema>;
+export type TelegramDebtDirection = z.infer<typeof TelegramDebtDirectionSchema>;
 
 export interface TelegramParticipantDto {
 	id: string;
@@ -128,6 +139,25 @@ export interface TelegramBalanceDto {
 	spentSoFarMinor: number;
 }
 
+export interface TelegramDebtExpenseDto {
+	expenseDate: string;
+	id: string;
+	name: string;
+	shareAmountMinor: number;
+}
+
+export interface TelegramDebtBreakdownDto {
+	counterparty: TelegramParticipantDto;
+	currency: "CLP";
+	direction: TelegramDebtDirection;
+	expenses: TelegramDebtExpenseDto[];
+	hasMore: boolean;
+	page: number;
+	pageSize: number;
+	totalAmountMinor: number;
+	totalExpenseCount: number;
+}
+
 export interface TelegramExpensePageDto {
 	expenses: TelegramConversationExpenseSummaryDto[];
 	page: number;
@@ -143,5 +173,6 @@ export type TelegramReadResult<T> =
 
 export type GetTelegramExpenseContextResult = TelegramReadResult<TelegramExpenseContextDto>;
 export type GetTelegramBalanceResult = TelegramReadResult<TelegramBalanceDto>;
+export type GetTelegramDebtBreakdownResult = TelegramReadResult<TelegramDebtBreakdownDto>;
 export type ListTelegramExpensesResult = TelegramReadResult<TelegramExpensePageDto>;
 export type GetTelegramExpenseResult = TelegramReadResult<TelegramConversationExpenseDetailDto>;

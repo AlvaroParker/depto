@@ -12,12 +12,14 @@ import type {
 } from "@/lib/telegram/expense-contract";
 import {
 	getTelegramBalance as getTelegramBalanceForRpc,
+	getTelegramDebtBreakdown as getTelegramDebtBreakdownForRpc,
 	getTelegramExpense as getTelegramExpenseForRpc,
 	getTelegramExpenseContext as getTelegramExpenseContextForRpc,
 	listTelegramExpenses as listTelegramExpensesForRpc,
 } from "@/lib/telegram/conversation-service";
 import type {
 	GetTelegramBalanceResult,
+	GetTelegramDebtBreakdownResult,
 	GetTelegramExpenseContextResult,
 	GetTelegramExpenseResult,
 	ListTelegramExpensesResult,
@@ -40,6 +42,10 @@ export class TelegramExpenses extends WorkerEntrypoint<CloudflareEnv> {
 
 	getTelegramBalance(request: unknown): Promise<GetTelegramBalanceResult> {
 		return getTelegramBalanceForRpc(request, { database: this.env.DB });
+	}
+
+	getTelegramDebtBreakdown(request: unknown): Promise<GetTelegramDebtBreakdownResult> {
+		return getTelegramDebtBreakdownForRpc(request, { database: this.env.DB });
 	}
 
 	listTelegramExpenses(request: unknown): Promise<ListTelegramExpensesResult> {

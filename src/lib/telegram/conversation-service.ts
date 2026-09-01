@@ -8,17 +8,20 @@ import { MAX_RECEIPT_SIZE_BYTES, RECEIPT_CONTENT_TYPES } from "@/lib/const/recei
 import { getDashboardSummary } from "@/lib/db/dashboard";
 import { listExpenseKinds } from "@/lib/db/expense-kinds";
 import { findExpenseById, listExpenses } from "@/lib/db/expenses";
-import { findActiveParticipants } from "@/lib/db/participants";
+import { findActiveParticipants, findParticipantById } from "@/lib/db/participants";
 import {
 	findTelegramExpenseActorByTelegramUserId,
 	type TelegramExpenseActor,
 } from "@/lib/db/telegram";
+import { findTelegramDebtBreakdown } from "@/lib/db/telegram-debts";
 import type { ExpenseDetail, ExpenseQuery, ExpenseSummary } from "@/lib/types/expense";
 import type { ExpenseKind } from "@/lib/types/expense-kind";
 import type { Participant } from "@/lib/types/participant";
 import {
 	GetTelegramBalanceRequestSchema,
 	type GetTelegramBalanceResult,
+	GetTelegramDebtBreakdownRequestSchema,
+	type GetTelegramDebtBreakdownResult,
 	GetTelegramExpenseContextRequestSchema,
 	type GetTelegramExpenseContextResult,
 	GetTelegramExpenseRequestSchema,
@@ -214,6 +217,48 @@ export async function getTelegramBalance(
 	} catch {
 		return failure("storage_error");
 	}
+}
+
+export async function getTelegramDebtBreakdown(
+	request: unknown,
+	dependencies: TelegramConversationServiceDependencies,
+): Promise<GetTelegramDebtBreakdownResult> {
+	const parsed = GetTelegramDebtBreakdownRequestSchema.safeParse(request);
+	if (!parsed.success) return failure("invalid_request");
+	const offset = (parsed.data.page - 1) * parsed.data.pageSize;
+	if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(offset + parsed.data.pageSize)) {
+		return failure("invalid_request");
+	}
+	const actor = await resolveActor(parsed.data.telegramUserId, dependencies.database);
+	if (actor.kind !== "found") return failure(actor.kind);
+	if (actor.actor.participantId === parsed.data.counterpartyId) {
+		return failure("invalid_request");
+	}
+	const counterparty = await findParticipantById(parsed.data.counterpartyId, dependencies.database);
+	if (counterparty.err) return failure("storage_error");
+	if (!counterparty.val) return failure("not_found");
+	const breakdown = await findTelegramDebtBreakdown(
+		{
+			callerParticipantId: actor.actor.participantId,
+			counterpartyId: counterparty.val.id,
+			direction: parsed.data.direction,
+			page: parsed.data.page,
+			pageSize: parsed.data.pageSize,
+		},
+		dependencies.database,
+	);
+	if (breakdown.err) return failure("storage_error");
+	return success({
+		counterparty: mapParticipant(counterparty.val),
+		currency: "CLP",
+		direction: parsed.data.direction,
+		expenses: breakdown.val.expenses,
+		hasMore: offset + breakdown.val.expenses.length < breakdown.val.totalExpenseCount,
+		page: parsed.data.page,
+		pageSize: parsed.data.pageSize,
+		totalAmountMinor: breakdown.val.totalAmountMinor,
+		totalExpenseCount: breakdown.val.totalExpenseCount,
+	});
 }
 
 export async function listTelegramExpenses(

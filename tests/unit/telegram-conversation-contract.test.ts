@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	GetTelegramBalanceRequestSchema,
+	GetTelegramDebtBreakdownRequestSchema,
 	GetTelegramExpenseContextRequestSchema,
 	GetTelegramExpenseRequestSchema,
 	ListTelegramExpensesRequestSchema,
@@ -55,6 +56,24 @@ describe("Telegram conversation read RPC contract", () => {
 		).toEqual({ ...actorRequest, expenseId: "expense-1" });
 	});
 
+	it("accepts a strict paginated debt breakdown request", () => {
+		expect(
+			GetTelegramDebtBreakdownRequestSchema.parse({
+				...actorRequest,
+				counterpartyId: " participant_trinidad ",
+				direction: "due_to_caller",
+				page: 2,
+				pageSize: 10,
+			}),
+		).toEqual({
+			...actorRequest,
+			counterpartyId: "participant_trinidad",
+			direction: "due_to_caller",
+			page: 2,
+			pageSize: 10,
+		});
+	});
+
 	it.each([
 		["extra actor field", { ...actorRequest, extra: true }],
 		["wrong version", { ...actorRequest, version: 2 }],
@@ -63,6 +82,56 @@ describe("Telegram conversation read RPC contract", () => {
 		["out-of-range Telegram ID", { ...actorRequest, telegramUserId: "1099511627776" }],
 	])("rejects %s", (_case, request) => {
 		expect(GetTelegramBalanceRequestSchema.safeParse(request).success).toBe(false);
+	});
+
+	it.each([
+		[
+			"a missing counterparty",
+			{ ...actorRequest, direction: "due_to_caller", page: 1, pageSize: 10 },
+		],
+		[
+			"an unsupported direction",
+			{
+				...actorRequest,
+				counterpartyId: "participant_trinidad",
+				direction: "net",
+				page: 1,
+				pageSize: 10,
+			},
+		],
+		[
+			"a zero page",
+			{
+				...actorRequest,
+				counterpartyId: "participant_trinidad",
+				direction: "owed_by_caller",
+				page: 0,
+				pageSize: 10,
+			},
+		],
+		[
+			"an oversized page",
+			{
+				...actorRequest,
+				counterpartyId: "participant_trinidad",
+				direction: "owed_by_caller",
+				page: 1,
+				pageSize: 11,
+			},
+		],
+		[
+			"an extra field",
+			{
+				...actorRequest,
+				counterpartyId: "participant_trinidad",
+				direction: "owed_by_caller",
+				extra: true,
+				page: 1,
+				pageSize: 10,
+			},
+		],
+	])("rejects debt request with %s", (_case, request) => {
+		expect(GetTelegramDebtBreakdownRequestSchema.safeParse(request).success).toBe(false);
 	});
 
 	it.each([
