@@ -69,6 +69,9 @@ bot una vinculación de servicio que apunte a `expenses` con el entrypoint `Tele
 publica el bot. Para retirar o revertir la integración, despliega primero el bot sin esa dependencia y
 después cambia el entrypoint del sitio.
 
+The additive conversational read and privacy contracts are documented in
+[`docs/telegram-conversation-rpc.md`](docs/telegram-conversation-rpc.md).
+
 ## OAuth y MCP
 
 Los usuarios regulares pueden conectar aplicaciones sin crear ni copiar claves personales. El servidor
