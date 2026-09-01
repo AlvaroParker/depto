@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+	AcknowledgeTelegramPrivacyNoticeRequestSchema,
 	GetTelegramBalanceRequestSchema,
+	GetTelegramDebtBreakdownRequestSchema,
 	GetTelegramExpenseContextRequestSchema,
 	GetTelegramExpenseRequestSchema,
+	GetTelegramPrivacyNoticeStateRequestSchema,
 	ListTelegramExpensesRequestSchema,
 	TELEGRAM_CONVERSATION_RPC_VERSION,
+	TELEGRAM_PRIVACY_NOTICE_VERSION,
 	type TelegramReadResult,
 } from "@/lib/telegram/conversation-contract";
 
@@ -17,6 +21,16 @@ describe("Telegram conversation read RPC contract", () => {
 	it("accepts the shared canonical actor request without normalizing it", () => {
 		expect(GetTelegramExpenseContextRequestSchema.parse(actorRequest)).toEqual(actorRequest);
 		expect(GetTelegramBalanceRequestSchema.parse(actorRequest)).toEqual(actorRequest);
+		expect(GetTelegramPrivacyNoticeStateRequestSchema.parse(actorRequest)).toEqual(actorRequest);
+	});
+
+	it("accepts acknowledgement of the current privacy notice only", () => {
+		expect(
+			AcknowledgeTelegramPrivacyNoticeRequestSchema.parse({
+				...actorRequest,
+				noticeVersion: TELEGRAM_PRIVACY_NOTICE_VERSION,
+			}),
+		).toEqual({ ...actorRequest, noticeVersion: 1 });
 	});
 
 	it("defaults and trims strict list filters", () => {
@@ -55,6 +69,24 @@ describe("Telegram conversation read RPC contract", () => {
 		).toEqual({ ...actorRequest, expenseId: "expense-1" });
 	});
 
+	it("accepts a strict paginated debt breakdown request", () => {
+		expect(
+			GetTelegramDebtBreakdownRequestSchema.parse({
+				...actorRequest,
+				counterpartyId: " participant_trinidad ",
+				direction: "due_to_caller",
+				page: 2,
+				pageSize: 10,
+			}),
+		).toEqual({
+			...actorRequest,
+			counterpartyId: "participant_trinidad",
+			direction: "due_to_caller",
+			page: 2,
+			pageSize: 10,
+		});
+	});
+
 	it.each([
 		["extra actor field", { ...actorRequest, extra: true }],
 		["wrong version", { ...actorRequest, version: 2 }],
@@ -63,6 +95,65 @@ describe("Telegram conversation read RPC contract", () => {
 		["out-of-range Telegram ID", { ...actorRequest, telegramUserId: "1099511627776" }],
 	])("rejects %s", (_case, request) => {
 		expect(GetTelegramBalanceRequestSchema.safeParse(request).success).toBe(false);
+	});
+
+	it.each([
+		[
+			"a missing counterparty",
+			{ ...actorRequest, direction: "due_to_caller", page: 1, pageSize: 10 },
+		],
+		[
+			"an unsupported direction",
+			{
+				...actorRequest,
+				counterpartyId: "participant_trinidad",
+				direction: "net",
+				page: 1,
+				pageSize: 10,
+			},
+		],
+		[
+			"a zero page",
+			{
+				...actorRequest,
+				counterpartyId: "participant_trinidad",
+				direction: "owed_by_caller",
+				page: 0,
+				pageSize: 10,
+			},
+		],
+		[
+			"an oversized page",
+			{
+				...actorRequest,
+				counterpartyId: "participant_trinidad",
+				direction: "owed_by_caller",
+				page: 1,
+				pageSize: 11,
+			},
+		],
+		[
+			"an extra field",
+			{
+				...actorRequest,
+				counterpartyId: "participant_trinidad",
+				direction: "owed_by_caller",
+				extra: true,
+				page: 1,
+				pageSize: 10,
+			},
+		],
+	])("rejects debt request with %s", (_case, request) => {
+		expect(GetTelegramDebtBreakdownRequestSchema.safeParse(request).success).toBe(false);
+	});
+
+	it.each([
+		["a missing notice version", actorRequest],
+		["an old notice version", { ...actorRequest, noticeVersion: 0 }],
+		["an unknown notice version", { ...actorRequest, noticeVersion: 2 }],
+		["an extra field", { ...actorRequest, extra: true, noticeVersion: 1 }],
+	])("rejects privacy acknowledgement with %s", (_case, request) => {
+		expect(AcknowledgeTelegramPrivacyNoticeRequestSchema.safeParse(request).success).toBe(false);
 	});
 
 	it.each([

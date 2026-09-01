@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createExpense } from "@/lib/db/expenses";
 import {
 	getTelegramBalance,
+	getTelegramDebtBreakdown,
 	getTelegramExpense,
 	getTelegramExpenseContext,
 	listTelegramExpenses,
@@ -191,6 +192,281 @@ describe("Telegram conversation read service", () => {
 		]);
 	});
 
+	it("returns exact directional debt contributions without netting reciprocal balances", async () => {
+		const dueToCaller = await getTelegramDebtBreakdown(
+			{
+				...actorRequest,
+				counterpartyId: "participant_trinidad",
+				direction: "due_to_caller",
+				page: 1,
+				pageSize: 10,
+			},
+			dependencies,
+		);
+		const owedByCaller = await getTelegramDebtBreakdown(
+			{
+				...actorRequest,
+				counterpartyId: "participant_trinidad",
+				direction: "owed_by_caller",
+				page: 1,
+				pageSize: 10,
+			},
+			dependencies,
+		);
+
+		expect(dueToCaller).toEqual({
+			data: {
+				counterparty: {
+					id: "participant_trinidad",
+					name: "Trinidad",
+					slug: "trinidad",
+					sortOrder: 3,
+				},
+				currency: "CLP",
+				direction: "due_to_caller",
+				expenses: [
+					{
+						expenseDate: "2026-08-30",
+						id: expenses.actorAsPayer.id,
+						name: "Gas hogar",
+						shareAmountMinor: 4_500,
+					},
+				],
+				hasMore: false,
+				page: 1,
+				pageSize: 10,
+				totalAmountMinor: 4_500,
+				totalExpenseCount: 1,
+			},
+			kind: "ok",
+			version: 1,
+		});
+		expect(owedByCaller).toMatchObject({
+			data: {
+				counterparty: { id: "participant_trinidad", name: "Trinidad" },
+				direction: "owed_by_caller",
+				expenses: [
+					{
+						expenseDate: "2026-08-29",
+						id: expenses.otherActorExpense.id,
+						name: "Internet hogar",
+						shareAmountMinor: 6_000,
+					},
+				],
+				totalAmountMinor: 6_000,
+				totalExpenseCount: 1,
+			},
+			kind: "ok",
+			version: 1,
+		});
+	});
+
+	it("paginates debt contributions while keeping the aggregate independent of the page", async () => {
+		for (const [name, amountMinor, expenseDate, offset] of [
+			["Agua", 1_000, "2026-09-01", 5_000],
+			["Luz", 2_000, "2026-09-02", 6_000],
+		] as const) {
+			const created = await createExpense(
+				{
+					amountMinor,
+					currency: "CLP",
+					expenseDate,
+					kindId: "kind-water",
+					name,
+					paidByParticipantId: "participant_alvaro",
+					participantIds: ["participant_trinidad"],
+				},
+				"user_alvaro",
+				bindings.database,
+				new Date(NOW.getTime() + offset),
+			);
+			if (created.err) throw new Error("Could not create a debt pagination fixture.");
+		}
+
+		const firstPage = await getTelegramDebtBreakdown(
+			{
+				...actorRequest,
+				counterpartyId: "participant_trinidad",
+				direction: "due_to_caller",
+				page: 1,
+				pageSize: 2,
+			},
+			dependencies,
+		);
+		const secondPage = await getTelegramDebtBreakdown(
+			{
+				...actorRequest,
+				counterpartyId: "participant_trinidad",
+				direction: "due_to_caller",
+				page: 2,
+				pageSize: 2,
+			},
+			dependencies,
+		);
+
+		expect(firstPage).toMatchObject({
+			data: {
+				expenses: [{ name: "Luz" }, { name: "Agua" }],
+				hasMore: true,
+				page: 1,
+				pageSize: 2,
+				totalAmountMinor: 7_500,
+				totalExpenseCount: 3,
+			},
+			kind: "ok",
+		});
+		expect(secondPage).toMatchObject({
+			data: {
+				expenses: [{ name: "Gas hogar" }],
+				hasMore: false,
+				page: 2,
+				pageSize: 2,
+				totalAmountMinor: 7_500,
+				totalExpenseCount: 3,
+			},
+			kind: "ok",
+		});
+	});
+
+	it("excludes paid, deleted, zero, and unrelated shares from debt totals", async () => {
+		const paid = await createExpense(
+			{
+				amountMinor: 2_000,
+				currency: "CLP",
+				expenseDate: "2026-09-01",
+				kindId: "kind-water",
+				name: "Paid water",
+				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_trinidad"],
+			},
+			"user_alvaro",
+			bindings.database,
+			new Date(NOW.getTime() + 7_000),
+		);
+		const deleted = await createExpense(
+			{
+				amountMinor: 3_000,
+				currency: "CLP",
+				expenseDate: "2026-09-02",
+				kindId: "kind-electricity",
+				name: "Deleted electricity",
+				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_trinidad"],
+			},
+			"user_alvaro",
+			bindings.database,
+			new Date(NOW.getTime() + 8_000),
+		);
+		const zero = await createExpense(
+			{
+				amountMinor: 1_000,
+				currency: "CLP",
+				expenseDate: "2026-09-03",
+				kindId: "kind-food",
+				name: "Zero Trinidad share",
+				paidByParticipantId: "participant_alvaro",
+				participantIds: ["participant_camila", "participant_trinidad"],
+				shareAllocations: [
+					{ participantId: "participant_camila", shareAmountMinor: 1_000 },
+					{ participantId: "participant_trinidad", shareAmountMinor: 0 },
+				],
+				splitMode: "custom",
+			},
+			"user_alvaro",
+			bindings.database,
+			new Date(NOW.getTime() + 9_000),
+		);
+		if (paid.err || deleted.err || zero.err) {
+			throw new Error("Could not create excluded debt fixtures.");
+		}
+		await bindings.database.batch([
+			bindings.database
+				.prepare(
+					`UPDATE expense_shares
+					 SET status = 'paid', paid_at = ?, marked_by_user_id = ?, updated_at = ?
+					 WHERE expense_id = ? AND participant_id = 'participant_trinidad'`,
+				)
+				.bind(NOW.toISOString(), "user_alvaro", NOW.toISOString(), paid.val.id),
+			bindings.database
+				.prepare("UPDATE expenses SET deleted_at = ?, updated_at = ? WHERE id = ?")
+				.bind(NOW.toISOString(), NOW.toISOString(), deleted.val.id),
+		]);
+
+		const result = await getTelegramDebtBreakdown(
+			{
+				...actorRequest,
+				counterpartyId: "participant_trinidad",
+				direction: "due_to_caller",
+				page: 1,
+				pageSize: 10,
+			},
+			dependencies,
+		);
+
+		expect(result).toMatchObject({
+			data: {
+				expenses: [{ name: "Gas hogar" }],
+				totalAmountMinor: 4_500,
+				totalExpenseCount: 1,
+			},
+			kind: "ok",
+		});
+	});
+
+	it("returns zero for a valid counterparty without debt and conceals unknown counterparties", async () => {
+		await bindings.database
+			.prepare(
+				`INSERT INTO participants
+				 (id, name, slug, sort_order, active, created_at, updated_at)
+				 VALUES ('participant_nobody', 'Nobody', 'nobody', 4, 1, ?, ?)`,
+			)
+			.bind(NOW.toISOString(), NOW.toISOString())
+			.run();
+		const zero = await getTelegramDebtBreakdown(
+			{
+				...actorRequest,
+				counterpartyId: "participant_nobody",
+				direction: "due_to_caller",
+				page: 1,
+				pageSize: 10,
+			},
+			dependencies,
+		);
+		expect(zero).toMatchObject({
+			data: {
+				expenses: [],
+				hasMore: false,
+				totalAmountMinor: 0,
+				totalExpenseCount: 0,
+			},
+			kind: "ok",
+		});
+		expect(
+			await getTelegramDebtBreakdown(
+				{
+					...actorRequest,
+					counterpartyId: "participant_unknown",
+					direction: "due_to_caller",
+					page: 1,
+					pageSize: 10,
+				},
+				dependencies,
+			),
+		).toEqual({ kind: "not_found", version: 1 });
+		expect(
+			await getTelegramDebtBreakdown(
+				{
+					...actorRequest,
+					counterpartyId: "participant_alvaro",
+					direction: "due_to_caller",
+					page: 1,
+					pageSize: 10,
+				},
+				dependencies,
+			),
+		).toEqual({ kind: "invalid_request", version: 1 });
+	});
+
 	it("paginates and filters only expenses involving the resolved actor", async () => {
 		const firstPage = await listTelegramExpenses(
 			{ ...actorRequest, query: { page: 1, pageSize: 1 } },
@@ -297,6 +573,18 @@ describe("Telegram conversation read service", () => {
 			kind: "unauthorized",
 			version: 1,
 		});
+		expect(
+			await getTelegramDebtBreakdown(
+				{
+					...actorRequest,
+					counterpartyId: "participant_trinidad",
+					direction: "due_to_caller",
+					page: 1,
+					pageSize: 10,
+				},
+				dependencies,
+			),
+		).toEqual({ kind: "unauthorized", version: 1 });
 		expect(await listTelegramExpenses({ ...actorRequest, query: {} }, dependencies)).toEqual({
 			kind: "unauthorized",
 			version: 1,
@@ -318,6 +606,18 @@ describe("Telegram conversation read service", () => {
 			kind: "invalid_request",
 			version: 1,
 		});
+		expect(
+			await getTelegramDebtBreakdown(
+				{
+					...actorRequest,
+					counterpartyId: "participant_trinidad",
+					direction: "due_to_caller",
+					page: Number.MAX_SAFE_INTEGER,
+					pageSize: 10,
+				},
+				dependencies,
+			),
+		).toEqual({ kind: "invalid_request", version: 1 });
 		expect(
 			await listTelegramExpenses({ ...actorRequest, query: { pageSize: 11 } }, dependencies),
 		).toEqual({ kind: "invalid_request", version: 1 });
@@ -344,6 +644,18 @@ describe("Telegram conversation read service", () => {
 			kind: "storage_error",
 			version: 1,
 		});
+		expect(
+			await getTelegramDebtBreakdown(
+				{
+					...actorRequest,
+					counterpartyId: "participant_trinidad",
+					direction: "due_to_caller",
+					page: 1,
+					pageSize: 10,
+				},
+				brokenDependencies,
+			),
+		).toEqual({ kind: "storage_error", version: 1 });
 		expect(await listTelegramExpenses({ ...actorRequest, query: {} }, brokenDependencies)).toEqual({
 			kind: "storage_error",
 			version: 1,

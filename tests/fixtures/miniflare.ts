@@ -51,6 +51,7 @@ export async function createTestBindings(): Promise<TestBindings> {
 		"0011_allow_shared_payment_proof_objects.sql",
 		"0012_add_participant_bank_accounts.sql",
 		"0013_add_user_telegram_ids.sql",
+		"0014_add_telegram_privacy_notice_version.sql",
 	]);
 	await bindings.database.batch(
 		[

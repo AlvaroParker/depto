@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+	acknowledgeTelegramPrivacyNotice: vi.fn(),
 	attachTelegramExpenseReceipt: vi.fn(),
 	createTelegramExpense: vi.fn(),
 	findTelegramExpense: vi.fn(),
 	getTelegramBalance: vi.fn(),
+	getTelegramDebtBreakdown: vi.fn(),
 	getTelegramExpense: vi.fn(),
 	getTelegramExpenseContext: vi.fn(),
+	getTelegramPrivacyNoticeState: vi.fn(),
 	listTelegramExpenses: vi.fn(),
 }));
 
@@ -52,24 +55,52 @@ describe("TelegramExpenses Worker entrypoint", () => {
 		const actorRequest = { telegramUserId: "123", version: 1 };
 		const listRequest = { ...actorRequest, query: {} };
 		const detailRequest = { ...actorRequest, expenseId: "expense-1" };
+		const debtRequest = {
+			...actorRequest,
+			counterpartyId: "participant_camila",
+			direction: "due_to_caller",
+			page: 1,
+			pageSize: 10,
+		};
+		const privacyAcknowledgementRequest = { ...actorRequest, noticeVersion: 1 };
 		mocks.getTelegramExpenseContext.mockResolvedValue({
 			data: {},
 			kind: "ok",
 			version: 1,
 		});
 		mocks.getTelegramBalance.mockResolvedValue({ data: {}, kind: "ok", version: 1 });
+		mocks.getTelegramDebtBreakdown.mockResolvedValue({ data: {}, kind: "ok", version: 1 });
 		mocks.listTelegramExpenses.mockResolvedValue({ data: {}, kind: "ok", version: 1 });
 		mocks.getTelegramExpense.mockResolvedValue({ data: {}, kind: "ok", version: 1 });
+		mocks.getTelegramPrivacyNoticeState.mockResolvedValue({
+			data: {},
+			kind: "ok",
+			version: 1,
+		});
+		mocks.acknowledgeTelegramPrivacyNotice.mockResolvedValue({
+			data: {},
+			kind: "ok",
+			version: 1,
+		});
 
 		await entrypoint.getTelegramExpenseContext(actorRequest);
 		await entrypoint.getTelegramBalance(actorRequest);
+		await entrypoint.getTelegramDebtBreakdown(debtRequest);
 		await entrypoint.listTelegramExpenses(listRequest);
 		await entrypoint.getTelegramExpense(detailRequest);
+		await entrypoint.getTelegramPrivacyNoticeState(actorRequest);
+		await entrypoint.acknowledgeTelegramPrivacyNotice(privacyAcknowledgementRequest);
 
 		expect(mocks.getTelegramExpenseContext).toHaveBeenCalledWith(actorRequest, { database });
 		expect(mocks.getTelegramBalance).toHaveBeenCalledWith(actorRequest, { database });
+		expect(mocks.getTelegramDebtBreakdown).toHaveBeenCalledWith(debtRequest, { database });
 		expect(mocks.listTelegramExpenses).toHaveBeenCalledWith(listRequest, { database });
 		expect(mocks.getTelegramExpense).toHaveBeenCalledWith(detailRequest, { database });
+		expect(mocks.getTelegramPrivacyNoticeState).toHaveBeenCalledWith(actorRequest, { database });
+		expect(mocks.acknowledgeTelegramPrivacyNotice).toHaveBeenCalledWith(
+			privacyAcknowledgementRequest,
+			{ database },
+		);
 	});
 
 	it("transfers create and receipt-repair streams to the application service", async () => {

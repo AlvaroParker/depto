@@ -243,5 +243,28 @@ describe("production user-participant migration", () => {
 				.prepare("UPDATE app_users SET telegram_user_id = '1' WHERE id = 'missing-user'")
 				.run(),
 		).rejects.toThrow(/unique constraint/i);
+
+		await applyMigrations(bindings.database, ["0014_add_telegram_privacy_notice_version.sql"]);
+		const privacyNoticeColumn = await bindings.database
+			.prepare(
+				"SELECT name FROM pragma_table_info('app_users') WHERE name = 'telegram_privacy_notice_version'",
+			)
+			.first<{ name: string }>();
+		expect(privacyNoticeColumn?.name).toBe("telegram_privacy_notice_version");
+		const privacyNoticeVersions = await bindings.database
+			.prepare("SELECT id, telegram_privacy_notice_version FROM app_users ORDER BY id")
+			.all<{ id: string; telegram_privacy_notice_version: number }>();
+		expect(privacyNoticeVersions.results).toEqual([
+			{ id: "linked-user", telegram_privacy_notice_version: 0 },
+			{ id: "missing-user", telegram_privacy_notice_version: 0 },
+			{ id: "root", telegram_privacy_notice_version: 0 },
+		]);
+		await expect(
+			bindings.database
+				.prepare(
+					"UPDATE app_users SET telegram_privacy_notice_version = -1 WHERE id = 'linked-user'",
+				)
+				.run(),
+		).rejects.toThrow(/check constraint/i);
 	});
 });
