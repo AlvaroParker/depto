@@ -36,6 +36,22 @@ export function validateReceiptImageSignature(
 	if (!valid) throw new Error("El contenido del comprobante no coincide con el tipo de imagen.");
 }
 
+function validateReceiptPdfSignature(bytes: Uint8Array): void {
+	const header = new TextDecoder("ascii").decode(bytes.subarray(0, 8));
+	const tail = new TextDecoder("ascii").decode(bytes.subarray(Math.max(0, bytes.length - 1024)));
+	if (!/^%PDF-(?:1\.[0-9]|2\.0)/.test(header) || !/%%EOF[\t\n\f\r ]*$/.test(tail)) {
+		throw new Error("El contenido del comprobante no coincide con un archivo PDF válido.");
+	}
+}
+
+export function validateReceiptSignature(bytes: Uint8Array, contentType: ReceiptContentType): void {
+	if (contentType === "application/pdf") {
+		validateReceiptPdfSignature(bytes);
+		return;
+	}
+	validateReceiptImageSignature(bytes, contentType);
+}
+
 export function sanitizeReceiptFilename(filename: string): string {
 	const basename = filename.split(/[\\/]/).at(-1) ?? "";
 	return basename

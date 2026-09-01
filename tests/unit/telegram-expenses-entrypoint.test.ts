@@ -64,4 +64,17 @@ describe("TelegramExpenses Worker entrypoint", () => {
 			expect.objectContaining({ database, receipts }),
 		);
 	});
+
+	it("forwards text-only create calls without inventing a receipt stream", async () => {
+		const request = { telegramUserId: "123", updateId: 43, version: 1 };
+		mocks.createTelegramExpense.mockResolvedValue({ kind: "storage_error", version: 1 });
+
+		await entrypoint.createTelegramExpense(request);
+
+		expect(mocks.createTelegramExpense).toHaveBeenCalledWith(
+			request,
+			undefined,
+			expect.objectContaining({ database, receipts }),
+		);
+	});
 });

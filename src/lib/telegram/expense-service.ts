@@ -54,6 +54,10 @@ async function cancelReceiptStream(stream: unknown): Promise<void> {
 	}
 }
 
+function isReadableReceiptStream(stream: unknown): stream is ReadableStream<Uint8Array> {
+	return Boolean(stream && typeof (stream as ReadableStream).getReader === "function");
+}
+
 function mapExpense(expense: ExpenseDetail): TelegramExpenseSummary {
 	if (expense.currency !== "CLP") throw new Error("Telegram expenses must use CLP.");
 	if (expense.splitMode === "open") throw new Error("Telegram expenses cannot use open splits.");
@@ -152,6 +156,14 @@ export async function createTelegramExpense(
 	try {
 		const parsed = CreateTelegramExpenseRequestSchema.safeParse(request);
 		if (!parsed.success) return { kind: "invalid_request", version: TELEGRAM_EXPENSE_RPC_VERSION };
+		const hasReceipt = parsed.data.receipt !== undefined;
+		const hasReceiptStream = receiptStream !== undefined && receiptStream !== null;
+		if (
+			hasReceipt !== hasReceiptStream ||
+			(hasReceipt && !isReadableReceiptStream(receiptStream))
+		) {
+			return { kind: "invalid_request", version: TELEGRAM_EXPENSE_RPC_VERSION };
+		}
 		const actor = await resolveActor(parsed.data.telegramUserId, dependencies.database);
 		if (actor.kind !== "found") return { kind: actor.kind, version: TELEGRAM_EXPENSE_RPC_VERSION };
 		const expenseInput = ExpenseCreateInputSchema.safeParse({
@@ -193,20 +205,25 @@ export async function createTelegramExpense(
 			};
 		}
 
-		let receipt: "already_attached" | "attached" | "failed" = "failed";
-		try {
-			const attachment = await attachReceiptStreamIfMissing(
-				created.expense.id,
-				parsed.data.receipt,
-				receiptStream,
-				{ database: dependencies.database, receipts: dependencies.receipts },
-			);
-			receiptHandled = true;
-			if (attachment.kind === "attached" || attachment.kind === "already_attached") {
-				receipt = attachment.kind;
-			}
-		} catch {
+		let receipt: "already_attached" | "attached" | "failed" | "not_provided" = "not_provided";
+		if (parsed.data.receipt !== undefined) {
 			receipt = "failed";
+			try {
+				const attachment = await attachReceiptStreamIfMissing(
+					created.expense.id,
+					parsed.data.receipt,
+					receiptStream,
+					{ database: dependencies.database, receipts: dependencies.receipts },
+				);
+				receiptHandled = true;
+				if (attachment.kind === "attached" || attachment.kind === "already_attached") {
+					receipt = attachment.kind;
+				}
+			} catch {
+				receipt = "failed";
+			}
+		} else {
+			receiptHandled = true;
 		}
 		const current = await findExpenseById(created.expense.id, dependencies.database);
 		const expense = current.ok && current.val ? current.val : created.expense;
