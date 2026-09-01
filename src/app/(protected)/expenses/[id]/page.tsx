@@ -31,9 +31,12 @@ export default async function ExpenseDetailPage({ params }: ExpenseDetailPagePro
 	const bankTransferDetails = await findBankTransferDetails(expense.payer.id);
 	if (bankTransferDetails.err) throw new Error("Could not load bank transfer details.");
 	return (
-		<main className="mx-auto max-w-5xl px-4 py-7 sm:px-7 sm:py-10">
+		<main className="mx-auto max-w-5xl min-w-0 px-4 py-7 sm:px-7 sm:py-10">
 			<div className="flex items-center justify-between gap-4">
-				<Link className="text-ink-muted hover:text-ink text-sm" href="/expenses">
+				<Link
+					className="text-ink-muted hover:text-ink inline-flex min-h-11 items-center text-sm"
+					href="/expenses"
+				>
 					← Todos los gastos
 				</Link>
 				<Link
@@ -43,25 +46,25 @@ export default async function ExpenseDetailPage({ params }: ExpenseDetailPagePro
 					<Pencil aria-hidden size={16} /> Editar
 				</Link>
 			</div>
-			<header className="mt-8 grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-				<div className="grid grid-cols-[3rem_minmax(0,1fr)] gap-4">
+			<header className="mt-8 grid min-w-0 gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+				<div className="grid min-w-0 grid-cols-[3rem_minmax(0,1fr)] gap-4">
 					<span className="bg-accent/10 text-accent mt-1 grid size-12 place-items-center rounded-2xl">
 						<ExpenseKindIcon aria-hidden iconKey={expense.kind.iconKey} size={22} />
 					</span>
-					<div>
+					<div className="min-w-0">
 						<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">
 							{expense.kind.name} · {formatExpenseDate(expense.expenseDate)}
 						</p>
-						<h1 className="font-display mt-2 text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">
+						<h1 className="font-display mt-2 text-3xl font-semibold tracking-[-0.03em] [overflow-wrap:anywhere] sm:text-5xl">
 							{expense.name}
 						</h1>
-						<p className="text-ink-muted mt-3">
+						<p className="text-ink-muted mt-3 [overflow-wrap:anywhere]">
 							Pagó <strong className="text-ink">{expense.payer.name}</strong>
 							{expense.description ? ` · ${expense.description}` : ""}
 						</p>
 					</div>
 				</div>
-				<strong className="font-display text-4xl text-nowrap">
+				<strong className="font-display max-w-full text-[clamp(1.75rem,8vw,2.25rem)] leading-none [overflow-wrap:anywhere]">
 					{formatMoney(expense.amountMinor, expense.currency)}
 				</strong>
 			</header>
@@ -79,9 +82,9 @@ export default async function ExpenseDetailPage({ params }: ExpenseDetailPagePro
 				splitMode={expense.splitMode}
 			/>
 
-			<section className="border-line mt-4 grid gap-3 rounded-2xl border border-dashed p-5 sm:grid-cols-[auto_1fr] sm:items-center">
+			<section className="border-line mt-4 grid min-w-0 gap-3 rounded-2xl border border-dashed p-5 sm:grid-cols-[auto_1fr] sm:items-center">
 				<Paperclip aria-hidden className="text-ink-faint" size={21} />
-				<div>
+				<div className="min-w-0">
 					<p className="text-ink-muted mb-2 text-sm">
 						{expense.hasReceipt
 							? "Comprobante guardado de forma privada."

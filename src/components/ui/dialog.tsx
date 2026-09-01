@@ -82,7 +82,7 @@ export function Dialog({ children, description, onClose, open, title }: DialogPr
 			aria-describedby={description ? descriptionId : undefined}
 			aria-labelledby={titleId}
 			aria-modal="true"
-			className="backdrop:bg-ink/45 fixed inset-0 z-50 m-0 h-full max-h-none w-full max-w-none border-0 bg-transparent p-0 text-inherit backdrop:backdrop-blur-[2px]"
+			className="backdrop:bg-ink/45 fixed inset-0 z-50 m-0 h-dvh max-h-dvh w-screen max-w-none overflow-hidden border-0 bg-transparent p-0 text-inherit backdrop:backdrop-blur-[2px]"
 			onCancel={(event) => {
 				event.preventDefault();
 				onClose();
@@ -91,12 +91,12 @@ export function Dialog({ children, description, onClose, open, title }: DialogPr
 			ref={dialogRef}
 		>
 			<div
-				className="grid min-h-full place-items-end p-0 sm:place-items-center sm:p-6"
+				className="flex h-full min-h-0 items-end justify-center pt-[env(safe-area-inset-top)] sm:items-center sm:p-6"
 				onMouseDown={(event) => event.currentTarget === event.target && onClose()}
 			>
-				<div className="animate-rise border-line bg-paper w-full rounded-t-3xl border p-6 shadow-2xl sm:max-w-lg sm:rounded-3xl">
-					<div className="mb-5 flex items-start justify-between gap-4">
-						<div>
+				<div className="animate-rise border-line bg-paper flex max-h-full w-full min-w-0 flex-col overflow-hidden rounded-t-3xl border shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:max-w-lg sm:rounded-3xl">
+					<div className="flex shrink-0 items-start justify-between gap-4 px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
+						<div className="min-w-0">
 							<h2 className="font-display text-ink text-2xl font-semibold" id={titleId}>
 								{title}
 							</h2>
@@ -108,7 +108,7 @@ export function Dialog({ children, description, onClose, open, title }: DialogPr
 						</div>
 						<Button
 							aria-label="Cerrar"
-							className="-mt-2 -mr-2 size-11 p-0"
+							className="-mt-2 -mr-2 size-11 shrink-0 p-0"
 							data-dialog-close
 							onClick={onClose}
 							variant="ghost"
@@ -116,7 +116,9 @@ export function Dialog({ children, description, onClose, open, title }: DialogPr
 							<X aria-hidden size={20} />
 						</Button>
 					</div>
-					{children}
+					<div className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6">
+						{children}
+					</div>
 				</div>
 			</div>
 		</dialog>

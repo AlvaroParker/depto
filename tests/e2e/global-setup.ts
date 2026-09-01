@@ -4,7 +4,9 @@ export default async function globalSetup(): Promise<void> {
 	if (process.env.E2E_BOOTSTRAP) return;
 	const password = process.env.E2E_PASSWORD;
 	if (!password) throw new Error("E2E_PASSWORD was not configured.");
-	const context = await request.newContext({ baseURL: "http://127.0.0.1:3000" });
+	const context = await request.newContext({
+		baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:3000",
+	});
 	try {
 		const bootstrap = await context.post("/api/bootstrap", {
 			data: {

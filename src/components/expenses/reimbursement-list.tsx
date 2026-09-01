@@ -174,7 +174,7 @@ export function ReimbursementList({
 		: "Guardar";
 
 	return (
-		<section className="border-line bg-paper mt-9 rounded-[1.75rem] border p-5 sm:p-7">
+		<section className="border-line bg-paper mt-9 min-w-0 rounded-[1.75rem] border p-5 sm:p-7">
 			<div className="mb-5 flex items-center justify-between gap-4">
 				<div>
 					<h2 className="font-display text-2xl font-semibold">División y reembolsos</h2>
@@ -197,8 +197,8 @@ export function ReimbursementList({
 					const amountEditable = splitMode === "open" && share.status === "pending" && ownsShare;
 					return (
 						<div className="grid min-h-20 gap-3 py-4" key={share.id}>
-							<div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-								<div>
+							<div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+								<div className="min-w-0">
 									<p className="font-semibold">{share.participant.name}</p>
 									{share.status === "settled" ? (
 										<Badge tone="settled">
@@ -221,7 +221,7 @@ export function ReimbursementList({
 										</p>
 									) : null}
 								</div>
-								<strong className="font-display text-xl">
+								<strong className="font-display min-w-0 text-xl [overflow-wrap:anywhere]">
 									{formatMoney(share.shareAmountMinor, currency)}
 								</strong>
 							</div>
@@ -298,7 +298,7 @@ export function ReimbursementList({
 					<label className="grid gap-2 text-sm font-semibold" htmlFor="open-share-amount">
 						<span>Monto que pagará</span>
 						<input
-							className="border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 rounded-xl border px-4 text-base outline-none focus:ring-3"
+							className="border-line-strong bg-paper text-ink focus:border-accent focus:ring-accent/15 min-h-12 w-full max-w-full min-w-0 rounded-xl border px-4 text-base outline-none focus:ring-3"
 							disabled={pending}
 							id="open-share-amount"
 							inputMode="numeric"
@@ -343,7 +343,7 @@ export function ReimbursementList({
 						<span>Comprobante de pago (opcional)</span>
 						<input
 							accept={PAYMENT_PROOF_CONTENT_TYPES.join(",")}
-							className="border-line-strong bg-paper-strong file:bg-ink file:text-paper focus-visible:outline-accent min-h-12 rounded-xl border px-3 py-2 text-sm file:mr-3 file:rounded-full file:border-0 file:px-3 file:py-1.5 file:text-xs file:font-bold focus-visible:outline-2 focus-visible:outline-offset-2"
+							className="border-line-strong bg-paper-strong file:bg-ink file:text-paper focus-visible:outline-accent min-h-12 w-full max-w-full min-w-0 rounded-xl border px-3 py-2 text-sm file:mr-3 file:max-w-full file:rounded-full file:border-0 file:px-3 file:py-1.5 file:text-xs file:font-bold focus-visible:outline-2 focus-visible:outline-offset-2"
 							disabled={pending}
 							id="payment-proof"
 							onChange={(event) => {

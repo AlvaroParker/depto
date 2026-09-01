@@ -18,7 +18,10 @@ export default async function NewExpensePage() {
 	}).format(new Date());
 	return (
 		<main className="mx-auto max-w-3xl px-4 py-7 sm:px-7 sm:py-10">
-			<Link className="text-ink-muted hover:text-ink text-sm" href="/expenses">
+			<Link
+				className="text-ink-muted hover:text-ink inline-flex min-h-11 items-center text-sm"
+				href="/expenses"
+			>
 				← Volver a gastos
 			</Link>
 			<header className="mt-6 mb-8">
@@ -30,7 +33,7 @@ export default async function NewExpensePage() {
 					Anota quién pagó y nosotros hacemos la división exacta.
 				</p>
 			</header>
-			<section className="border-line bg-paper rounded-[1.75rem] border p-5 shadow-[0_24px_60px_-46px_rgba(40,40,34,0.55)] sm:p-8">
+			<section className="border-line bg-paper min-w-0 rounded-[1.75rem] border p-5 shadow-[0_24px_60px_-46px_rgba(40,40,34,0.55)] sm:p-8">
 				<ExpenseForm
 					defaultDate={defaultDate}
 					expenseKinds={expenseKinds.val}
