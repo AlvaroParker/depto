@@ -17,8 +17,7 @@ import type { UserRole } from "@/lib/const/roles";
 import { createPaymentProofObjectKey } from "@/lib/util/payment-proofs";
 import {
 	createReceiptObjectKey,
-	type ReceiptImageContentType,
-	validateReceiptImageSignature,
+	validateReceiptSignature,
 	validateReceiptMetadata,
 } from "@/lib/util/receipts";
 
@@ -81,7 +80,7 @@ export async function attachReceiptStreamIfMissing(
 	const objectKey = createReceiptObjectKey(expenseId, metadata.contentType);
 	try {
 		const bytes = await readExactReceiptBytes(stream, metadata.sizeBytes);
-		validateReceiptImageSignature(bytes, metadata.contentType as ReceiptImageContentType);
+		validateReceiptSignature(bytes, metadata.contentType);
 		await dependencies.receipts.put(objectKey, bytes, {
 			httpMetadata: { contentType: metadata.contentType },
 		});

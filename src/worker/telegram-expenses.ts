@@ -28,7 +28,7 @@ export class TelegramExpenses extends WorkerEntrypoint<CloudflareEnv> {
 
 	createTelegramExpense(
 		request: unknown,
-		receiptStream: ReadableStream<Uint8Array>,
+		receiptStream?: ReadableStream<Uint8Array>,
 	): Promise<CreateTelegramExpenseResult> {
 		return createTelegramExpenseForRpc(request, receiptStream, dependencies(this.env));
 	}

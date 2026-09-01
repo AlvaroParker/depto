@@ -33,6 +33,15 @@ describe("Telegram expense RPC contract", () => {
 	it("accepts strict equal and exact custom expense requests", () => {
 		expect(CreateTelegramExpenseRequestSchema.safeParse(equalRequest).success).toBe(true);
 		expect(
+			CreateTelegramExpenseRequestSchema.safeParse({ ...equalRequest, receipt: undefined }).success,
+		).toBe(true);
+		expect(
+			CreateTelegramExpenseRequestSchema.safeParse({
+				...equalRequest,
+				receipt: { ...receipt, contentType: "application/pdf" },
+			}).success,
+		).toBe(true);
+		expect(
 			CreateTelegramExpenseRequestSchema.safeParse({
 				...equalRequest,
 				expense: {
@@ -73,8 +82,8 @@ describe("Telegram expense RPC contract", () => {
 		["non-canonical Telegram ID", { ...equalRequest, telegramUserId: "00123" }],
 		["unsafe update ID", { ...equalRequest, updateId: Number.MAX_SAFE_INTEGER + 1 }],
 		[
-			"unsupported PDF",
-			{ ...equalRequest, receipt: { ...receipt, contentType: "application/pdf" } },
+			"unsupported proof type",
+			{ ...equalRequest, receipt: { ...receipt, contentType: "text/plain" } },
 		],
 		[
 			"invalid calendar date",

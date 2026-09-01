@@ -54,14 +54,15 @@ del ID anterior de inmediato.
 
 El Worker del sitio exporta `TelegramExpenses` como un `WorkerEntrypoint` nombrado para una vinculación
 de servicio de Cloudflare; no agrega una ruta HTTP pública. El bot puede buscar el resultado de una
-actualización, crear el gasto con su comprobante o reparar un comprobante que no logró adjuntarse. En
+actualización, crear un gasto con o sin comprobante o reparar un comprobante que no logró adjuntarse. En
 cada llamada, el sitio vuelve a resolver el ID de Telegram contra una cuenta regular activa y su
 participante activo antes de leer o escribir datos.
 
-Las solicitudes usan un contrato versionado y estricto. Los comprobantes se transfieren como streams,
-aceptan JPEG, PNG o WebP de hasta 10 MB y se validan por tamaño y firma binaria. La creación es atómica
-e idempotente por actualización de Telegram: repetir la misma solicitud devuelve el gasto existente,
-mientras que reutilizar la clave con datos distintos falla sin crear otro gasto.
+Las solicitudes usan un contrato versionado y estricto. Un comprobante opcional y su stream deben
+estar presentes juntos; se aceptan JPEG, PNG, WebP o PDF de hasta 10 MB y se validan por tamaño y
+firma binaria. Una creación sin comprobante devuelve `not_provided` y no escribe en R2. La creación
+es atómica e idempotente por actualización de Telegram: repetir la misma solicitud devuelve el gasto
+existente, mientras que reutilizar la clave con datos distintos falla sin crear otro gasto.
 
 Para desplegar la integración, publica primero este Worker `expenses`, luego configura en el Worker del
 bot una vinculación de servicio que apunte a `expenses` con el entrypoint `TelegramExpenses` y finalmente

@@ -11,6 +11,7 @@ import { createTestBindings, type TestBindings } from "../fixtures/miniflare";
 
 const NOW = "2026-08-31T12:00:00.000Z";
 const RECEIPT_BYTES = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+const PDF_BYTES = new TextEncoder().encode("%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF\n");
 
 function receiptStream(bytes: Uint8Array = RECEIPT_BYTES): ReadableStream<Uint8Array> {
 	const buffer = new ArrayBuffer(bytes.byteLength);
@@ -57,6 +58,16 @@ function createRequest(updateId = 42) {
 		updateId,
 		version: 1,
 	} as const;
+}
+
+function textOnlyRequest(updateId: number) {
+	const request = createRequest(updateId);
+	return {
+		expense: request.expense,
+		telegramUserId: request.telegramUserId,
+		updateId: request.updateId,
+		version: request.version,
+	};
 }
 
 describe("Telegram expense application service", () => {
@@ -158,6 +169,80 @@ describe("Telegram expense application service", () => {
 			.prepare("SELECT COUNT(*) AS count FROM expenses")
 			.first<{ count: number }>();
 		expect(count?.count).toBe(1);
+	});
+
+	it("creates and replays a text-only expense without writing an R2 object", async () => {
+		const created = await createTelegramExpense(textOnlyRequest(43), undefined, dependencies);
+		expect(created).toMatchObject({
+			expense: { hasReceipt: false },
+			kind: "created",
+			receipt: "not_provided",
+			version: 1,
+		});
+		const replayed = await createTelegramExpense(textOnlyRequest(43), undefined, dependencies);
+		expect(replayed).toMatchObject({
+			expense: { hasReceipt: false },
+			kind: "replayed",
+			receipt: "not_provided",
+		});
+		expect((await bindings.receipts.list()).objects).toHaveLength(0);
+	});
+
+	it("stores a validated PDF proof through the existing receipt boundary", async () => {
+		const request = {
+			...createRequest(44),
+			receipt: {
+				contentType: "application/pdf" as const,
+				filename: "comprobante.pdf",
+				sizeBytes: PDF_BYTES.byteLength,
+			},
+		};
+		const created = await createTelegramExpense(request, receiptStream(PDF_BYTES), dependencies);
+		expect(created).toMatchObject({
+			expense: { hasReceipt: true },
+			kind: "created",
+			receipt: "attached",
+		});
+		const objects = (await bindings.receipts.list()).objects;
+		expect(objects).toHaveLength(1);
+		expect(objects[0]?.key).toMatch(/\.pdf$/);
+	});
+
+	it("keeps the expense when a spoofed PDF fails attachment validation", async () => {
+		const bytes = new TextEncoder().encode("%PDF-1.7\nmissing trailer");
+		const request = {
+			...createRequest(45),
+			receipt: {
+				contentType: "application/pdf" as const,
+				filename: "comprobante.pdf",
+				sizeBytes: bytes.byteLength,
+			},
+		};
+
+		const created = await createTelegramExpense(request, receiptStream(bytes), dependencies);
+
+		expect(created).toMatchObject({
+			expense: { hasReceipt: false },
+			kind: "created",
+			receipt: "failed",
+		});
+		expect((await bindings.receipts.list()).objects).toHaveLength(0);
+	});
+
+	it("rejects mismatched receipt metadata and streams before creating an expense", async () => {
+		const unexpectedStream = cancellableReceiptStream();
+		expect(
+			await createTelegramExpense(textOnlyRequest(46), unexpectedStream.stream, dependencies),
+		).toEqual({ kind: "invalid_request", version: 1 });
+		expect(unexpectedStream.wasCancelled()).toBe(true);
+		expect(await createTelegramExpense(createRequest(47), undefined, dependencies)).toEqual({
+			kind: "invalid_request",
+			version: 1,
+		});
+		const count = await bindings.database
+			.prepare("SELECT COUNT(*) AS count FROM expenses")
+			.first<{ count: number }>();
+		expect(count?.count).toBe(0);
 	});
 
 	it("rejects changed data under the same Telegram update", async () => {

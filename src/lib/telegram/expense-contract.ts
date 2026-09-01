@@ -32,7 +32,7 @@ const TelegramExpenseIdentitySchema = z
 
 export const TelegramReceiptInputSchema = z
 	.object({
-		contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+		contentType: z.enum(["image/jpeg", "image/png", "image/webp", "application/pdf"]),
 		filename: z.string().trim().min(1).max(255),
 		sizeBytes: z.number().int().min(1).max(MAX_RECEIPT_SIZE_BYTES),
 	})
@@ -88,7 +88,7 @@ export const FindTelegramExpenseRequestSchema = TelegramExpenseIdentitySchema;
 
 export const CreateTelegramExpenseRequestSchema = TelegramExpenseIdentitySchema.extend({
 	expense: TelegramExpenseInputSchema,
-	receipt: TelegramReceiptInputSchema,
+	receipt: TelegramReceiptInputSchema.optional(),
 }).strict();
 
 export const AttachTelegramExpenseReceiptRequestSchema = TelegramExpenseIdentitySchema.extend({
@@ -130,7 +130,7 @@ export type CreateTelegramExpenseResult =
 			expense: TelegramExpenseSummary;
 			kind: "created" | "replayed";
 			notification: "failed" | "not_sent" | "sent" | "skipped";
-			receipt: "already_attached" | "attached" | "failed";
+			receipt: "already_attached" | "attached" | "failed" | "not_provided";
 			version: 1;
 	  }
 	| {

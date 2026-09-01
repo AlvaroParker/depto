@@ -6,6 +6,7 @@ import {
 	sanitizeReceiptFilename,
 	validateReceiptImageSignature,
 	validateReceiptMetadata,
+	validateReceiptSignature,
 } from "@/lib/util/receipts";
 
 describe("receipt metadata", () => {
@@ -60,5 +61,13 @@ describe("receipt metadata", () => {
 		expect(() =>
 			validateReceiptImageSignature(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), "image/png"),
 		).toThrow(/no coincide/);
+	});
+	it("accepts a framed PDF and rejects incomplete or spoofed PDFs", () => {
+		const pdf = new TextEncoder().encode("%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF\n");
+		expect(() => validateReceiptSignature(pdf, "application/pdf")).not.toThrow();
+		expect(() =>
+			validateReceiptSignature(new TextEncoder().encode("%PDF-1.7\nno eof"), "application/pdf"),
+		).toThrow(/PDF válido/);
+		expect(() => validateReceiptSignature(pdf, "image/jpeg")).toThrow(/no coincide/);
 	});
 });
