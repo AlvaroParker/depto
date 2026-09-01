@@ -15,7 +15,7 @@ export function PersonalObligations({ summary }: { summary: PersonalDashboardSum
 				<div className="bg-ink text-paper relative overflow-hidden p-6 sm:p-8">
 					<div
 						aria-hidden
-						className="bg-accent/18 absolute -top-20 -right-16 size-56 rounded-full blur-2xl"
+						className="bg-accent/18 absolute -top-16 right-0 size-44 rounded-full blur-2xl sm:-top-20 sm:size-56"
 					/>
 					<div className="relative">
 						<p className="text-paper/60 flex items-center gap-2 text-xs font-bold tracking-[0.18em] uppercase">

@@ -121,6 +121,10 @@ test("bounds long dialogs and keeps their controls reachable on short phones", a
 test("has no automated accessibility violations on representative responsive routes", async ({
 	page,
 }) => {
+	await page.setViewportSize({ height: 900, width: 1440 });
+	await page.goto("/login");
+	await expectNoAccessibilityViolations(page, "/login at 1440x900");
+
 	await signIn(page);
 	for (const scenario of [
 		{ height: 844, path: "/expenses/new", width: 390 },

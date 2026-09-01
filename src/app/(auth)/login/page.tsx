@@ -32,7 +32,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 				<div className="border-accent/60 absolute top-52 -right-2 size-36 rounded-full border" />
 				<p className="text-paper/60 text-xs font-semibold tracking-[0.24em]">CUENTAS DE CASA</p>
 				<div className="relative max-w-xl">
-					<p className="font-display text-accent-strong mb-6 text-lg italic">
+					<p className="font-display text-paper/80 mb-6 text-lg italic">
 						Gastos compartidos, cuentas claras
 					</p>
 					<p className="font-display text-6xl leading-[0.98] font-semibold tracking-[-0.04em]">
@@ -42,7 +42,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 						Gastos, comprobantes y reembolsos en un solo cuaderno común.
 					</p>
 				</div>
-				<p className="text-paper/40 text-xs">Un registro privado para la casa.</p>
+				<p className="text-paper/65 text-xs">Un registro privado para la casa.</p>
 			</section>
 
 			<section className="flex items-center justify-center px-5 py-12 sm:px-10">

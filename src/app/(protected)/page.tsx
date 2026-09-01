@@ -20,8 +20,8 @@ function RecentExpenses({
 }) {
 	return (
 		<section className="mt-10">
-			<div className="mb-5 flex items-end justify-between gap-4">
-				<div>
+			<div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+				<div className="min-w-0">
 					<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 						Últimos movimientos
 					</p>
@@ -30,7 +30,7 @@ function RecentExpenses({
 					</h2>
 				</div>
 				<Link
-					className="text-accent-strong inline-flex min-h-11 shrink-0 items-center text-sm font-semibold"
+					className="text-accent-strong inline-flex min-h-11 items-center text-sm font-semibold whitespace-nowrap"
 					href="/expenses"
 				>
 					Ver todos
