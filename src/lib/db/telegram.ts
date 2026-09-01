@@ -15,6 +15,10 @@ interface TelegramExpenseActorRow {
 	username: string;
 }
 
+interface TelegramPrivacyNoticeVersionRow {
+	telegram_privacy_notice_version: number;
+}
+
 export interface TelegramExpenseActor {
 	displayName: string;
 	participantId: string;
@@ -57,6 +61,85 @@ export async function findTelegramExpenseActorByTelegramUserId(
 					username: row.username,
 				}
 			: null;
+	});
+}
+
+function mapTelegramPrivacyNoticeVersion(
+	row: TelegramPrivacyNoticeVersionRow | undefined,
+): number | null {
+	if (!row) return null;
+	if (
+		!Number.isSafeInteger(row.telegram_privacy_notice_version) ||
+		row.telegram_privacy_notice_version < 0
+	) {
+		throw new Error("Stored Telegram privacy notice version is invalid.");
+	}
+	return row.telegram_privacy_notice_version;
+}
+
+export async function findTelegramPrivacyNoticeVersionByTelegramUserId(
+	telegramUserId: string,
+	database: D1Database = getDatabase(),
+): Promise<Result<number | null, DbError>> {
+	return safeDbCall(async () => {
+		const row = await database
+			.prepare(
+				`SELECT u.telegram_privacy_notice_version
+				 FROM app_users u
+				 JOIN participants p ON p.id = u.participant_id
+				 WHERE u.telegram_user_id = ?
+				   AND u.role = 'user'
+				   AND u.disabled_at IS NULL
+				   AND p.active = 1`,
+			)
+			.bind(telegramUserId)
+			.first<TelegramPrivacyNoticeVersionRow>();
+		return mapTelegramPrivacyNoticeVersion(row ?? undefined);
+	});
+}
+
+export async function acknowledgeTelegramPrivacyNoticeVersionByTelegramUserId(
+	telegramUserId: string,
+	noticeVersion: number,
+	database: D1Database = getDatabase(),
+	now: Date = new Date(),
+): Promise<Result<number | null, DbError>> {
+	return safeDbCall(async () => {
+		if (!Number.isSafeInteger(noticeVersion) || noticeVersion <= 0) {
+			throw new Error("Telegram privacy notice version is invalid.");
+		}
+		const results = await database.batch([
+			database
+				.prepare(
+					`UPDATE app_users
+					 SET telegram_privacy_notice_version = MAX(telegram_privacy_notice_version, ?),
+					     updated_at = CASE
+					       WHEN telegram_privacy_notice_version < ? THEN ?
+					       ELSE updated_at
+					     END
+					 WHERE telegram_user_id = ?
+					   AND role = 'user'
+					   AND disabled_at IS NULL
+					   AND EXISTS (
+					     SELECT 1 FROM participants p
+					     WHERE p.id = app_users.participant_id AND p.active = 1
+					   )`,
+				)
+				.bind(noticeVersion, noticeVersion, now.toISOString(), telegramUserId),
+			database
+				.prepare(
+					`SELECT u.telegram_privacy_notice_version
+					 FROM app_users u
+					 JOIN participants p ON p.id = u.participant_id
+					 WHERE u.telegram_user_id = ?
+					   AND u.role = 'user'
+					   AND u.disabled_at IS NULL
+					   AND p.active = 1`,
+				)
+				.bind(telegramUserId),
+		]);
+		const row = results[1]?.results[0] as unknown as TelegramPrivacyNoticeVersionRow | undefined;
+		return mapTelegramPrivacyNoticeVersion(row);
 	});
 }
 

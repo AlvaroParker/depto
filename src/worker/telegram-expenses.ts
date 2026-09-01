@@ -11,17 +11,21 @@ import type {
 	FindTelegramExpenseResult,
 } from "@/lib/telegram/expense-contract";
 import {
+	acknowledgeTelegramPrivacyNotice as acknowledgeTelegramPrivacyNoticeForRpc,
 	getTelegramBalance as getTelegramBalanceForRpc,
 	getTelegramDebtBreakdown as getTelegramDebtBreakdownForRpc,
 	getTelegramExpense as getTelegramExpenseForRpc,
 	getTelegramExpenseContext as getTelegramExpenseContextForRpc,
+	getTelegramPrivacyNoticeState as getTelegramPrivacyNoticeStateForRpc,
 	listTelegramExpenses as listTelegramExpensesForRpc,
 } from "@/lib/telegram/conversation-service";
 import type {
+	AcknowledgeTelegramPrivacyNoticeResult,
 	GetTelegramBalanceResult,
 	GetTelegramDebtBreakdownResult,
 	GetTelegramExpenseContextResult,
 	GetTelegramExpenseResult,
+	GetTelegramPrivacyNoticeStateResult,
 	ListTelegramExpensesResult,
 } from "@/lib/telegram/conversation-contract";
 
@@ -46,6 +50,16 @@ export class TelegramExpenses extends WorkerEntrypoint<CloudflareEnv> {
 
 	getTelegramDebtBreakdown(request: unknown): Promise<GetTelegramDebtBreakdownResult> {
 		return getTelegramDebtBreakdownForRpc(request, { database: this.env.DB });
+	}
+
+	getTelegramPrivacyNoticeState(request: unknown): Promise<GetTelegramPrivacyNoticeStateResult> {
+		return getTelegramPrivacyNoticeStateForRpc(request, { database: this.env.DB });
+	}
+
+	acknowledgeTelegramPrivacyNotice(
+		request: unknown,
+	): Promise<AcknowledgeTelegramPrivacyNoticeResult> {
+		return acknowledgeTelegramPrivacyNoticeForRpc(request, { database: this.env.DB });
 	}
 
 	listTelegramExpenses(request: unknown): Promise<ListTelegramExpensesResult> {

@@ -5,6 +5,7 @@ import type { ShareStatus } from "@/lib/types/expense";
 import { TelegramRpcUserIdSchema } from "./expense-contract";
 
 export const TELEGRAM_CONVERSATION_RPC_VERSION = 1 as const;
+export const TELEGRAM_PRIVACY_NOTICE_VERSION = 1 as const;
 
 const TelegramConversationActorRequestSchema = z
 	.object({
@@ -16,6 +17,13 @@ const TelegramConversationActorRequestSchema = z
 export const GetTelegramExpenseContextRequestSchema = TelegramConversationActorRequestSchema;
 
 export const GetTelegramBalanceRequestSchema = TelegramConversationActorRequestSchema;
+
+export const GetTelegramPrivacyNoticeStateRequestSchema = TelegramConversationActorRequestSchema;
+
+export const AcknowledgeTelegramPrivacyNoticeRequestSchema =
+	TelegramConversationActorRequestSchema.extend({
+		noticeVersion: z.literal(TELEGRAM_PRIVACY_NOTICE_VERSION),
+	}).strict();
 
 export const TelegramDebtDirectionSchema = z.enum(["due_to_caller", "owed_by_caller"]);
 
@@ -49,6 +57,12 @@ export type GetTelegramExpenseContextRequest = z.infer<
 	typeof GetTelegramExpenseContextRequestSchema
 >;
 export type GetTelegramBalanceRequest = z.infer<typeof GetTelegramBalanceRequestSchema>;
+export type GetTelegramPrivacyNoticeStateRequest = z.infer<
+	typeof GetTelegramPrivacyNoticeStateRequestSchema
+>;
+export type AcknowledgeTelegramPrivacyNoticeRequest = z.infer<
+	typeof AcknowledgeTelegramPrivacyNoticeRequestSchema
+>;
 export type GetTelegramDebtBreakdownRequest = z.infer<typeof GetTelegramDebtBreakdownRequestSchema>;
 export type ListTelegramExpensesRequest = z.input<typeof ListTelegramExpensesRequestSchema>;
 export type GetTelegramExpenseRequest = z.infer<typeof GetTelegramExpenseRequestSchema>;
@@ -158,6 +172,12 @@ export interface TelegramDebtBreakdownDto {
 	totalExpenseCount: number;
 }
 
+export interface TelegramPrivacyNoticeStateDto {
+	acknowledgedVersion: number;
+	currentVersion: typeof TELEGRAM_PRIVACY_NOTICE_VERSION;
+	required: boolean;
+}
+
 export interface TelegramExpensePageDto {
 	expenses: TelegramConversationExpenseSummaryDto[];
 	page: number;
@@ -174,5 +194,8 @@ export type TelegramReadResult<T> =
 export type GetTelegramExpenseContextResult = TelegramReadResult<TelegramExpenseContextDto>;
 export type GetTelegramBalanceResult = TelegramReadResult<TelegramBalanceDto>;
 export type GetTelegramDebtBreakdownResult = TelegramReadResult<TelegramDebtBreakdownDto>;
+export type GetTelegramPrivacyNoticeStateResult = TelegramReadResult<TelegramPrivacyNoticeStateDto>;
+export type AcknowledgeTelegramPrivacyNoticeResult =
+	TelegramReadResult<TelegramPrivacyNoticeStateDto>;
 export type ListTelegramExpensesResult = TelegramReadResult<TelegramExpensePageDto>;
 export type GetTelegramExpenseResult = TelegramReadResult<TelegramConversationExpenseDetailDto>;

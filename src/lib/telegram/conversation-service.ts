@@ -10,7 +10,9 @@ import { listExpenseKinds } from "@/lib/db/expense-kinds";
 import { findExpenseById, listExpenses } from "@/lib/db/expenses";
 import { findActiveParticipants, findParticipantById } from "@/lib/db/participants";
 import {
+	acknowledgeTelegramPrivacyNoticeVersionByTelegramUserId,
 	findTelegramExpenseActorByTelegramUserId,
+	findTelegramPrivacyNoticeVersionByTelegramUserId,
 	type TelegramExpenseActor,
 } from "@/lib/db/telegram";
 import { findTelegramDebtBreakdown } from "@/lib/db/telegram-debts";
@@ -18,6 +20,8 @@ import type { ExpenseDetail, ExpenseQuery, ExpenseSummary } from "@/lib/types/ex
 import type { ExpenseKind } from "@/lib/types/expense-kind";
 import type { Participant } from "@/lib/types/participant";
 import {
+	AcknowledgeTelegramPrivacyNoticeRequestSchema,
+	type AcknowledgeTelegramPrivacyNoticeResult,
 	GetTelegramBalanceRequestSchema,
 	type GetTelegramBalanceResult,
 	GetTelegramDebtBreakdownRequestSchema,
@@ -26,9 +30,12 @@ import {
 	type GetTelegramExpenseContextResult,
 	GetTelegramExpenseRequestSchema,
 	type GetTelegramExpenseResult,
+	GetTelegramPrivacyNoticeStateRequestSchema,
+	type GetTelegramPrivacyNoticeStateResult,
 	ListTelegramExpensesRequestSchema,
 	type ListTelegramExpensesResult,
 	TELEGRAM_CONVERSATION_RPC_VERSION,
+	TELEGRAM_PRIVACY_NOTICE_VERSION,
 	type TelegramBalanceDto,
 	type TelegramConversationExpenseDetailDto,
 	type TelegramConversationExpenseSummaryDto,
@@ -53,6 +60,14 @@ function failure<T>(kind: TelegramReadFailureKind): TelegramReadResult<T> {
 
 function success<T>(data: T): TelegramReadResult<T> {
 	return { data, kind: "ok", version: TELEGRAM_CONVERSATION_RPC_VERSION };
+}
+
+function privacyNoticeState(acknowledgedVersion: number) {
+	return {
+		acknowledgedVersion,
+		currentVersion: TELEGRAM_PRIVACY_NOTICE_VERSION,
+		required: acknowledgedVersion < TELEGRAM_PRIVACY_NOTICE_VERSION,
+	};
 }
 
 async function resolveActor(
@@ -259,6 +274,37 @@ export async function getTelegramDebtBreakdown(
 		totalAmountMinor: breakdown.val.totalAmountMinor,
 		totalExpenseCount: breakdown.val.totalExpenseCount,
 	});
+}
+
+export async function getTelegramPrivacyNoticeState(
+	request: unknown,
+	dependencies: TelegramConversationServiceDependencies,
+): Promise<GetTelegramPrivacyNoticeStateResult> {
+	const parsed = GetTelegramPrivacyNoticeStateRequestSchema.safeParse(request);
+	if (!parsed.success) return failure("invalid_request");
+	const acknowledgedVersion = await findTelegramPrivacyNoticeVersionByTelegramUserId(
+		parsed.data.telegramUserId,
+		dependencies.database,
+	);
+	if (acknowledgedVersion.err) return failure("storage_error");
+	if (acknowledgedVersion.val === null) return failure("unauthorized");
+	return success(privacyNoticeState(acknowledgedVersion.val));
+}
+
+export async function acknowledgeTelegramPrivacyNotice(
+	request: unknown,
+	dependencies: TelegramConversationServiceDependencies,
+): Promise<AcknowledgeTelegramPrivacyNoticeResult> {
+	const parsed = AcknowledgeTelegramPrivacyNoticeRequestSchema.safeParse(request);
+	if (!parsed.success) return failure("invalid_request");
+	const acknowledgedVersion = await acknowledgeTelegramPrivacyNoticeVersionByTelegramUserId(
+		parsed.data.telegramUserId,
+		parsed.data.noticeVersion,
+		dependencies.database,
+	);
+	if (acknowledgedVersion.err) return failure("storage_error");
+	if (acknowledgedVersion.val === null) return failure("unauthorized");
+	return success(privacyNoticeState(acknowledgedVersion.val));
 }
 
 export async function listTelegramExpenses(

@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+	AcknowledgeTelegramPrivacyNoticeRequestSchema,
 	GetTelegramBalanceRequestSchema,
 	GetTelegramDebtBreakdownRequestSchema,
 	GetTelegramExpenseContextRequestSchema,
 	GetTelegramExpenseRequestSchema,
+	GetTelegramPrivacyNoticeStateRequestSchema,
 	ListTelegramExpensesRequestSchema,
 	TELEGRAM_CONVERSATION_RPC_VERSION,
+	TELEGRAM_PRIVACY_NOTICE_VERSION,
 	type TelegramReadResult,
 } from "@/lib/telegram/conversation-contract";
 
@@ -18,6 +21,16 @@ describe("Telegram conversation read RPC contract", () => {
 	it("accepts the shared canonical actor request without normalizing it", () => {
 		expect(GetTelegramExpenseContextRequestSchema.parse(actorRequest)).toEqual(actorRequest);
 		expect(GetTelegramBalanceRequestSchema.parse(actorRequest)).toEqual(actorRequest);
+		expect(GetTelegramPrivacyNoticeStateRequestSchema.parse(actorRequest)).toEqual(actorRequest);
+	});
+
+	it("accepts acknowledgement of the current privacy notice only", () => {
+		expect(
+			AcknowledgeTelegramPrivacyNoticeRequestSchema.parse({
+				...actorRequest,
+				noticeVersion: TELEGRAM_PRIVACY_NOTICE_VERSION,
+			}),
+		).toEqual({ ...actorRequest, noticeVersion: 1 });
 	});
 
 	it("defaults and trims strict list filters", () => {
@@ -132,6 +145,15 @@ describe("Telegram conversation read RPC contract", () => {
 		],
 	])("rejects debt request with %s", (_case, request) => {
 		expect(GetTelegramDebtBreakdownRequestSchema.safeParse(request).success).toBe(false);
+	});
+
+	it.each([
+		["a missing notice version", actorRequest],
+		["an old notice version", { ...actorRequest, noticeVersion: 0 }],
+		["an unknown notice version", { ...actorRequest, noticeVersion: 2 }],
+		["an extra field", { ...actorRequest, extra: true, noticeVersion: 1 }],
+	])("rejects privacy acknowledgement with %s", (_case, request) => {
+		expect(AcknowledgeTelegramPrivacyNoticeRequestSchema.safeParse(request).success).toBe(false);
 	});
 
 	it.each([
