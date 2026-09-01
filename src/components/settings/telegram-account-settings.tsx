@@ -139,7 +139,9 @@ export function TelegramAccountSettings({ initialTelegramUserId }: TelegramAccou
 					<p className="border-line bg-paper-strong/70 text-ink-muted rounded-2xl border px-4 py-3 text-xs leading-5">
 						Este dato es declarado por ti y no verificamos que esa cuenta de Telegram te pertenezca.
 						Al guardarlo, autorizas al bot a registrar gastos en tu nombre; configura solo tu propia
-						cuenta. Eliminarlo revoca ese acceso.
+						cuenta. Eliminarlo revoca ese acceso. Los mensajes y comprobantes que envías al bot son
+						procesados por OpenAI. Cloudflare conserva el contexto de la conversación activa por
+						hasta 10 minutos desde tu última interacción y luego lo elimina.
 					</p>
 					{generalError ? (
 						<p className="text-danger text-sm" role="alert">

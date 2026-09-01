@@ -38,6 +38,11 @@ describe("Telegram account settings", () => {
 		).toBeVisible();
 		expect(screen.getByText(/autorizas al bot a registrar gastos en tu nombre/)).toBeVisible();
 		expect(screen.getByText(/Eliminarlo revoca ese acceso/)).toBeVisible();
+		expect(screen.getByText(/mensajes y comprobantes.+procesados por OpenAI/i)).toBeVisible();
+		expect(
+			screen.getByText(/Cloudflare conserva.+conversación activa.+hasta 10 minutos/i),
+		).toBeVisible();
+		expect(screen.getByText(/10 minutos.+luego lo elimina/i)).toBeVisible();
 		expect(screen.queryByText("Configurado")).not.toBeInTheDocument();
 	});
 
