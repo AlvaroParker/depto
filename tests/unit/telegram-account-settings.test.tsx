@@ -36,7 +36,11 @@ describe("Telegram account settings", () => {
 		expect(
 			screen.getByText(/no verificamos que esa cuenta de Telegram te pertenezca/i),
 		).toBeVisible();
-		expect(screen.getByText(/autorizas al bot a registrar gastos en tu nombre/)).toBeVisible();
+		expect(
+			screen.getByText(
+				/autorizas al bot a consultar tu información de gastos, saldos y deudas del hogar, y a registrar gastos en tu nombre/i,
+			),
+		).toBeVisible();
 		expect(screen.getByText(/Eliminarlo revoca ese acceso/)).toBeVisible();
 		expect(screen.getByText(/mensajes y comprobantes.+procesados por OpenAI/i)).toBeVisible();
 		expect(
