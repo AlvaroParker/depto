@@ -41,10 +41,15 @@ describe("Telegram account settings", () => {
 		expect(screen.getByText(/mensajes y comprobantes.+procesados por OpenAI/i)).toBeVisible();
 		expect(
 			screen.getByText(
-				/Cloudflare conserva.+conversación activa.+período de inactividad configurado para el bot/i,
+				/Cloudflare conserva.+estado conversacional activo.+período de inactividad configurado para el bot/i,
 			),
 		).toBeVisible();
 		expect(screen.getByText(/configurado para el bot.+luego lo elimina/i)).toBeVisible();
+		expect(
+			screen.getByText(
+				/colas operativas de entrega y reintento.+contenido de los mensajes.+política de retención/i,
+			),
+		).toBeVisible();
 		expect(screen.queryByText(/10 minutos/i)).not.toBeInTheDocument();
 		expect(screen.queryByText("Configurado")).not.toBeInTheDocument();
 	});

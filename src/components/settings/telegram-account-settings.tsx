@@ -140,8 +140,10 @@ export function TelegramAccountSettings({ initialTelegramUserId }: TelegramAccou
 						Este dato es declarado por ti y no verificamos que esa cuenta de Telegram te pertenezca.
 						Al guardarlo, autorizas al bot a registrar gastos en tu nombre; configura solo tu propia
 						cuenta. Eliminarlo revoca ese acceso. Los mensajes y comprobantes que envías al bot son
-						procesados por OpenAI. Cloudflare conserva el contexto de la conversación activa solo
-						durante el breve período de inactividad configurado para el bot y luego lo elimina.
+						procesados por OpenAI. Cloudflare conserva el estado conversacional activo solo durante
+						el breve período de inactividad configurado para el bot y luego lo elimina. Las colas
+						operativas de entrega y reintento pueden conservar temporalmente el contenido de los
+						mensajes según su política de retención.
 					</p>
 					{generalError ? (
 						<p className="text-danger text-sm" role="alert">
