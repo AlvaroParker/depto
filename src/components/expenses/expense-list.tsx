@@ -66,14 +66,18 @@ export function ExpenseList({
 						key={expense.id}
 					>
 						<div className="grid min-w-0 grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-3">
-							<span className="bg-accent/9 text-accent grid size-11 place-items-center rounded-xl">
+							<span className="bg-accent/9 text-accent-strong grid size-11 place-items-center rounded-xl">
 								<ExpenseKindIcon aria-hidden iconKey={expense.kind.iconKey} size={19} />
 							</span>
 							<div className="min-w-0">
 								<div className="flex items-center gap-2">
 									<h2 className="truncate font-semibold">{expense.name}</h2>
 									{expense.hasReceipt ? (
-										<Paperclip aria-label="Con comprobante" className="text-accent" size={15} />
+										<Paperclip
+											aria-label="Con comprobante"
+											className="text-accent-strong"
+											size={15}
+										/>
 									) : null}
 								</div>
 								<p className="text-ink-muted mt-1 truncate text-sm">
@@ -154,7 +158,7 @@ export function ExpenseList({
 						</div>
 						<ArrowRight
 							aria-hidden
-							className="text-ink-faint group-hover:text-accent hidden transition sm:block"
+							className="text-ink-faint group-hover:text-accent-strong hidden transition sm:block"
 							size={19}
 						/>
 					</Link>

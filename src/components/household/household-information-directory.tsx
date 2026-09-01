@@ -417,12 +417,12 @@ export function HouseholdInformationDirectory({
 				<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 					{items.map((item, index) => (
 						<article
-							className="animate-rise border-line bg-paper/88 group relative flex min-w-0 flex-col overflow-hidden rounded-3xl border p-5 shadow-[0_24px_65px_-52px_rgba(40,40,34,0.8)] sm:p-6"
+							className="animate-rise border-line bg-paper/88 shadow-card group relative flex min-w-0 flex-col overflow-hidden rounded-3xl border p-5 sm:p-6"
 							key={item.id}
 							style={{ animationDelay: `${Math.min(index, 6) * 45}ms` }}
 						>
 							<div className="flex items-start gap-4">
-								<span className="bg-accent/10 text-accent grid size-12 shrink-0 place-items-center rounded-2xl">
+								<span className="bg-accent/10 text-accent-strong grid size-12 shrink-0 place-items-center rounded-2xl">
 									<ExpenseKindIcon aria-hidden iconKey={item.iconKey} size={23} />
 								</span>
 								<div className="min-w-0 flex-1">
@@ -480,7 +480,7 @@ export function HouseholdInformationDirectory({
 										</p>
 										{field.displayType === "link" ? (
 											<a
-												className="text-accent decoration-accent/30 mt-1 inline-flex items-center gap-1.5 text-sm font-semibold break-all underline underline-offset-4"
+												className="text-accent-strong decoration-accent/30 mt-1 inline-flex items-center gap-1.5 text-sm font-semibold break-all underline underline-offset-4"
 												href={field.value}
 												rel="noreferrer"
 												target="_blank"

@@ -40,7 +40,7 @@ export function ConnectedApplications({ initialGrants }: { initialGrants: OAuthG
 				Estas aplicaciones pueden acceder a tu información según los permisos que aprobaste.
 			</p>
 			{error ? (
-				<p className="mt-4 text-sm text-red-700" role="alert">
+				<p className="text-danger mt-4 text-sm" role="alert">
 					{error}
 				</p>
 			) : null}
@@ -67,7 +67,7 @@ export function ConnectedApplications({ initialGrants }: { initialGrants: OAuthG
 									<ul aria-label="Permisos concedidos" className="mt-3 flex flex-wrap gap-2">
 										{grant.scopes.map((scope) => (
 											<li
-												className="bg-accent/10 text-accent rounded-full px-3 py-1 text-xs"
+												className="bg-accent/10 text-accent-strong rounded-full px-3 py-1 text-xs"
 												key={scope}
 											>
 												{scopeLabels[scope] ?? scope}

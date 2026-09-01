@@ -18,7 +18,9 @@ export function ConsentForm({ clientName, fields, scopes }: ConsentFormProps) {
 				aria-labelledby="consent-title"
 				className="border-line bg-paper mx-auto max-w-lg rounded-3xl border p-7 shadow-sm"
 			>
-				<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">Conexión segura</p>
+				<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
+					Conexión segura
+				</p>
 				<h1 id="consent-title" className="font-display mt-2 text-3xl font-semibold">
 					¿Conectar {clientName}?
 				</h1>
@@ -43,7 +45,7 @@ export function ConsentForm({ clientName, fields, scopes }: ConsentFormProps) {
 						<input key={name} name={name} type="hidden" value={value} />
 					))}
 					<button
-						className="bg-accent text-paper focus-visible:ring-accent rounded-xl px-5 py-3 font-bold focus-visible:ring-2 focus-visible:ring-offset-2"
+						className="bg-accent text-accent-foreground focus-visible:ring-accent rounded-xl px-5 py-3 font-bold focus-visible:ring-2 focus-visible:ring-offset-2"
 						name="decision"
 						type="submit"
 						value="approve"

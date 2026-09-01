@@ -87,7 +87,7 @@ export function AppShell({ children, user }: AppShellProps) {
 			<div className="min-w-0 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</div>
 			<nav
 				aria-label="Principal"
-				className="border-line bg-paper/94 fixed z-40 flex flex-wrap rounded-2xl border p-1.5 shadow-[0_18px_50px_-22px_rgba(40,40,34,0.65)] backdrop-blur lg:hidden"
+				className="border-line bg-paper/94 shadow-card fixed z-40 flex flex-wrap rounded-2xl border p-1.5 backdrop-blur lg:hidden"
 				style={{
 					bottom: "max(0.75rem, env(safe-area-inset-bottom))",
 					left: "max(0.75rem, env(safe-area-inset-left))",

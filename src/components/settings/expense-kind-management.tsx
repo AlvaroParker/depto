@@ -148,9 +148,9 @@ export function ExpenseKindManagement({ initialKinds }: ExpenseKindManagementPro
 
 	return (
 		<div className="mt-8 grid gap-6 xl:grid-cols-[minmax(20rem,0.72fr)_minmax(0,1.28fr)]">
-			<section className="border-line bg-paper/85 rounded-3xl border p-6 shadow-[0_22px_60px_-48px_rgba(40,40,34,0.75)] sm:p-7">
+			<section className="border-line bg-paper/85 shadow-card rounded-3xl border p-6 sm:p-7">
 				<div className="flex items-start gap-4">
-					<span className="bg-accent/10 text-accent grid size-11 shrink-0 place-items-center rounded-2xl">
+					<span className="bg-accent/10 text-accent-strong grid size-11 shrink-0 place-items-center rounded-2xl">
 						<Plus aria-hidden size={21} />
 					</span>
 					<div>
@@ -212,7 +212,7 @@ export function ExpenseKindManagement({ initialKinds }: ExpenseKindManagementPro
 							className="border-line bg-paper/90 flex min-w-0 items-center gap-3 rounded-2xl border p-4"
 							key={kind.id}
 						>
-							<span className="bg-accent/10 text-accent grid size-11 shrink-0 place-items-center rounded-xl">
+							<span className="bg-accent/10 text-accent-strong grid size-11 shrink-0 place-items-center rounded-xl">
 								<ExpenseKindIcon aria-hidden iconKey={kind.iconKey} size={20} />
 							</span>
 							<div className="min-w-0 flex-1">

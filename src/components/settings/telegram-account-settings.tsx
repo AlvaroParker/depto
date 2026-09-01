@@ -89,10 +89,10 @@ export function TelegramAccountSettings({ initialTelegramUserId }: TelegramAccou
 		<>
 			<section
 				aria-labelledby="telegram-settings-title"
-				className="border-line bg-paper/85 mt-8 rounded-3xl border p-5 shadow-[0_22px_60px_-48px_rgba(40,40,34,0.75)] sm:p-7"
+				className="border-line bg-paper/85 shadow-card mt-8 rounded-3xl border p-5 sm:p-7"
 			>
 				<div className="flex items-start gap-4">
-					<span className="bg-accent/10 text-accent grid size-11 shrink-0 place-items-center rounded-2xl">
+					<span className="bg-accent/10 text-accent-strong grid size-11 shrink-0 place-items-center rounded-2xl">
 						<MessageCircle aria-hidden size={21} />
 					</span>
 					<div className="min-w-0 flex-1">

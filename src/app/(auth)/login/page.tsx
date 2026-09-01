@@ -32,7 +32,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 				<div className="border-accent/60 absolute top-52 -right-2 size-36 rounded-full border" />
 				<p className="text-paper/60 text-xs font-semibold tracking-[0.24em]">CUENTAS DE CASA</p>
 				<div className="relative max-w-xl">
-					<p className="font-display text-accent mb-6 text-lg italic">
+					<p className="font-display text-accent-strong mb-6 text-lg italic">
 						Gastos compartidos, cuentas claras
 					</p>
 					<h1 className="font-display text-6xl leading-[0.98] font-semibold tracking-[-0.04em]">
@@ -46,8 +46,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 			</section>
 
 			<section className="flex items-center justify-center px-5 py-12 sm:px-10">
-				<div className="animate-rise border-line bg-paper/90 w-full max-w-md rounded-[2rem] border p-7 shadow-[0_30px_80px_-45px_rgba(40,40,34,0.65)] backdrop-blur sm:p-10">
-					<p className="text-accent text-xs font-bold tracking-[0.2em] lg:hidden">
+				<div className="animate-rise border-line bg-paper/90 shadow-card w-full max-w-md rounded-[2rem] border p-7 backdrop-blur sm:p-10">
+					<p className="text-accent-strong text-xs font-bold tracking-[0.2em] lg:hidden">
 						CUENTAS DE CASA
 					</p>
 					<h2 className="font-display text-ink mt-3 text-4xl font-semibold tracking-[-0.03em]">

@@ -116,7 +116,7 @@ export function ParticipantBankAccountDialog({
 			) : (
 				<form action={submit} className="grid gap-5">
 					<div className="border-line bg-paper-strong flex items-center gap-3 rounded-2xl border px-4 py-3">
-						<span className="bg-accent/10 text-accent grid size-10 shrink-0 place-items-center rounded-xl">
+						<span className="bg-accent/10 text-accent-strong grid size-10 shrink-0 place-items-center rounded-xl">
 							<Landmark aria-hidden size={19} />
 						</span>
 						<div className="min-w-0">

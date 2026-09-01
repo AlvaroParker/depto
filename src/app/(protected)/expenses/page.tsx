@@ -64,7 +64,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
 		<main className="mx-auto max-w-6xl px-4 py-7 sm:px-7 sm:py-10">
 			<header className="mb-8 flex items-end justify-between gap-4">
 				<div>
-					<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">
+					<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 						Historial compartido
 					</p>
 					<h1 className="font-display mt-2 text-4xl font-semibold tracking-[-0.03em]">Gastos</h1>

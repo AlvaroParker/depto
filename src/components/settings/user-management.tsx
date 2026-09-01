@@ -167,9 +167,9 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 
 	return (
 		<div className="mt-8 grid gap-6 xl:grid-cols-[minmax(20rem,0.72fr)_minmax(0,1.28fr)]">
-			<section className="border-line bg-paper/85 rounded-3xl border p-6 shadow-[0_22px_60px_-48px_rgba(40,40,34,0.75)] sm:p-7">
+			<section className="border-line bg-paper/85 shadow-card rounded-3xl border p-6 sm:p-7">
 				<div className="flex items-start gap-4">
-					<span className="bg-accent/10 text-accent grid size-11 shrink-0 place-items-center rounded-2xl">
+					<span className="bg-accent/10 text-accent-strong grid size-11 shrink-0 place-items-center rounded-2xl">
 						<UserPlus aria-hidden size={21} />
 					</span>
 					<div>
@@ -275,7 +275,7 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 								<span
 									className={
 										user.role === "root"
-											? "bg-accent/12 text-accent grid size-11 shrink-0 place-items-center rounded-full"
+											? "bg-accent/12 text-accent-strong grid size-11 shrink-0 place-items-center rounded-full"
 											: user.role === "admin"
 												? "bg-positive/12 text-positive-strong grid size-11 shrink-0 place-items-center rounded-full"
 												: "bg-ink/7 text-ink-muted grid size-11 shrink-0 place-items-center rounded-full"
@@ -295,7 +295,7 @@ export function UserManagement({ currentUserId, initialUsers }: UserManagementPr
 										<Badge
 											className={
 												user.role === "root"
-													? "border-accent/20 bg-accent/10 text-accent"
+													? "border-accent/20 bg-accent/10 text-accent-strong"
 													: user.role === "admin"
 														? "border-positive/20 bg-positive/10 text-positive-strong"
 														: undefined

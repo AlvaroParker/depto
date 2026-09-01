@@ -31,7 +31,7 @@ export default async function SettingsPage() {
 	return (
 		<main className="px-5 py-8 sm:px-8 lg:px-12 lg:py-11">
 			<div className="mx-auto max-w-3xl">
-				<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">Ajustes</p>
+				<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">Ajustes</p>
 				<h1 className="font-display mt-2 text-4xl font-semibold">
 					{canManage ? "La casa" : "Tu cuenta"}
 				</h1>
@@ -46,7 +46,7 @@ export default async function SettingsPage() {
 							className="border-line bg-paper hover:border-accent/35 flex items-center gap-4 rounded-2xl border p-5 transition"
 							href="/settings/users"
 						>
-							<span className="bg-accent/10 text-accent grid size-11 place-items-center rounded-2xl">
+							<span className="bg-accent/10 text-accent-strong grid size-11 place-items-center rounded-2xl">
 								<KeyRound aria-hidden size={21} />
 							</span>
 							<span>

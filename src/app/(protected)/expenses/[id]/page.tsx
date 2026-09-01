@@ -48,11 +48,11 @@ export default async function ExpenseDetailPage({ params }: ExpenseDetailPagePro
 			</div>
 			<header className="mt-8 grid min-w-0 gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
 				<div className="grid min-w-0 grid-cols-[3rem_minmax(0,1fr)] gap-4">
-					<span className="bg-accent/10 text-accent mt-1 grid size-12 place-items-center rounded-2xl">
+					<span className="bg-accent/10 text-accent-strong mt-1 grid size-12 place-items-center rounded-2xl">
 						<ExpenseKindIcon aria-hidden iconKey={expense.kind.iconKey} size={22} />
 					</span>
 					<div className="min-w-0">
-						<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">
+						<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 							{expense.kind.name} · {formatExpenseDate(expense.expenseDate)}
 						</p>
 						<h1 className="font-display mt-2 text-3xl font-semibold tracking-[-0.03em] [overflow-wrap:anywhere] sm:text-5xl">

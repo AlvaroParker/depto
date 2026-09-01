@@ -22,7 +22,7 @@ function RecentExpenses({
 		<section className="mt-10">
 			<div className="mb-5 flex items-end justify-between gap-4">
 				<div>
-					<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">
+					<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 						Últimos movimientos
 					</p>
 					<h2 className="font-display mt-1 text-3xl font-semibold">
@@ -30,7 +30,7 @@ function RecentExpenses({
 					</h2>
 				</div>
 				<Link
-					className="text-accent inline-flex min-h-11 shrink-0 items-center text-sm font-semibold"
+					className="text-accent-strong inline-flex min-h-11 shrink-0 items-center text-sm font-semibold"
 					href="/expenses"
 				>
 					Ver todos
@@ -67,7 +67,9 @@ export default async function DashboardPage() {
 			<div className="mx-auto max-w-6xl">
 				{dashboard.view === "personal" ? (
 					<>
-						<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">Tu resumen</p>
+						<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
+							Tu resumen
+						</p>
 						<h1 className="font-display mt-2 text-4xl font-semibold tracking-[-0.035em] sm:text-5xl">
 							Hola, {session.user.displayName}.
 						</h1>
@@ -87,7 +89,7 @@ export default async function DashboardPage() {
 					</>
 				) : (
 					<>
-						<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">
+						<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 							Resumen del hogar
 						</p>
 						<h1 className="font-display mt-2 text-4xl font-semibold tracking-[-0.035em] sm:text-5xl">

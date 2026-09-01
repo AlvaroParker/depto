@@ -319,7 +319,7 @@ export function ExpenseForm({
 					>
 						<span>Categoría</span>
 						<span className="grid min-w-0 grid-cols-[3rem_minmax(0,1fr)] gap-3">
-							<span className="border-accent/20 bg-accent/10 text-accent grid size-12 place-items-center rounded-xl border">
+							<span className="border-accent/20 bg-accent/10 text-accent-strong grid size-12 place-items-center rounded-xl border">
 								<ExpenseKindIcon
 									aria-hidden
 									iconKey={expenseKinds.find((kind) => kind.id === kindId)?.iconKey ?? "other"}
@@ -487,7 +487,7 @@ export function ExpenseForm({
 									/>
 									<Icon
 										aria-hidden
-										className={selected ? "text-accent" : "text-ink-faint"}
+										className={selected ? "text-accent-strong" : "text-ink-faint"}
 										size={20}
 									/>
 									<strong className="text-sm">{option.label}</strong>
@@ -652,7 +652,7 @@ export function ExpenseForm({
 				{!expense ? (
 					<label className="border-line bg-paper-strong/55 focus-within:ring-accent/20 flex min-w-0 cursor-pointer items-center justify-between gap-4 rounded-2xl border p-4 transition focus-within:ring-3 sm:col-span-2">
 						<span className="flex min-w-0 items-start gap-3">
-							<span className="bg-accent/10 text-accent mt-0.5 grid size-9 shrink-0 place-items-center rounded-full">
+							<span className="bg-accent/10 text-accent-strong mt-0.5 grid size-9 shrink-0 place-items-center rounded-full">
 								<Mail aria-hidden size={17} />
 							</span>
 							<span className="min-w-0">
@@ -694,7 +694,7 @@ export function ExpenseForm({
 				<label className="border-warning/25 bg-warning/8 grid grid-cols-[auto_1fr] gap-3 rounded-2xl border p-4 text-sm">
 					<input className="mt-1 size-4" name="resetPaidReimbursements" type="checkbox" />
 					<span>
-						<strong className="block">Confirmar recálculo financiero</strong>
+						<strong className="text-warning-strong block">Confirmar recálculo financiero</strong>
 						<span className="text-ink-muted mt-1 block leading-6">
 							Los cambios financieros reiniciarán reembolsos pagados y eliminarán sus comprobantes.
 						</span>

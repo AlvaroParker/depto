@@ -16,7 +16,7 @@ export default async function HouseholdPage() {
 	return (
 		<main className="px-4 py-7 sm:px-7 lg:px-12 lg:py-11">
 			<div className="mx-auto max-w-6xl">
-				<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">
+				<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 					Libreta del hogar
 				</p>
 				<h1 className="font-display mt-2 max-w-3xl text-4xl font-semibold tracking-[-0.035em] sm:text-5xl">

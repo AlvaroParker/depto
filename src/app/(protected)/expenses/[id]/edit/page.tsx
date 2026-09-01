@@ -34,7 +34,7 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
 			</Link>
 			<header className="mt-6 mb-8 flex items-end justify-between gap-4">
 				<div>
-					<p className="text-accent text-xs font-bold tracking-[0.18em] uppercase">
+					<p className="text-accent-strong text-xs font-bold tracking-[0.18em] uppercase">
 						Corrección segura
 					</p>
 					<h1 className="font-display mt-2 text-4xl font-semibold tracking-[-0.03em]">
