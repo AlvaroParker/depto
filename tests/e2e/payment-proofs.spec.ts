@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { selectExpenseParticipants, signIn, uniqueName } from "./helpers";
+import { PNG_BYTES } from "../fixtures/files";
 
 test("uploads, views, replaces, and removes proof for an owned reimbursement", async ({ page }) => {
 	const expenseName = uniqueName("Pago con respaldo");
@@ -13,7 +14,7 @@ test("uploads, views, replaces, and removes proof for an owned reimbursement", a
 
 	await page.getByRole("button", { name: "Marcar pagado: Camila" }).click();
 	await page.getByLabel("Comprobante de pago (opcional)").setInputFiles({
-		buffer: Buffer.from("private-payment-image"),
+		buffer: Buffer.from(PNG_BYTES),
 		mimeType: "image/png",
 		name: "transferencia.png",
 	});
@@ -31,12 +32,12 @@ test("uploads, views, replaces, and removes proof for an owned reimbursement", a
 
 	await page.getByRole("button", { name: "Reemplazar comprobante: Camila" }).click();
 	await page.getByLabel("Comprobante de pago (opcional)").setInputFiles({
-		buffer: Buffer.from("replacement-image"),
-		mimeType: "image/jpeg",
-		name: "transferencia-final.jpg",
+		buffer: Buffer.from(PNG_BYTES),
+		mimeType: "image/png",
+		name: "transferencia-final.png",
 	});
 	await page.getByRole("button", { exact: true, name: "Reemplazar comprobante" }).click();
-	await expect(page.getByText("transferencia-final.jpg")).toBeVisible();
+	await expect(page.getByText("transferencia-final.png")).toBeVisible();
 
 	await page.getByRole("button", { name: "Marcar pendiente: Camila" }).click();
 	await page.getByRole("button", { name: "Quitar comprobante y marcar pendiente" }).click();

@@ -104,6 +104,7 @@ export async function sendExpenseCreatedEmails(
 				"Idempotency-Key": `expense-created/${expense.id}`,
 			},
 			method: "POST",
+			signal: AbortSignal.timeout(8_000),
 		});
 		if (!response.ok) {
 			return {
@@ -113,10 +114,10 @@ export async function sendExpenseCreatedEmails(
 			};
 		}
 		return { count: recipients.length, kind: "sent" };
-	} catch (error) {
+	} catch {
 		return {
 			kind: "failed",
-			message: error instanceof Error ? error.message : "Resend request failed.",
+			message: "Resend request failed or timed out.",
 		};
 	}
 }

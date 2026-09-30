@@ -26,6 +26,8 @@ import { acquireMcpFile } from "@/lib/mcp/files";
 import { attachActorPaymentProof, attachMcpReceipt } from "@/lib/services/files";
 import type { OAuthActor } from "@/lib/types/actor";
 import { createTestBindings, type TestBindings } from "../fixtures/miniflare";
+import { PNG_BASE64, PNG_BYTES } from "../fixtures/files";
+import { createExpenseTool } from "@/lib/mcp/tools";
 
 describe("MCP private file services", () => {
 	let bindings: TestBindings;
@@ -83,7 +85,7 @@ describe("MCP private file services", () => {
 
 	it("attaches and replaces receipts while cleaning the previous private object", async () => {
 		const first = await acquireMcpFile(
-			{ base64: btoa("first"), filename: "first.png", mimeType: "image/png" },
+			{ base64: PNG_BASE64, filename: "first.png", mimeType: "image/png" },
 			new Set(["image/png"]),
 		);
 		expect(await attachMcpReceipt(expenseId, first)).toBe(true);
@@ -92,7 +94,7 @@ describe("MCP private file services", () => {
 		expect(await bindings.receipts.get(firstMetadata.val.objectKey)).not.toBeNull();
 
 		const second = await acquireMcpFile(
-			{ base64: btoa("second"), filename: "second.png", mimeType: "image/png" },
+			{ base64: PNG_BASE64, filename: "second.png", mimeType: "image/png" },
 			new Set(["image/png"]),
 		);
 		expect(await attachMcpReceipt(expenseId, second)).toBe(true);
@@ -105,13 +107,13 @@ describe("MCP private file services", () => {
 
 	it("atomically marks the caller share paid with safe proof metadata", async () => {
 		const proof = await acquireMcpFile(
-			{ base64: btoa("proof"), filename: "proof.webp", mimeType: "image/webp" },
-			new Set(["image/webp"]),
+			{ base64: PNG_BASE64, filename: "proof.png", mimeType: "image/png" },
+			new Set(["image/png"]),
 		);
 		const updated = await attachActorPaymentProof(expenseId, proof, actor);
 		expect(updated).toMatchObject({
 			participant: { id: "participant_camila" },
-			paymentProof: { contentType: "image/webp", filename: "proof.webp" },
+			paymentProof: { contentType: "image/png", filename: "proof.png" },
 			status: "paid",
 		});
 		const stored = await findShareByExpenseAndParticipant(
@@ -121,5 +123,74 @@ describe("MCP private file services", () => {
 		);
 		if (stored.err) throw stored.val;
 		expect(stored.val?.status).toBe("paid");
+	});
+	it("preserves the new receipt if cleaning the previous object fails", async () => {
+		const file = { bytes: PNG_BYTES, contentType: "image/png", filename: "first.png" };
+		expect(await attachMcpReceipt(expenseId, file)).toBe(true);
+		state.receipts = new Proxy(bindings.receipts, {
+			get(target, key) {
+				if (key === "delete")
+					return async () => {
+						throw new Error("cleanup failed");
+					};
+				const value = Reflect.get(target, key);
+				return typeof value === "function" ? value.bind(target) : value;
+			},
+		});
+		expect(await attachMcpReceipt(expenseId, { ...file, filename: "replacement.png" })).toBe(true);
+		const metadata = await findExpenseReceipt(expenseId, bindings.database);
+		if (metadata.err || !metadata.val) throw new Error("Missing receipt");
+		expect(metadata.val.filename).toBe("replacement.png");
+		expect(await bindings.receipts.get(metadata.val.objectKey)).not.toBeNull();
+	});
+	it("retries receipt attachment without duplicating the expense or replacing an existing receipt", async () => {
+		const input = {
+			idempotencyKey: "receipt-retry",
+			amountMinor: 3000,
+			expenseDate: "2026-09-30",
+			kindId: "kind-other",
+			name: "Retry receipt",
+			paidByParticipantId: "participant_alvaro",
+			participantIds: ["participant_alvaro", "participant_camila"],
+			sendEmailNotifications: false,
+		};
+		const first = await createExpenseTool(
+			{
+				...input,
+				receipt: { base64: btoa("invalid"), filename: "receipt.png", mimeType: "image/png" },
+			},
+			actor,
+		);
+		expect(first.structuredContent).toMatchObject({
+			replayed: false,
+			warning: expect.any(String),
+			expense: { hasReceipt: false },
+		});
+		const second = await createExpenseTool(
+			{
+				...input,
+				receiptInline: { base64: PNG_BASE64, filename: "receipt.png", mimeType: "image/png" },
+			},
+			actor,
+		);
+		expect(second.structuredContent).toMatchObject({
+			replayed: true,
+			expense: { hasReceipt: true, receiptFilename: "receipt.png" },
+		});
+		const third = await createExpenseTool(
+			{
+				...input,
+				receiptInline: { base64: PNG_BASE64, filename: "different.png", mimeType: "image/png" },
+			},
+			actor,
+		);
+		expect(third.structuredContent).toMatchObject({
+			replayed: true,
+			expense: { receiptFilename: "receipt.png" },
+		});
+		const count = await bindings.database
+			.prepare("SELECT COUNT(*) AS count FROM expenses WHERE name = 'Retry receipt'")
+			.first<{ count: number }>();
+		expect(count?.count).toBe(1);
 	});
 });

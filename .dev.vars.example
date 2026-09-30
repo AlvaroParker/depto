@@ -5,6 +5,9 @@ AUTH_TRUST_HOST=true
 # OAuth/MCP uses this exact origin as issuer, resource, host, and audience.
 # Use an HTTPS tunnel/preview origin for external connector testing.
 APP_BASE_URL=http://localhost:3000
+# Optional comma-separated trusted download DNS zones. Default: oaiusercontent.com.
+# Restrict additional entries to file providers whose DNS you trust; base64 needs no remote host.
+MCP_FILE_ALLOWED_HOSTS=oaiusercontent.com
 RESEND_FROM_EMAIL=La cuenta <info@depto.parker.ci>
 # Leave empty to skip email delivery in local development.
 RESEND_API_KEY=

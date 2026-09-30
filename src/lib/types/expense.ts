@@ -28,11 +28,16 @@ function isCalendarDate(value: string): boolean {
 	);
 }
 
-const ExpenseFieldsSchema = z.object({
+export const ExpenseDateSchema = z
+	.string()
+	.regex(datePattern)
+	.refine(isCalendarDate, "La fecha no es válida.");
+
+export const ExpenseFieldsSchema = z.object({
 	amountMinor: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
 	currency: z.enum(SUPPORTED_CURRENCIES).default(DEFAULT_CURRENCY),
 	description: z.string().trim().max(2000).nullable().optional(),
-	expenseDate: z.string().refine(isCalendarDate, "La fecha no es válida."),
+	expenseDate: ExpenseDateSchema,
 	kindId: z.string().trim().min(1, "Selecciona una categoría."),
 	name: z.string().trim().min(1, "El nombre es obligatorio.").max(120),
 	paidByParticipantId: z.string().trim().min(1, "Selecciona quién pagó."),
@@ -144,19 +149,26 @@ export const ExpensePatchSchema = ExpenseFieldsSchema.extend({
 	resetPaidReimbursements: z.boolean().default(false),
 }).superRefine(validateSplitConfiguration);
 
-export const ExpenseQuerySchema = z.object({
-	kind: z.string().trim().optional(),
-	page: z.coerce.number().int().positive().default(1),
-	pageSize: z.coerce.number().int().min(1).max(100).default(25),
-	payer: z.string().trim().optional(),
-	pending: z
-		.enum(["all", "true", "false", "mine"])
-		.transform((value) =>
-			value === "all" ? undefined : value === "mine" ? value : value === "true",
-		)
-		.optional(),
-	q: z.string().trim().max(120).optional(),
-});
+export const ExpenseQuerySchema = z
+	.object({
+		dateFrom: ExpenseDateSchema.optional(),
+		dateTo: ExpenseDateSchema.optional(),
+		kind: z.string().trim().optional(),
+		page: z.coerce.number().int().positive().default(1),
+		pageSize: z.coerce.number().int().min(1).max(100).default(25),
+		payer: z.string().trim().optional(),
+		pending: z
+			.enum(["all", "true", "false", "mine"])
+			.transform((value) =>
+				value === "all" ? undefined : value === "mine" ? value : value === "true",
+			)
+			.optional(),
+		q: z.string().trim().max(120).optional(),
+	})
+	.refine((input) => !input.dateFrom || !input.dateTo || input.dateFrom <= input.dateTo, {
+		path: ["dateTo"],
+		message: "La fecha final debe ser igual o posterior a la inicial.",
+	});
 
 export const ShareStatusInputSchema = z.object({
 	status: z.enum(["pending", "paid"]),

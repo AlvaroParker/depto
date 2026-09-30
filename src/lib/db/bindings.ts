@@ -5,6 +5,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 export interface AppBindings {
 	APP_BASE_URL: string;
 	DB: D1Database;
+	MCP_FILE_ALLOWED_HOSTS?: string;
 	RECEIPTS: R2Bucket;
 	RESEND_API_KEY: string;
 	RESEND_FROM_EMAIL: string;
@@ -15,6 +16,8 @@ export function getBindings(): AppBindings {
 	return {
 		APP_BASE_URL: env.APP_BASE_URL,
 		DB: env.DB,
+		MCP_FILE_ALLOWED_HOSTS:
+			"MCP_FILE_ALLOWED_HOSTS" in env ? String(env.MCP_FILE_ALLOWED_HOSTS) : undefined,
 		RECEIPTS: env.RECEIPTS,
 		RESEND_API_KEY: env.RESEND_API_KEY,
 		RESEND_FROM_EMAIL: env.RESEND_FROM_EMAIL,

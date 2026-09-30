@@ -21,7 +21,7 @@
 
 1. Configure MCP Inspector with the public `/mcp` URL.
 2. Complete OAuth discovery and consent.
-3. Initialize and confirm exactly eight tools are listed.
+3. Initialize and confirm exactly sixteen tools are listed, with per-tool OAuth scopes, concrete file descriptors and typed success/error output schemas.
 4. Call reference data, balance, expense list, and expense detail.
 5. Create an expense with a unique idempotency key; repeat it and confirm the same expense is returned.
 6. Exercise paid/pending, proof, and open-share tools as the connected participant.

@@ -3,8 +3,12 @@ import { authenticateRequestActor } from "@/lib/auth/actor";
 import { actorAuthenticationErrorResponse, databaseErrorResponse } from "@/lib/api/server";
 import { getBindings } from "@/lib/db/bindings";
 import { detachExpenseReceipt, findExpenseReceipt } from "@/lib/db/receipts";
-import { attachMcpReceipt } from "@/lib/services/files";
-import { receiptContentDisposition, validateReceiptMetadata } from "@/lib/util/receipts";
+import { attachMcpReceipt, readExactReceiptBytes } from "@/lib/services/files";
+import {
+	receiptContentDisposition,
+	validateReceiptMetadata,
+	validateReceiptSignature,
+} from "@/lib/util/receipts";
 
 interface ReceiptRouteContext {
 	params: Promise<{ id: string }>;
@@ -30,10 +34,13 @@ export async function PUT(request: Request, { params }: ReceiptRouteContext) {
 	}
 	if (!request.body)
 		return NextResponse.json({ message: "El comprobante está vacío." }, { status: 400 });
-	const bytes = new Uint8Array(await request.arrayBuffer());
-	if (bytes.byteLength !== metadata.sizeBytes) {
+	let bytes: Uint8Array;
+	try {
+		bytes = await readExactReceiptBytes(request.body, metadata.sizeBytes);
+		validateReceiptSignature(bytes, metadata.contentType);
+	} catch {
 		return NextResponse.json(
-			{ message: "El tamaño recibido no coincide con el archivo." },
+			{ message: "El contenido recibido no coincide con el tipo o tamaño del archivo." },
 			{ status: 400 },
 		);
 	}

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { acquireMcpFile, isPrivateOrReservedAddress } from "@/lib/mcp/files";
+import { acquireMcpFile, isPrivateOrReservedAddress, McpRemoteFileSchema } from "@/lib/mcp/files";
+import { PNG_BASE64, PNG_BYTES } from "../fixtures/files";
 
 const imageTypes = new Set(["image/png"]);
 
@@ -16,6 +17,11 @@ describe("MCP file acquisition", () => {
 			"fd00::1",
 			"fe80::1",
 			"2001:db8::1",
+			"100.64.0.1",
+			"[::ffff:7f00:1]",
+			"::ffff:10.0.0.1",
+			"2002:7f00:1::",
+			"2001:2::1",
 		]) {
 			expect(isPrivateOrReservedAddress(address), address).toBe(true);
 		}
@@ -25,10 +31,10 @@ describe("MCP file acquisition", () => {
 
 	it("accepts bounded base64 with an allowed MIME type", async () => {
 		const result = await acquireMcpFile(
-			{ base64: btoa("png"), filename: "proof.png", mimeType: "image/png" },
+			{ base64: PNG_BASE64, filename: "proof.png", mimeType: "image/png" },
 			imageTypes,
 		);
-		expect(new TextDecoder().decode(result.bytes)).toBe("png");
+		expect(result.bytes).toEqual(PNG_BYTES);
 		expect(result).toMatchObject({ contentType: "image/png", filename: "proof.png" });
 	});
 
@@ -58,8 +64,8 @@ describe("MCP file acquisition", () => {
 				new Response(null, { headers: { location: "https://cdn.example/proof.png" }, status: 302 }),
 			)
 			.mockResolvedValueOnce(
-				new Response(new Uint8Array([1, 2, 3]), {
-					headers: { "content-length": "3", "content-type": "image/png" },
+				new Response(PNG_BYTES, {
+					headers: { "content-type": "image/png" },
 				}),
 			);
 		const resolveHost = vi.fn(async () => ["1.1.1.1"]);
@@ -71,9 +77,9 @@ describe("MCP file acquisition", () => {
 				mime_type: "image/png",
 			},
 			imageTypes,
-			{ fetcher, resolveHost },
+			{ fetcher, resolveHost, allowedHosts: ["files.example", "cdn.example"] },
 		);
-		expect(result.bytes).toEqual(new Uint8Array([1, 2, 3]));
+		expect(result.bytes).toEqual(PNG_BYTES);
 		expect(resolveHost).toHaveBeenCalledTimes(2);
 		expect(fetcher.mock.calls[0]?.[1]).not.toHaveProperty("headers.authorization");
 	});
@@ -97,8 +103,47 @@ describe("MCP file acquisition", () => {
 					filename: "proof.png",
 				},
 				imageTypes,
-				{ fetcher, resolveHost },
+				{ fetcher, resolveHost, allowedHosts: ["files.example", "internal.example"] },
 			),
 		).rejects.toThrow(/destino/i);
+	});
+	it("accepts ChatGPT descriptors without a filename and supplies a safe default", async () => {
+		const descriptor = { download_url: "https://files.oaiusercontent.com/file", file_id: "file-1" };
+		expect(McpRemoteFileSchema.safeParse(descriptor).success).toBe(true);
+		const result = await acquireMcpFile(descriptor, imageTypes, {
+			resolveHost: async () => ["1.1.1.1"],
+			fetcher: vi
+				.fn<typeof fetch>()
+				.mockResolvedValue(new Response(PNG_BYTES, { headers: { "content-type": "image/png" } })),
+		});
+		expect(result.filename).toBe("archivo.png");
+	});
+	it("rejects mismatched file bytes and attacker-controlled download hosts", async () => {
+		await expect(
+			acquireMcpFile(
+				{ base64: btoa("text"), filename: "fake.png", mimeType: "image/png" },
+				imageTypes,
+			),
+		).rejects.toThrow(/contenido/i);
+		const fetcher = vi.fn<typeof fetch>();
+		await expect(
+			acquireMcpFile(
+				{ download_url: "https://oaiusercontent.com.evil.example/file", file_id: "file-1" },
+				imageTypes,
+				{ fetcher },
+			),
+		).rejects.toThrow(/destino/i);
+		expect(fetcher).not.toHaveBeenCalled();
+	});
+	it("bounds the whole download including stalled DNS", async () => {
+		const fetcher = vi.fn<typeof fetch>();
+		await expect(
+			acquireMcpFile(
+				{ download_url: "https://files.oaiusercontent.com/file", file_id: "file-1" },
+				imageTypes,
+				{ fetcher, timeoutMs: 10, resolveHost: () => new Promise(() => {}) },
+			),
+		).rejects.toThrow(/tardó/i);
+		expect(fetcher).not.toHaveBeenCalled();
 	});
 });

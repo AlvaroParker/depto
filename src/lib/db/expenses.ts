@@ -464,6 +464,14 @@ export async function listExpenses(
 		const pageSize = query.pageSize ?? 25;
 		const where = ["e.deleted_at IS NULL"];
 		const bindings: unknown[] = [];
+		if (query.dateFrom) {
+			where.push("e.expense_date >= ?");
+			bindings.push(query.dateFrom);
+		}
+		if (query.dateTo) {
+			where.push("e.expense_date <= ?");
+			bindings.push(query.dateTo);
+		}
 		const search = query.q?.trim();
 		if (search) {
 			where.push(

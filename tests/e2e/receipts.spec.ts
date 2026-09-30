@@ -17,7 +17,7 @@ test("uploads and privately opens a PDF receipt", async ({ page }) => {
 	await page.getByLabel("Comprobante (opcional)").setInputFiles({
 		name: "boleta.pdf",
 		mimeType: "application/pdf",
-		buffer: Buffer.from("%PDF-1.4 test"),
+		buffer: Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF\n"),
 	});
 	await page.getByRole("button", { name: "Guardar gasto" }).click();
 	await expect(page.getByRole("link", { name: /ver boleta\.pdf/i })).toBeVisible();

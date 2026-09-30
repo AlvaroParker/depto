@@ -11,8 +11,8 @@ import {
 	findSharePaymentProof,
 	type ShareMutationAccess,
 } from "@/lib/db/expense-shares";
-import { attachPaymentProofToShare } from "@/lib/services/files";
-import { receiptContentDisposition } from "@/lib/util/receipts";
+import { attachPaymentProofToShare, readExactReceiptBytes } from "@/lib/services/files";
+import { receiptContentDisposition, validateReceiptSignature } from "@/lib/util/receipts";
 import { validatePaymentProofMetadata } from "@/lib/util/payment-proofs";
 
 interface ProofRouteContext {
@@ -67,10 +67,13 @@ export async function PUT(request: Request, { params }: ProofRouteContext): Prom
 		return NextResponse.json({ message: "El comprobante está vacío." }, { status: 400 });
 	}
 
-	const bytes = new Uint8Array(await request.arrayBuffer());
-	if (bytes.byteLength !== metadata.sizeBytes) {
+	let bytes: Uint8Array;
+	try {
+		bytes = await readExactReceiptBytes(request.body, metadata.sizeBytes);
+		validateReceiptSignature(bytes, metadata.contentType);
+	} catch {
 		return NextResponse.json(
-			{ message: "El tamaño recibido no coincide con el archivo." },
+			{ message: "El contenido recibido no coincide con el tipo o tamaño del archivo." },
 			{ status: 400 },
 		);
 	}

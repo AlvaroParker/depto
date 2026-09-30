@@ -39,13 +39,15 @@ export async function POST(request: Request) {
 	const server = createExpenseMcpServer(authenticated.actor);
 	try {
 		await server.connect(transport);
-		return await transport.handleRequest(request, {
+		const response = await transport.handleRequest(request, {
 			authInfo: {
 				clientId: authenticated.actor.clientId,
 				scopes: [...authenticated.actor.scopes],
 				token: "validated",
 			},
 		});
+		response.headers.set("Cache-Control", "no-store");
+		return response;
 	} finally {
 		await server.close();
 	}
