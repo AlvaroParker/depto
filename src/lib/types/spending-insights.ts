@@ -56,7 +56,10 @@ const filters = z.object({ kind: z.string().nullable(), payer: z.string().nullab
 const totals = { totalAmountMinor: money, expenseCount: money };
 const change = z.object({
 	amountMinor: z.number().int().min(-Number.MAX_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER),
-	percent: z.number().nullable(),
+	percent: z
+		.number()
+		.nullable()
+		.describe("Variación porcentual, con dos decimales; null si la base es cero."),
 });
 const category = { kindId: z.string(), kindName: z.string() };
 const categoryTotal = z.object({ ...category, amountMinor: money, expenseCount: money });
@@ -92,12 +95,18 @@ export const ExpenseTrendsSchema = z.object({
 	),
 });
 const personalAmounts = {
-	allocatedAmountMinor: money,
-	paidUpfrontAmountMinor: money,
-	reimbursedAmountMinor: money,
-	receivedReimbursementsAmountMinor: money,
-	pendingToPayAmountMinor: money,
-	pendingToReceiveAmountMinor: money,
+	allocatedAmountMinor: money.describe("Suma de mis partes asignadas, pagadas o pendientes."),
+	paidUpfrontAmountMinor: money.describe(
+		"Total de gastos completos que pagué inicialmente, incluyendo partes ajenas.",
+	),
+	reimbursedAmountMinor: money.describe("Mis partes marcadas como pagadas a otras personas."),
+	receivedReimbursementsAmountMinor: money.describe(
+		"Partes ajenas marcadas como pagadas hacia mí.",
+	),
+	pendingToPayAmountMinor: money.describe("Mis partes que siguen pendientes de reembolso."),
+	pendingToReceiveAmountMinor: money.describe(
+		"Partes ajenas que siguen pendientes de reembolso hacia mí.",
+	),
 	expenseCount: money,
 };
 export const MySpendingSchema = z.object({

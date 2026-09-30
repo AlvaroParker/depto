@@ -6,6 +6,11 @@ import { createTestBindings, type TestBindings } from "../fixtures/miniflare";
 import { PNG_BASE64 } from "../fixtures/files";
 import { ExpenseSchema, ReportSchema, DebtSchema } from "@/lib/mcp/schemas";
 import {
+	ExpenseComparisonSchema,
+	ExpenseTrendsSchema,
+	MySpendingSchema,
+} from "@/lib/types/spending-insights";
+import {
 	createOAuthClient,
 	createGrantAndAuthorizationCode,
 	insertAccessAndRefreshTokens,
@@ -62,6 +67,7 @@ describe("Authenticated MCP SDK workflows", () => {
 	});
 	async function connect(
 		scopes: OAuthScope[] = ["expenses:read", "expenses:write", "reimbursements:write"],
+		userId = "sdk-user",
 	) {
 		const registered = await createOAuthClient({
 			name: "SDK",
@@ -74,7 +80,7 @@ describe("Authenticated MCP SDK workflows", () => {
 		if (registered.err) throw registered.val;
 		const grant = await createGrantAndAuthorizationCode({
 			clientId: registered.val.id,
-			userId: "sdk-user",
+			userId,
 			codeChallenge: "a".repeat(43),
 			codeHash: await sha256Base64Url(crypto.randomUUID()),
 			redirectUri: registered.val.redirectUris[0],
@@ -87,7 +93,7 @@ describe("Authenticated MCP SDK workflows", () => {
 			accessTokenHash: await sha256Base64Url(token),
 			clientId: registered.val.id,
 			grantId: grant.val.grantId,
-			userId: "sdk-user",
+			userId,
 			scopes,
 			resource: origin,
 		});
@@ -116,9 +122,9 @@ describe("Authenticated MCP SDK workflows", () => {
 		expect(result.isError, JSON.stringify(result)).not.toBe(true);
 		return result;
 	}
-	it("executes all sixteen tools through bearer authentication and SDK schema validation", async () => {
+	it("executes all nineteen tools through bearer authentication and SDK schema validation", async () => {
 		const client = await connect();
-		expect((await client.listTools()).tools).toHaveLength(16);
+		expect((await client.listTools()).tools).toHaveLength(19);
 		await call(client, "get_expense_reference_data");
 		const input = {
 			...expenseInput(),
@@ -176,6 +182,13 @@ describe("Authenticated MCP SDK workflows", () => {
 		expect(
 			z.object({ report: ReportSchema }).parse(report.structuredContent).report.totalAmountMinor,
 		).toBe(3000);
+		const range = { dateFrom: "2026-09-01", dateTo: "2026-09-30" };
+		await call(client, "get_expense_comparison", {
+			period: range,
+			baseline: { dateFrom: "2026-08-01", dateTo: "2026-08-31" },
+		});
+		await call(client, "get_expense_trends", range);
+		await call(client, "get_my_spending_report", range);
 		await call(client, "pay_all_my_debt", {
 			paidToParticipantId: "participant_camila",
 			proofInline,
@@ -195,6 +208,102 @@ describe("Authenticated MCP SDK workflows", () => {
 		expect(
 			z.object({ report: ReportSchema }).parse(emptyReport.structuredContent).report.expenseCount,
 		).toBe(0);
+	});
+	it("returns comparisons, trends, and caller-bound shares using read-only credentials", async () => {
+		const writer = await connect();
+		await call(writer, "create_expense", {
+			...expenseInput(),
+			amountMinor: 100_000,
+			expenseDate: "2026-08-31",
+			kindId: "kind-common-expenses",
+		});
+		await call(writer, "create_expense", {
+			...expenseInput(),
+			amountMinor: 115_000,
+			expenseDate: "2026-09-01",
+			kindId: "kind-common-expenses",
+			splitMode: "custom",
+			shareAllocations: [
+				{ participantId: "participant_alvaro", shareAmountMinor: 15_000 },
+				{ participantId: "participant_camila", shareAmountMinor: 100_000 },
+			],
+		});
+		const reader = await connect(["expenses:read"]);
+		const range = { dateFrom: "2026-09-01", dateTo: "2026-09-30" };
+		const comparison = await call(reader, "get_expense_comparison", {
+			period: range,
+			baseline: { dateFrom: "2026-08-01", dateTo: "2026-08-31" },
+			kind: "kind-common-expenses",
+		});
+		expect(
+			z.object({ comparison: ExpenseComparisonSchema }).parse(comparison.structuredContent)
+				.comparison.change,
+		).toEqual({ amountMinor: 15_000, percent: 15 });
+		const trends = await call(reader, "get_expense_trends", {
+			dateFrom: "2026-07-01",
+			dateTo: range.dateTo,
+			kind: "kind-common-expenses",
+		});
+		expect(
+			z
+				.object({ trends: ExpenseTrendsSchema })
+				.parse(trends.structuredContent)
+				.trends.months.map((month) => month.totalAmountMinor),
+		).toEqual([0, 100_000, 115_000]);
+		const personal = await call(reader, "get_my_spending_report", {
+			...range,
+			participantId: "participant_camila",
+		});
+		expect(
+			z.object({ report: MySpendingSchema }).parse(personal.structuredContent).report,
+		).toMatchObject({
+			participantId: "participant_alvaro",
+			allocatedAmountMinor: 15_000,
+			paidUpfrontAmountMinor: 0,
+			pendingToPayAmountMinor: 15_000,
+		});
+		await bindings.database
+			.prepare(
+				"INSERT INTO app_users (id, username, password_hash, display_name, participant_id, role, created_at, updated_at) VALUES ('sdk-camila', 'sdk-camila', 'hash', 'Camila', 'participant_camila', 'user', '2026-01-01', '2026-01-01')",
+			)
+			.run();
+		const otherReader = await connect(["expenses:read"], "sdk-camila");
+		const other = await call(otherReader, "get_my_spending_report", range);
+		expect(
+			z.object({ report: MySpendingSchema }).parse(other.structuredContent).report,
+		).toMatchObject({
+			participantId: "participant_camila",
+			allocatedAmountMinor: 100_000,
+			paidUpfrontAmountMinor: 115_000,
+			pendingToReceiveAmountMinor: 15_000,
+		});
+	});
+
+	it("validates report ranges at the MCP boundary and requires expenses:read", async () => {
+		const reader = await connect(["expenses:read"]);
+		const denied = await connect(["expenses:write"]);
+		const range = { dateFrom: "2026-09-01", dateTo: "2026-09-30" };
+		for (const name of ["get_expense_comparison", "get_expense_trends", "get_my_spending_report"]) {
+			const valid = name === "get_expense_comparison" ? { period: range, baseline: range } : range;
+			const forbidden = await denied.callTool({ name, arguments: valid });
+			expect(forbidden.isError).toBe(true);
+			expect(forbidden.structuredContent).toMatchObject({ code: "INSUFFICIENT_SCOPE" });
+			expect(forbidden._meta?.["mcp/www_authenticate"]).toEqual([
+				expect.stringContaining('scope="expenses:read"'),
+			]);
+			for (const invalidRange of [
+				{ dateFrom: "2026-09-30", dateTo: "2026-09-01" },
+				{ dateFrom: "2020-01-01", dateTo: "2026-09-30" },
+				{ dateFrom: "2026-02-30", dateTo: "2026-09-30" },
+			]) {
+				const args =
+					name === "get_expense_comparison"
+						? { period: range, baseline: invalidRange }
+						: invalidRange;
+				const invalid = await reader.callTool({ name, arguments: args });
+				expect(invalid.isError, name).toBe(true);
+			}
+		}
 	});
 	it("returns actionable challenges for every write tool with read-only credentials", async () => {
 		const client = await connect(["expenses:read"]);

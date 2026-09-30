@@ -88,6 +88,84 @@ Each tool publishes `securitySchemes` and its `_meta` mirror with the required O
 
 Expense edits/deletions and receipt replacement/removal declare destructive behavior. File reads, debt details and reports are read-only. File replacement declares non-idempotence because each upload creates new metadata. Access follows the existing household visibility rules.
 
+## Spending insights
+
+The [spending-insights specification](../../003-mcp-spending-insights/spec.md) adds three
+tools, bringing the total to nineteen. All three require `expenses:read` and are read-only,
+non-destructive, and idempotent. Inputs use inclusive `YYYY-MM-DD` **expense dates**,
+with ordered ranges spanning at most 60 calendar months. Monetary values are integer CLP;
+soft-deleted expenses are excluded. Unsafe integer aggregates return a business error.
+
+Resolve relative dates using the user's timezone. Specify whether a comparison uses complete
+calendar months or month-to-date. Every period reports `dateFrom`, `dateTo`, `dayCount`, and
+`coversFullMonths`. This last field describes calendar coverage, not whether every bill has
+been entered. Empty results indicate no recorded expenses; they do not prove no spending occurred.
+
+### `get_expense_comparison`
+
+- Input: `period: {dateFrom, dateTo}`, `baseline: {dateFrom, dateTo}`, optional `kind` and
+  `payer` IDs from `get_expense_reference_data`. Both filters apply to both periods.
+- Output: `{comparison}` containing `currency`, echoed `filters`, both periods with
+  `totalAmountMinor` and `expenseCount`, `sameDayCount`, and `change: {amountMinor, percent}`.
+- `amountMinor` is period minus baseline. `percent` is that difference divided by the baseline
+  times 100, rounded to two decimal places, or **null whenever the baseline is zero**.
+- `categories` includes categories appearing in either period, with `kindId`, `kindName`,
+  `periodAmountMinor`, `baselineAmountMinor`, and `change`. Ordered by absolute peso change,
+  with category ID as tie-breaker. Category changes reconcile to the overall change.
+- Periods may have unequal lengths or overlap; dates and day counts are never silently changed.
+  Use `list_expenses` with the returned dates, payer filter, and category ID to inspect the
+  exact expenses behind a contribution; follow pagination for the complete list.
+
+Example: «¿Cómo variaron los gastos comunes en septiembre respecto a agosto?»
+
+```json
+{
+	"period": { "dateFrom": "2026-09-01", "dateTo": "2026-09-30" },
+	"baseline": { "dateFrom": "2026-08-01", "dateTo": "2026-08-31" },
+	"kind": "kind-common-expenses"
+}
+```
+
+### `get_expense_trends`
+
+- Input: `dateFrom`, `dateTo`, optional `kind` and `payer`.
+- Output: `{trends}` with period metadata, `currency`, `filters`, `totalAmountMinor`,
+  `expenseCount`, and chronological `months`.
+- Each month contains `month` (`YYYY-MM`), period metadata, totals/counts, and `categories`
+  (`kindId`, `kindName`, `amountMinor`, `expenseCount`). Boundary months are clipped to the
+  requested dates; empty months have zero totals and an empty category array.
+
+Example: «Muéstrame la evolución de los gastos comunes de abril a septiembre»
+
+```json
+{ "dateFrom": "2026-04-01", "dateTo": "2026-09-30", "kind": "kind-common-expenses" }
+```
+
+### `get_my_spending_report`
+
+- Input: `dateFrom`, `dateTo`, optional `kind`. Report identity always comes from the OAuth
+  actor, never from a supplied participant ID.
+- Output: `{report}` with period metadata, `participantId`, `currency`, `filters`, totals,
+  `expenseCount`, and `categories` containing the same totals/counts by category.
+- `allocatedAmountMinor`: all of the caller's current shares, including settled and unpaid.
+- `paidUpfrontAmountMinor`: full expenses initially paid by the caller, including expenses
+  where the payer has no allocated share. Each expense is counted once.
+- `reimbursedAmountMinor` / `receivedReimbursementsAmountMinor`: shares currently marked paid
+  by the caller to others / by others to the caller.
+- `pendingToPayAmountMinor` / `pendingToReceiveAmountMinor`: currently pending shares in
+  those directions. Zero-value shares do not add debt.
+- `expenseCount`: expenses with a caller share or paid upfront by the caller, counted once.
+- `dateBasis: "expense_date"` and `reimbursementBasis: "current_status"`: a September expense
+  reimbursed in October appears as paid in September's report. This is not cash flow during
+  September or a reconstruction of balances as of September 30. Open splits use current
+  allocations, which may still change.
+
+Example: «¿Cuánto me correspondió pagar en septiembre y cuánto sigo debiendo?»
+
+```json
+{ "dateFrom": "2026-09-01", "dateTo": "2026-09-30" }
+```
+
 ## Files
 
 Generic clients send `{ "base64": "...", "mimeType": "...", "filename": "..." }` in the separate `receiptInline` or `proofInline` parameter. ChatGPT descriptors use `{ "download_url": "https://...", "file_id": "...", "mime_type": "...", "file_name": "..." }`; the last two fields are optional and `filename` remains an optional compatibility alias. Missing names get a safe MIME-derived name. Receipts allow JPEG/PNG/WebP/PDF; proofs allow JPEG/PNG/WebP; decoded/downloaded size is at most 10,485,760 bytes. MIME signatures are checked before storage. Downloads have a 20-second total deadline and a trusted-host allowlist, private/reserved-IP checks and at most three validated redirects. `MCP_FILE_ALLOWED_HOSTS` replaces the default `oaiusercontent.com` allowlist; include that zone when adding trusted file providers for other clients. Client schemas must be refreshed after upgrading from the original file union.

@@ -7,7 +7,7 @@ Aplicación privada y móvil para que un hogar registre gastos compartidos, elij
 - Next.js 16 App Router, React 19, TypeScript y Tailwind CSS 4
 - Auth.js v5 Credentials con sesiones JWT
 - OAuth 2.1 con PKCE, tokens opacos de corta duración y refresh rotativo
-- MCP Streamable HTTP en `/mcp` con dieciséis herramientas autorizadas por OAuth
+- MCP Streamable HTTP en `/mcp` con diecinueve herramientas autorizadas por OAuth
 - RBAC con roles `root`, `admin` y `user`
 - Cloudflare D1 para usuarios, gastos, partes y estados
 - Cloudflare R2 privado para JPG, PNG, WebP y PDF de hasta 10 MB
@@ -91,6 +91,13 @@ completo en [`specs/002-mcp-expense-integration/quickstart.md`](specs/002-mcp-ex
 
 Las herramientas permiten crear, editar y eliminar gastos, gestionar recibos, leer archivos privados,
 marcar pagos propios, pagar toda la deuda hacia una persona y consultar detalles e informes por fecha.
+Con `expenses:read`, `get_expense_comparison` compara dos períodos y calcula variaciones en pesos y
+porcentaje; `get_expense_trends` entrega una serie mensual, incluyendo meses sin registros; y
+`get_my_spending_report` distingue tus partes, pagos adelantados y reembolsos. Los rangos usan fechas
+inclusivas del gasto y admiten hasta 60 meses calendario. Los informes personales muestran el estado
+actual de los reembolsos, aunque se hayan pagado después del período. Consulta los ejemplos en el
+[contrato MCP](specs/002-mcp-expense-integration/contracts/mcp-tools.md#spending-insights).
+
 Los parámetros de archivo `receipt` y `proof` usan el descriptor de ChatGPT; otros clientes pueden
 enviar base64 mediante `receiptInline` y `proofInline`. Se validan tamaño, tipo y firma del archivo.
 Las descargas tienen un plazo total de 20 segundos y solo aceptan HTTPS hacia zonas DNS confiables

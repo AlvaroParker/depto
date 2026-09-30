@@ -8,6 +8,14 @@ import { z } from "zod";
 import type { OAuthActor } from "@/lib/types/actor";
 import type { OAuthScope } from "@/lib/types/oauth";
 import { ExpenseDateSchema } from "@/lib/types/expense";
+import {
+	ExpenseComparisonInputSchema,
+	ExpenseComparisonSchema,
+	ExpenseTrendsInputSchema,
+	ExpenseTrendsSchema,
+	MySpendingInputSchema,
+	MySpendingSchema,
+} from "@/lib/types/spending-insights";
 import * as handlers from "./tools";
 import { McpInlineFileSchema, McpRemoteFileSchema } from "./files";
 import { mcpBusinessError } from "./results";
@@ -28,7 +36,7 @@ import {
 } from "./schemas";
 
 export function createExpenseMcpServer(actor: OAuthActor): McpServer {
-	const server = new McpServer({ name: "gastos-compartidos", version: "1.1.0" });
+	const server = new McpServer({ name: "gastos-compartidos", version: "1.2.0" });
 	const definitions: (Tool & { securitySchemes: { type: string; scopes: OAuthScope[] }[] })[] = [];
 	function register<S extends z.ZodRawShape>(
 		name: string,
@@ -294,6 +302,30 @@ export function createExpenseMcpServer(actor: OAuthActor): McpServer {
 		ReportInputSchema.shape,
 		{ report: ReportSchema },
 		(input) => handlers.getExpenseReportTool(input, actor),
+	);
+	register(
+		"get_expense_comparison",
+		"expenses:read",
+		"Compara gastos de la casa entre period y baseline: totales, variación en pesos CLP y porcentaje, y aportes por categoría. Resuelve fechas relativas según la zona horaria del usuario y explicita si comparas meses completos o hasta el día actual. Máximo 60 meses por período; revisa coversFullMonths y sameDayCount. Un porcentaje null indica base cero. Consulta categorías con get_expense_reference_data y gastos concretos con list_expenses usando las mismas fechas, kind y payer. Solo refleja gastos registrados.",
+		ExpenseComparisonInputSchema.shape,
+		{ comparison: ExpenseComparisonSchema },
+		(input) => handlers.getExpenseComparisonTool(input, actor),
+	);
+	register(
+		"get_expense_trends",
+		"expenses:read",
+		"Obtiene la evolución mensual de gastos de la casa en pesos CLP, con totales y categorías, hasta 60 meses. Incluye meses sin registros con total cero. Las fechas son inclusivas; los meses de los extremos se recortan al rango solicitado y coversFullMonths indica si están completos. Resuelve fechas relativas según la zona horaria del usuario. Cero registros no demuestra que se hayan ingresado todas las cuentas.",
+		ExpenseTrendsInputSchema.shape,
+		{ trends: ExpenseTrendsSchema },
+		(input) => handlers.getExpenseTrendsTool(input, actor),
+	);
+	register(
+		"get_my_spending_report",
+		"expenses:read",
+		"Informa cuánto le correspondió pagar al usuario conectado, cuánto pagó por adelantado y sus reembolsos pagados, recibidos y pendientes, por categoría en pesos CLP. Usa las partes asignadas, incluyendo divisiones abiertas actuales. Filtra por fecha del gasto, no por fecha de transferencia; los reembolsos reflejan el estado actual incluso si ocurrieron después del período. Resuelve fechas relativas según la zona horaria del usuario. Máximo 60 meses; no admite consultar como otra persona.",
+		MySpendingInputSchema.shape,
+		{ report: MySpendingSchema },
+		(input) => handlers.getMySpendingReportTool(input, actor),
 	);
 	server.server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: definitions }));
 	return server;
