@@ -67,7 +67,7 @@ describe("MCP server definition", () => {
 		expect(body.result.serverInfo.name).toBe("gastos-compartidos");
 	});
 
-	it("discovers exactly eight annotated tools with output schemas", async () => {
+	it("discovers sixteen annotated tools with output schemas", async () => {
 		const response = await request({ id: 2, jsonrpc: "2.0", method: "tools/list", params: {} });
 		expect(response.status).toBe(200);
 		const body = (await response.json()) as {
@@ -84,6 +84,14 @@ describe("MCP server definition", () => {
 			"set_my_payment_status",
 			"mark_my_payment_paid_with_proof",
 			"update_my_open_share_amount",
+			"update_expense",
+			"delete_expense",
+			"attach_expense_receipt",
+			"remove_expense_receipt",
+			"read_expense_file",
+			"pay_all_my_debt",
+			"get_my_debt_breakdown",
+			"get_expense_report",
 		]);
 		expect(body.result.tools.every(({ outputSchema }) => outputSchema)).toBe(true);
 		expect(body.result.tools[0]?.annotations).toMatchObject({
@@ -91,6 +99,39 @@ describe("MCP server definition", () => {
 			idempotentHint: true,
 			readOnlyHint: true,
 		});
+	});
+
+	it("publishes ChatGPT file descriptors and OAuth policy on the wire", async () => {
+		const response = await request({ id: 4, jsonrpc: "2.0", method: "tools/list", params: {} });
+		const body = (await response.json()) as {
+			result: {
+				tools: {
+					name: string;
+					securitySchemes: unknown;
+					_meta: Record<string, unknown>;
+					inputSchema: { properties: Record<string, unknown> };
+				}[];
+			};
+		};
+		for (const tool of body.result.tools) {
+			expect(tool.securitySchemes, tool.name).toEqual(tool._meta.securitySchemes);
+			expect(tool.securitySchemes, tool.name).toEqual([
+				{ type: "oauth2", scopes: [expect.any(String)] },
+			]);
+			for (const field of (tool._meta["openai/fileParams"] ?? []) as string[]) {
+				expect(tool.inputSchema.properties[field], `${tool.name}.${field}`).toMatchObject({
+					type: "object",
+					required: ["download_url", "file_id"],
+					properties: {
+						download_url: { type: "string" },
+						file_id: { type: "string" },
+						mime_type: { type: "string" },
+						file_name: { type: "string" },
+					},
+				});
+				expect(tool.inputSchema.properties[field]).not.toHaveProperty("anyOf");
+			}
+		}
 	});
 
 	it.each([

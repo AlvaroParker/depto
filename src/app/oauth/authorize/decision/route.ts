@@ -39,8 +39,9 @@ export async function POST(request: Request) {
 	const resource = value("resource");
 	const scopes = parseOAuthScopes(value("scope"));
 	const client = await findOAuthClient(clientId);
+	if (client.err)
+		return oauthErrorResponse("temporarily_unavailable", "Client lookup is unavailable.", 503);
 	if (
-		client.err ||
 		!client.val ||
 		client.val.revokedAt ||
 		!client.val.redirectUris.includes(redirectUri) ||
@@ -49,7 +50,10 @@ export async function POST(request: Request) {
 		value("response_type") !== "code" ||
 		value("code_challenge_method") !== "S256" ||
 		!/^[A-Za-z0-9_-]{43}$/.test(value("code_challenge")) ||
-		!scopes
+		!scopes ||
+		!client.val.grantTypes.includes("authorization_code") ||
+		scopes.some((scope) => !client.val!.scopes.includes(scope)) ||
+		(scopes.includes("offline_access") && !client.val.grantTypes.includes("refresh_token"))
 	) {
 		return oauthErrorResponse("invalid_request", "The authorization request is invalid.");
 	}

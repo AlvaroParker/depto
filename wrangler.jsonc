@@ -58,6 +58,7 @@
 	"observability": {
 		"enabled": true,
 	},
+	"triggers": { "crons": ["17 4 * * *"] },
 	"upload_source_maps": true,
 	"vars": {
 		"APP_BASE_URL": "https://depto.parker.ci",

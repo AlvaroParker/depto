@@ -11,6 +11,7 @@ import type { UserRole } from "@/lib/const/roles";
 import type { PaymentProofContentType } from "@/lib/const/payment-proofs";
 import { createBulkPaymentProofObjectKey } from "@/lib/util/payment-proofs";
 import { createId } from "@/lib/util/ids";
+import { deletePaymentProofObjectIfUnreferenced } from "@/lib/services/files";
 
 export interface BulkPaymentActor {
 	participantId: string;
@@ -28,7 +29,7 @@ export type BulkPaymentServiceError = { kind: "database_error" } | { kind: "stor
 
 async function removeUploadedObject(objectKey: string): Promise<void> {
 	try {
-		await getBindings().RECEIPTS.delete(objectKey);
+		await deletePaymentProofObjectIfUnreferenced(objectKey);
 	} catch {
 		// Compensating cleanup is best effort after an uncommitted financial mutation.
 	}

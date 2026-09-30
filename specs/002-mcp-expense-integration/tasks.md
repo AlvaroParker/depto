@@ -113,3 +113,13 @@
 - US3: FR-012, SC-001–SC-002
 - US4: FR-013–FR-017 and FR-019, SC-003–SC-004
 - US5: FR-018–FR-020, SC-005
+
+## Reliability audit follow-up (FR-021–FR-028)
+
+- [x] T057 Add OAuth atomic issuance, transient-error, ownership, scope-policy and concurrent rate-limit regressions; implement the fixes.
+- [x] T058 Add file descriptor, byte validation, download deadline, receipt replay and cleanup regressions; implement safe file workflows.
+- [x] T059 Publish concrete tool schemas, OAuth challenges and field errors; add missing expense, file, payment, debt and report tools using shared rules.
+- [x] T060 Add connection expiry diagnostics, safe failure correlation and scheduled credential maintenance.
+- [x] T061 Update contracts and operator troubleshooting; run all automated gates and local Workers preview, review the complete diff and open one PR.
+
+Verification results are recorded in [quickstart.md](./quickstart.md#reliability-verification--2026-09-30). The follow-up is submitted as [PR #30](https://github.com/AlvaroParker/depto/pull/30); live connector acceptance (T055) remains a deployment check.

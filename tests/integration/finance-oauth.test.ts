@@ -23,6 +23,8 @@ vi.mock("@/lib/db/bindings", () => ({
 
 import { GET as dashboard } from "@/app/api/dashboard/route";
 import { POST as createExpenseRoute } from "@/app/api/expenses/route";
+import { PUT as uploadReceipt } from "@/app/api/expenses/[id]/receipt/route";
+import { PNG_BYTES } from "../fixtures/files";
 import { POST as payAllRoute } from "@/app/api/reimbursements/pay-all/[paidToParticipantId]/route";
 import {
 	createGrantAndAuthorizationCode,
@@ -231,5 +233,59 @@ describe("finance API OAuth scope integration", () => {
 		);
 		expect(paid.status).toBe(200);
 		expect(await paid.json()).toMatchObject({ amountPaidMinor: 3000, paidExpenseCount: 1 });
+	});
+	it("rejects forged image bytes and oversized streams without storing a receipt", async () => {
+		const token = "f".repeat(43);
+		await issue(token, ["expenses:write"]);
+		const created = await createExpenseRoute(
+			bearerRequest("/api/expenses", token, {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					amountMinor: 3000,
+					expenseDate: "2026-09-30",
+					kindId: "kind-other",
+					name: "File validation",
+					paidByParticipantId: "participant_alvaro",
+					participantIds: ["participant_alvaro"],
+					sendEmailNotifications: false,
+				}),
+			}),
+		);
+		const expense = (await created.json()) as { id: string };
+		const context = { params: Promise.resolve({ id: expense.id }) };
+		for (const [bytes, declaredSize] of [
+			[new TextEncoder().encode("fake image"), 10],
+			[PNG_BYTES, 8],
+		] as const) {
+			const rejected = await uploadReceipt(
+				bearerRequest(`/api/expenses/${expense.id}/receipt`, token, {
+					method: "PUT",
+					headers: {
+						"content-type": "image/png",
+						"x-receipt-filename": "receipt.png",
+						"x-receipt-size": String(declaredSize),
+					},
+					body: bytes,
+				}),
+				context,
+			);
+			expect(rejected.status).toBe(400);
+		}
+		expect((await bindings.receipts.list()).objects).toHaveLength(0);
+		const accepted = await uploadReceipt(
+			bearerRequest(`/api/expenses/${expense.id}/receipt`, token, {
+				method: "PUT",
+				headers: {
+					"content-type": "image/png",
+					"x-receipt-filename": "receipt.png",
+					"x-receipt-size": String(PNG_BYTES.byteLength),
+				},
+				body: PNG_BYTES,
+			}),
+			context,
+		);
+		expect(accepted.status).toBe(200);
+		expect(await accepted.json()).toMatchObject({ hasReceipt: true });
 	});
 });

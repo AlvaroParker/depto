@@ -1,175 +1,300 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import {
+	ListToolsRequestSchema,
+	type CallToolResult,
+	type Tool,
+} from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import type { OAuthActor } from "@/lib/types/actor";
+import type { OAuthScope } from "@/lib/types/oauth";
+import { ExpenseDateSchema } from "@/lib/types/expense";
+import * as handlers from "./tools";
+import { McpInlineFileSchema, McpRemoteFileSchema } from "./files";
+import { mcpBusinessError } from "./results";
 import {
-	createExpenseTool,
-	getExpenseReferenceData,
-	getExpenseTool,
-	getMyBalance,
-	listExpenseTool,
-	markMyPaymentPaidWithProofTool,
-	setMyPaymentStatusTool,
-	updateMyOpenShareAmountTool,
-} from "./tools";
-import { McpFileInputSchema } from "./files";
-
-const readAnnotations = {
-	destructiveHint: false,
-	idempotentHint: true,
-	openWorldHint: false,
-	readOnlyHint: true,
-};
+	BalanceSchema,
+	DebtInputSchema,
+	DebtSchema,
+	ExpenseSchema,
+	FileMetadataSchema,
+	KindSchema,
+	PageSchema,
+	ParticipantSchema,
+	PaymentSchema,
+	ReportInputSchema,
+	ReportSchema,
+	ShareSchema,
+	expenseInputShape,
+} from "./schemas";
 
 export function createExpenseMcpServer(actor: OAuthActor): McpServer {
-	const server = new McpServer({ name: "gastos-compartidos", version: "1.0.0" });
-	server.registerTool(
+	const server = new McpServer({ name: "gastos-compartidos", version: "1.1.0" });
+	const definitions: (Tool & { securitySchemes: { type: string; scopes: OAuthScope[] }[] })[] = [];
+	function register<S extends z.ZodRawShape>(
+		name: string,
+		scope: OAuthScope,
+		description: string,
+		input: S,
+		output: z.ZodRawShape,
+		handler: (input: z.output<z.ZodObject<S>>) => Promise<CallToolResult>,
+		options: {
+			mutation?: boolean;
+			destructive?: boolean;
+			idempotent?: boolean;
+			fileParams?: string[];
+		} = {},
+	) {
+		const securitySchemes = [{ type: "oauth2", scopes: [scope] }];
+		const annotations = {
+			readOnlyHint: !options.mutation,
+			destructiveHint: options.destructive ?? false,
+			idempotentHint: options.idempotent ?? true,
+			openWorldHint: false,
+		};
+		const _meta = {
+			securitySchemes,
+			...(options.fileParams ? { "openai/fileParams": options.fileParams } : {}),
+		};
+		const inputSchema = z.object(input);
+		const outputSchema = z.object(output);
+		const wireOutputSchema = z.union([
+			outputSchema,
+			z.object({
+				code: z.string(),
+				message: z.string(),
+				issues: z.array(z.object({ path: z.string(), message: z.string() })).optional(),
+			}),
+		]);
+		server.registerTool<typeof outputSchema, typeof inputSchema>(
+			name,
+			{ description, inputSchema, outputSchema, annotations, _meta },
+			async (args) => {
+				const fields = args as Record<string, unknown>;
+				for (const field of options.fileParams ?? []) {
+					if (fields[field] !== undefined && fields[`${field}Inline`] !== undefined)
+						return mcpBusinessError(`Envía solo ${field} o ${field}Inline.`, "VALIDATION_ERROR");
+				}
+				try {
+					return await handler(args as z.output<z.ZodObject<S>>);
+				} catch {
+					return mcpBusinessError(
+						"La operación no está disponible. Consulta su estado antes de reintentar.",
+						"TEMPORARILY_UNAVAILABLE",
+					);
+				}
+			},
+		);
+		// SDK 1.x omits nonstandard top-level fields from tools/list. Publish the same
+		// schemas and policy here so ChatGPT sees securitySchemes as well as its _meta mirror.
+		definitions.push({
+			name,
+			description,
+			annotations,
+			_meta,
+			securitySchemes,
+			inputSchema: z.toJSONSchema(inputSchema, { io: "input" }) as Tool["inputSchema"],
+			outputSchema: { ...z.toJSONSchema(wireOutputSchema), type: "object" } as Tool["outputSchema"],
+		});
+	}
+	const expenseId = z.string().min(1).describe("ID obtenido al listar o crear gastos.");
+	const write = { mutation: true };
+	const destructive = { mutation: true, destructive: true };
+	const fileInput = {
+		receipt: McpRemoteFileSchema.optional(),
+		receiptInline: McpInlineFileSchema.optional(),
+	};
+	const proofInput = {
+		proof: McpRemoteFileSchema.optional(),
+		proofInline: McpInlineFileSchema.optional(),
+	};
+	register(
 		"get_expense_reference_data",
+		"expenses:read",
+		"Obtiene IDs de participantes y categorías, monedas, divisiones y límites de archivo. Consulta antes de crear o editar un gasto.",
+		{},
 		{
-			annotations: readAnnotations,
-			description:
-				"Obtiene participantes, categorías, monedas, modos de división y límites de archivo.",
-			inputSchema: {},
-			outputSchema: {
-				callerParticipant: z.unknown().nullable(),
-				categories: z.array(z.unknown()),
-				currencies: z.array(z.string()),
-				fileLimits: z.unknown(),
-				participants: z.array(z.unknown()),
-				splitModes: z.array(z.string()),
-			},
+			callerParticipant: ParticipantSchema.nullable(),
+			categories: z.array(KindSchema),
+			participants: z.array(ParticipantSchema),
+			currencies: z.array(z.string()),
+			splitModes: z.array(z.string()),
+			fileLimits: z.object({
+				maxBytes: z.number().int(),
+				proofTypes: z.array(z.string()),
+				receiptTypes: z.array(z.string()),
+			}),
 		},
-		() => getExpenseReferenceData(actor),
+		() => handlers.getExpenseReferenceData(actor),
 	);
-	server.registerTool(
+	register(
 		"get_my_balance",
-		{
-			annotations: readAnnotations,
-			description: "Obtiene el saldo personal y las deudas por participante.",
-			inputSchema: {},
-			outputSchema: { balance: z.unknown() },
-		},
-		() => getMyBalance(actor),
+		"expenses:read",
+		"Obtiene cuánto debe el usuario conectado y cuánto le deben, por persona, en pesos CLP.",
+		{},
+		{ balance: BalanceSchema },
+		() => handlers.getMyBalance(actor),
 	);
-	server.registerTool(
+	register(
 		"list_expenses",
+		"expenses:read",
+		"Busca gastos de la casa con fechas inclusivas y paginación. pending=mine muestra reembolsos pendientes del usuario conectado.",
 		{
-			annotations: readAnnotations,
-			description: "Busca y pagina los gastos de la casa.",
-			inputSchema: {
-				kind: z.string().optional(),
-				page: z.number().int().positive().optional(),
-				pageSize: z.number().int().min(1).max(100).optional(),
-				payer: z.string().optional(),
-				pending: z.enum(["all", "true", "false", "mine"]).optional(),
-				q: z.string().max(120).optional(),
-			},
-			outputSchema: { page: z.unknown() },
+			kind: z.string().optional(),
+			payer: z.string().optional(),
+			page: z.number().int().min(1).max(1_000_000).optional(),
+			pageSize: z.number().int().min(1).max(100).optional(),
+			pending: z.enum(["all", "true", "false", "mine"]).optional(),
+			q: z.string().max(120).optional(),
+			dateFrom: ExpenseDateSchema.optional(),
+			dateTo: ExpenseDateSchema.optional(),
 		},
-		(input) => listExpenseTool(input, actor),
+		{ page: PageSchema },
+		(input) => handlers.listExpenseTool(input, actor),
 	);
-	server.registerTool(
+	register(
 		"get_expense",
-		{
-			annotations: readAnnotations,
-			description: "Obtiene el detalle completo de un gasto.",
-			inputSchema: { expenseId: z.string().min(1) },
-			outputSchema: { expense: z.unknown() },
-		},
-		({ expenseId }) => getExpenseTool(expenseId, actor),
+		"expenses:read",
+		"Obtiene el detalle completo, partes y metadatos de archivos de un gasto.",
+		{ expenseId },
+		{ expense: ExpenseSchema },
+		(input) => handlers.getExpenseTool(input.expenseId, actor),
 	);
-	server.registerTool(
+	register(
 		"create_expense",
+		"expenses:write",
+		"Crea un gasto en CLP con división equal, custom u open. Usa una clave nueva por gasto y reutiliza la misma en reintentos. Envía avisos por correo salvo sendEmailNotifications=false. Si falla el recibo, reintenta la misma clave o usa attach_expense_receipt.",
 		{
-			_meta: {
-				"openai/fileParams": ["receipt"],
-			},
-			annotations: {
-				destructiveHint: false,
-				idempotentHint: true,
-				openWorldHint: false,
-				readOnlyHint: false,
-			},
-			description: "Crea un gasto con división igual, personalizada o abierta.",
-			inputSchema: {
-				amountMinor: z.number().int().positive(),
-				currency: z.literal("CLP").optional(),
-				description: z.string().max(2000).nullable().optional(),
-				expenseDate: z.string(),
-				idempotencyKey: z.string().min(1).max(128),
-				initialPaidParticipantIds: z.array(z.string()).optional(),
-				kindId: z.string(),
-				name: z.string().min(1).max(120),
-				paidByParticipantId: z
-					.string()
-					.describe(
-						"Persona que pagó; puede quedar fuera de las partes salvo en cuentas abiertas.",
-					),
-				participantIds: z
-					.array(z.string())
-					.min(1)
-					.describe("Personas que reciben una parte del gasto."),
-				receipt: z.unknown().optional(),
-				sendEmailNotifications: z.boolean().default(true),
-				shareAllocations: z
-					.array(z.object({ participantId: z.string(), shareAmountMinor: z.number().int().min(0) }))
-					.optional(),
-				splitMode: z.enum(["equal", "custom", "open"]).optional(),
-			},
-			outputSchema: {
-				expense: z.unknown(),
-				notification: z.enum(["sent", "skipped", "failed"]).optional(),
-				replayed: z.boolean(),
-				warning: z.string().optional(),
-			},
+			...expenseInputShape,
+			...fileInput,
+			idempotencyKey: z.string().trim().min(1).max(128),
+			initialPaidParticipantIds: z.array(z.string()).optional(),
+			sendEmailNotifications: z.boolean().default(true),
 		},
-		(input) => createExpenseTool(input, actor),
+		{
+			expense: ExpenseSchema,
+			notification: z.enum(["sent", "skipped", "failed"]).optional(),
+			replayed: z.boolean(),
+			warning: z.string().optional(),
+		},
+		(input) => handlers.createExpenseTool(input, actor),
+		{ ...write, fileParams: ["receipt"] },
 	);
-	server.registerTool(
+	register(
 		"set_my_payment_status",
-		{
-			annotations: {
-				destructiveHint: true,
-				idempotentHint: true,
-				openWorldHint: false,
-				readOnlyHint: false,
-			},
-			description: "Marca la parte del usuario conectado como pagada o pendiente.",
-			inputSchema: { expenseId: z.string().min(1), status: z.enum(["paid", "pending"]) },
-			outputSchema: { share: z.unknown() },
-		},
-		({ expenseId, status }) => setMyPaymentStatusTool(expenseId, status, actor),
+		"reimbursements:write",
+		"Marca exclusivamente la parte del usuario conectado como pagada o pendiente. Volver a pendiente elimina su comprobante de pago.",
+		{ expenseId, status: z.enum(["paid", "pending"]) },
+		{ share: ShareSchema },
+		(input) => handlers.setMyPaymentStatusTool(input.expenseId, input.status, actor),
+		destructive,
 	);
-	server.registerTool(
+	register(
 		"mark_my_payment_paid_with_proof",
-		{
-			_meta: { "openai/fileParams": ["proof"] },
-			annotations: {
-				destructiveHint: true,
-				idempotentHint: true,
-				openWorldHint: false,
-				readOnlyHint: false,
-			},
-			description: "Marca la parte del usuario como pagada y adjunta un comprobante de imagen.",
-			inputSchema: { expenseId: z.string().min(1), proof: McpFileInputSchema },
-			outputSchema: { share: z.unknown() },
-		},
-		({ expenseId, proof }) => markMyPaymentPaidWithProofTool(expenseId, proof, actor),
+		"reimbursements:write",
+		"Marca la parte del usuario conectado como pagada y reemplaza su comprobante. Envía proof (archivo de ChatGPT) o proofInline (base64), en JPG, PNG o WebP, hasta 10 MB.",
+		{ expenseId, ...proofInput },
+		{ share: ShareSchema },
+		(input) =>
+			handlers.markMyPaymentPaidWithProofTool(
+				input.expenseId,
+				input.proof ?? input.proofInline,
+				actor,
+			),
+		{ ...destructive, fileParams: ["proof"], idempotent: false },
 	);
-	server.registerTool(
+	register(
 		"update_my_open_share_amount",
-		{
-			annotations: {
-				destructiveHint: false,
-				idempotentHint: true,
-				openWorldHint: false,
-				readOnlyHint: false,
-			},
-			description:
-				"Actualiza la parte abierta pendiente del usuario y recalcula el resto del pagador.",
-			inputSchema: { amountMinor: z.number().int().min(0), expenseId: z.string().min(1) },
-			outputSchema: { shares: z.array(z.unknown()) },
-		},
-		({ amountMinor, expenseId }) => updateMyOpenShareAmountTool(expenseId, amountMinor, actor),
+		"reimbursements:write",
+		"Cambia el monto pendiente propio en una división abierta, en CLP enteros, y recalcula el resto del pagador.",
+		{ expenseId, amountMinor: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER) },
+		{ shares: z.array(ShareSchema) },
+		(input) => handlers.updateMyOpenShareAmountTool(input.expenseId, input.amountMinor, actor),
+		write,
 	);
+	register(
+		"update_expense",
+		"expenses:write",
+		"Actualiza un gasto con sus datos completos; consulta get_expense antes. Los cambios financieros pueden requerir reiniciar pagos y los permisos del usuario siguen aplicando.",
+		{
+			expenseId,
+			...expenseInputShape,
+			resetPaidReimbursements: z
+				.boolean()
+				.default(false)
+				.describe(
+					"Usar true solo tras confirmar explícitamente con el usuario el reinicio de los pagos permitidos.",
+				),
+		},
+		{ expense: ExpenseSchema },
+		(input) => handlers.updateExpenseTool(input.expenseId, input, actor),
+		destructive,
+	);
+	register(
+		"delete_expense",
+		"expenses:write",
+		"Elimina un gasto de los saldos y listados activos, conservando su historial. Confirma con el usuario antes de eliminarlo.",
+		{ expenseId },
+		{ expenseId: z.string(), deleted: z.boolean() },
+		(input) => handlers.deleteExpenseTool(input.expenseId, actor),
+		destructive,
+	);
+	register(
+		"attach_expense_receipt",
+		"expenses:write",
+		"Adjunta o reemplaza el recibo de un gasto existente. Envía receipt o receiptInline; JPG, PNG, WebP o PDF, hasta 10 MB.",
+		{ expenseId, ...fileInput },
+		{ expense: ExpenseSchema },
+		(input) =>
+			handlers.attachReceiptTool(input.expenseId, input.receipt ?? input.receiptInline, actor),
+		{ ...destructive, fileParams: ["receipt"], idempotent: false },
+	);
+	register(
+		"remove_expense_receipt",
+		"expenses:write",
+		"Retira el recibo de un gasto sin cambiar sus montos o pagos.",
+		{ expenseId },
+		{ expenseId: z.string(), removed: z.boolean() },
+		(input) => handlers.removeReceiptTool(input.expenseId, actor),
+		destructive,
+	);
+	register(
+		"read_expense_file",
+		"expenses:read",
+		"Lee el contenido privado de un recibo o comprobante de pago. Usa shareId de get_expense para payment_proof. Devuelve imágenes o un recurso PDF incorporado; no genera enlaces públicos.",
+		{
+			expenseId,
+			kind: z.enum(["receipt", "payment_proof"]),
+			shareId: z.string().min(1).optional(),
+		},
+		{ file: FileMetadataSchema },
+		(input) => handlers.readExpenseFileTool(input, actor),
+	);
+	register(
+		"pay_all_my_debt",
+		"reimbursements:write",
+		"Marca todos los reembolsos pendientes propios hacia una persona como pagados. No transfiere dinero. Confirma el destinatario y el total consultando get_my_debt_breakdown. Comprobante de imagen opcional.",
+		{ paidToParticipantId: z.string().min(1), ...proofInput },
+		{ payment: PaymentSchema.nullable(), alreadyPaid: z.boolean() },
+		(input) =>
+			handlers.payAllMyDebtTool(input.paidToParticipantId, input.proof ?? input.proofInline, actor),
+		{ ...write, idempotent: false, fileParams: ["proof"] },
+	);
+	register(
+		"get_my_debt_breakdown",
+		"expenses:read",
+		"Lista los gastos pendientes entre el usuario conectado y otra persona, en una dirección, con totales y paginación.",
+		DebtInputSchema.shape,
+		{ debt: DebtSchema },
+		(input) => handlers.getMyDebtBreakdownTool(input, actor),
+	);
+	register(
+		"get_expense_report",
+		"expenses:read",
+		"Suma los gastos de toda la casa en un rango de fechas inclusivo, agrupados por categoría y pagador. Los importes son pesos CLP enteros, no deudas ni cuotas personales.",
+		ReportInputSchema.shape,
+		{ report: ReportSchema },
+		(input) => handlers.getExpenseReportTool(input, actor),
+	);
+	server.server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: definitions }));
 	return server;
 }

@@ -18,11 +18,16 @@ export interface OAuthClient {
 	name: string;
 	redirectUris: string[];
 	responseTypes: ["code"];
+	scopes: OAuthScope[];
 	revokedAt: string | null;
 	tokenEndpointAuthMethod: "none" | "client_secret_post";
 }
 
 export interface OAuthGrantSummary {
+	accessExpiresAt: string | null;
+	refreshExpiresAt: string | null;
+	status: "active" | "refreshable" | "awaiting_exchange" | "expired";
+	refreshReuseDetected: boolean;
 	clientName: string;
 	createdAt: string;
 	id: string;

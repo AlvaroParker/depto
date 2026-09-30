@@ -14,7 +14,10 @@ import { getBindings } from "@/lib/db/bindings";
 import type { AcquiredMcpFile } from "@/lib/mcp/files";
 import type { OAuthActor } from "@/lib/types/actor";
 import type { UserRole } from "@/lib/const/roles";
-import { createPaymentProofObjectKey } from "@/lib/util/payment-proofs";
+import {
+	createPaymentProofObjectKey,
+	validatePaymentProofMetadata,
+} from "@/lib/util/payment-proofs";
 import {
 	createReceiptObjectKey,
 	validateReceiptSignature,
@@ -29,7 +32,10 @@ export interface ReceiptStorageDependencies {
 export type ReceiptStreamAttachmentOutcome =
 	{ kind: "already_attached" } | { kind: "attached" } | { kind: "failed" } | { kind: "not_found" };
 
-async function readExactReceiptBytes(stream: unknown, expectedSize: number): Promise<Uint8Array> {
+export async function readExactReceiptBytes(
+	stream: unknown,
+	expectedSize: number,
+): Promise<Uint8Array> {
 	if (!stream || typeof (stream as ReadableStream).getReader !== "function") {
 		throw new Error("The receipt stream is not readable.");
 	}
@@ -114,10 +120,29 @@ export async function attachReceiptStreamIfMissing(
 	}
 }
 
-export async function attachMcpReceipt(expenseId: string, file: AcquiredMcpFile) {
+export async function attachMcpReceipt(
+	expenseId: string,
+	file: AcquiredMcpFile,
+	onlyIfMissing = false,
+) {
 	const bindings = getBindings();
-	const contentType = file.contentType as
-		"image/jpeg" | "image/png" | "image/webp" | "application/pdf";
+	const metadata = validateReceiptMetadata({ ...file, sizeBytes: file.bytes.byteLength });
+	validateReceiptSignature(file.bytes, metadata.contentType);
+	if (onlyIfMissing) {
+		const outcome = await attachReceiptStreamIfMissing(
+			expenseId,
+			metadata,
+			new ReadableStream({
+				start(controller) {
+					controller.enqueue(file.bytes);
+					controller.close();
+				},
+			}),
+			{ database: bindings.DB, receipts: bindings.RECEIPTS },
+		);
+		return outcome.kind === "attached" || outcome.kind === "already_attached";
+	}
+	const contentType = metadata.contentType;
 	const objectKey = createReceiptObjectKey(expenseId, contentType);
 	try {
 		await bindings.RECEIPTS.put(objectKey, file.bytes, {
@@ -125,15 +150,24 @@ export async function attachMcpReceipt(expenseId: string, file: AcquiredMcpFile)
 		});
 		const result = await attachExpenseReceipt(expenseId, {
 			contentType,
-			filename: file.filename,
+			filename: metadata.filename,
 			objectKey,
 			sizeBytes: file.bytes.byteLength,
 		});
-		if (result.err || !result.val.attached) {
+		if (result.err) {
+			// An unavailable response may follow a committed write. Never delete its referenced object.
+			const stored = await findExpenseReceipt(expenseId);
+			if (stored.err) return false;
+			if (stored.val?.objectKey === objectKey) return true;
+			await bindings.RECEIPTS.delete(objectKey).catch(() => undefined);
+			return false;
+		}
+		if (!result.val.attached) {
 			await bindings.RECEIPTS.delete(objectKey);
 			return false;
 		}
-		if (result.val.previousObjectKey) await bindings.RECEIPTS.delete(result.val.previousObjectKey);
+		if (result.val.previousObjectKey)
+			await bindings.RECEIPTS.delete(result.val.previousObjectKey).catch(() => undefined);
 		return true;
 	} catch {
 		await bindings.RECEIPTS.delete(objectKey).catch(() => undefined);
@@ -171,7 +205,9 @@ export async function attachPaymentProofToShare(
 	actor: { participantId: string | null; role: UserRole; userId: string },
 ) {
 	const bindings = getBindings();
-	const contentType = file.contentType as "image/jpeg" | "image/png" | "image/webp";
+	const metadata = validatePaymentProofMetadata({ ...file, sizeBytes: file.bytes.byteLength });
+	validateReceiptSignature(file.bytes, metadata.contentType);
+	const contentType = metadata.contentType;
 	const objectKey = createPaymentProofObjectKey(shareId, contentType);
 	try {
 		await bindings.RECEIPTS.put(objectKey, file.bytes, {
@@ -181,14 +217,14 @@ export async function attachPaymentProofToShare(
 			shareId,
 			{
 				contentType,
-				filename: file.filename,
+				filename: metadata.filename,
 				objectKey,
 				sizeBytes: file.bytes.byteLength,
 			},
 			{ id: actor.userId, participantId: actor.participantId, role: actor.role },
 		);
 		if (result.err || result.val.kind !== "updated") {
-			await bindings.RECEIPTS.delete(objectKey);
+			await deletePaymentProofObjectIfUnreferenced(objectKey);
 			return null;
 		}
 		if (result.val.previousObjectKey) {
@@ -196,7 +232,7 @@ export async function attachPaymentProofToShare(
 		}
 		return result.val.share;
 	} catch {
-		await bindings.RECEIPTS.delete(objectKey).catch(() => undefined);
+		await deletePaymentProofObjectIfUnreferenced(objectKey);
 		return null;
 	}
 }

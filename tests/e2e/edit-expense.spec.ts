@@ -9,7 +9,7 @@ test("edits and deletes an expense with explicit confirmation", async ({ page })
 	await page.getByLabel("Monto (CLP)").fill("3000");
 	await page.getByLabel("¿Quién pagó?").selectOption({ label: "Trinidad" });
 	await page.getByLabel("Comprobante (opcional)").setInputFiles({
-		buffer: Buffer.from("%PDF original"),
+		buffer: Buffer.from("%PDF-1.4\n% original\n1 0 obj\n<<>>\nendobj\n%%EOF\n"),
 		mimeType: "application/pdf",
 		name: "original.pdf",
 	});
@@ -17,7 +17,7 @@ test("edits and deletes an expense with explicit confirmation", async ({ page })
 	await page.getByRole("link", { name: "Editar" }).click();
 	await page.getByLabel("Nombre del gasto").fill(`${name} editado`);
 	await page.getByLabel("Comprobante (opcional)").setInputFiles({
-		buffer: Buffer.from("%PDF replacement"),
+		buffer: Buffer.from("%PDF-1.4\n% replacement\n1 0 obj\n<<>>\nendobj\n%%EOF\n"),
 		mimeType: "application/pdf",
 		name: "reemplazo.pdf",
 	});
