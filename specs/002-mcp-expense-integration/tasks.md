@@ -120,4 +120,6 @@
 - [x] T058 Add file descriptor, byte validation, download deadline, receipt replay and cleanup regressions; implement safe file workflows.
 - [x] T059 Publish concrete tool schemas, OAuth challenges and field errors; add missing expense, file, payment, debt and report tools using shared rules.
 - [x] T060 Add connection expiry diagnostics, safe failure correlation and scheduled credential maintenance.
-- [ ] T061 Update contracts and operator troubleshooting; run all automated gates and local Workers preview, review the complete diff and open one PR.
+- [x] T061 Update contracts and operator troubleshooting; run all automated gates and local Workers preview, review the complete diff and open one PR.
+
+Verification results are recorded in [quickstart.md](./quickstart.md#reliability-verification--2026-09-30). The follow-up is submitted as [PR #30](https://github.com/AlvaroParker/depto/pull/30); live connector acceptance (T055) remains a deployment check.
