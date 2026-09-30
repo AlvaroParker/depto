@@ -4,7 +4,11 @@ import { softDeleteExpense, updateExpense } from "@/lib/db/expenses";
 import { getExpenseReport } from "@/lib/db/expense-reports";
 import { findTelegramDebtBreakdown } from "@/lib/db/telegram-debts";
 import { detachExpenseReceipt, findExpenseReceipt } from "@/lib/db/receipts";
-import { findSharePaymentProof } from "@/lib/db/expense-shares";
+import {
+	findSharePaymentProof,
+	findShareByExpenseAndParticipant,
+	authorizeSharePaymentProofUpload,
+} from "@/lib/db/expense-shares";
 import { getBindings } from "@/lib/db/bindings";
 import { payAllActorDebt } from "@/lib/services/bulk-payments";
 import { validatePaymentProofMetadata } from "@/lib/util/payment-proofs";
@@ -61,6 +65,24 @@ function acquireFile(input: McpFileInput, types: ReadonlySet<string>) {
 					.filter(Boolean)
 			: undefined,
 	});
+}
+
+function reimbursementError(kind: string) {
+	const messages: Record<string, string> = {
+		not_found: "No tienes una parte en ese gasto, o el gasto ya no existe.",
+		payer_immutable: "La parte de quien pagó ya está saldada y no admite reembolsos.",
+		forbidden: "Solo puedes cambiar tu propio reembolso.",
+		zero_amount: "Una parte de $0 no admite pagos ni comprobantes.",
+		not_open: "Este gasto no tiene división abierta; consulta su detalle antes de cambiar montos.",
+		paid_locked:
+			"La parte ya está pagada. Para modificarla, confirma primero si deseas volverla a pendiente y quitar su comprobante.",
+		amount_exceeds_total:
+			"El monto supera el saldo disponible del gasto. Consulta el detalle y ajusta tu parte.",
+	};
+	return mcpBusinessError(
+		messages[kind] ?? "No pudimos aplicar el cambio de reembolso.",
+		kind.toUpperCase(),
+	);
 }
 
 export async function getExpenseReferenceData(actor: OAuthActor) {
@@ -188,6 +210,16 @@ export async function markMyPaymentPaidWithProofTool(
 	const parsed = McpFileInputSchema.safeParse(proof);
 	if (!parsed.success)
 		return mcpBusinessError("El descriptor del comprobante no es válido.", "VALIDATION_ERROR");
+	const ownShare = await findShareByExpenseAndParticipant(expenseId, actor.participantId);
+	if (ownShare.err) return mcpBusinessError("No pudimos cargar tu reembolso.");
+	if (!ownShare.val) return reimbursementError("not_found");
+	const access = await authorizeSharePaymentProofUpload(ownShare.val.id, {
+		id: actor.userId,
+		participantId: actor.participantId,
+		role: actor.role,
+	});
+	if (access.err) return mcpBusinessError("No pudimos validar tu reembolso.");
+	if (access.val.kind !== "allowed") return reimbursementError(access.val.kind);
 	try {
 		const file = await acquireFile(parsed.data, proofTypes);
 		const share = await attachActorPaymentProof(expenseId, file, actor);
@@ -212,7 +244,7 @@ export async function setMyPaymentStatusTool(
 	const result = await setActorPaymentStatus(expenseId, status, actor);
 	if (result.err) return mcpBusinessError("No pudimos actualizar el reembolso.");
 	if (!result.val || !("kind" in result.val) || result.val.kind !== "updated") {
-		return mcpBusinessError("No se pudo aplicar ese cambio de reembolso.", "INVALID_TRANSITION");
+		return reimbursementError(result.val && "kind" in result.val ? result.val.kind : "not_found");
 	}
 	return mcpSuccess("Estado de pago actualizado.", { share: result.val.share });
 }
@@ -227,7 +259,7 @@ export async function updateMyOpenShareAmountTool(
 	const result = await updateActorOpenShareAmount(expenseId, amountMinor, actor);
 	if (result.err) return mcpBusinessError("No pudimos actualizar el monto.");
 	if (!result.val || !("kind" in result.val) || result.val.kind !== "updated") {
-		return mcpBusinessError("No se pudo aplicar ese monto abierto.", "INVALID_TRANSITION");
+		return reimbursementError(result.val && "kind" in result.val ? result.val.kind : "not_found");
 	}
 	return mcpSuccess("Monto abierto actualizado.", { shares: result.val.shares });
 }

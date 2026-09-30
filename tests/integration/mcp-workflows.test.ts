@@ -264,5 +264,15 @@ describe("Authenticated MCP SDK workflows", () => {
 			},
 		});
 		expect(forbidden.structuredContent).toMatchObject({ code: "FORBIDDEN" });
+		const locked = await client.callTool({
+			name: "update_my_open_share_amount",
+			arguments: { expenseId, amountMinor: 1000 },
+		});
+		expect(locked.structuredContent).toMatchObject({ code: "NOT_OPEN" });
+		const excessive = await client.callTool({
+			name: "update_my_open_share_amount",
+			arguments: { expenseId: openId, amountMinor: 4000 },
+		});
+		expect(excessive.structuredContent).toMatchObject({ code: "AMOUNT_EXCEEDS_TOTAL" });
 	});
 });

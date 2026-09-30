@@ -30,7 +30,7 @@ function isCalendarDate(value: string): boolean {
 
 export const ExpenseDateSchema = z
 	.string()
-	.regex(datePattern)
+	.regex(datePattern, "Usa una fecha en formato YYYY-MM-DD.")
 	.refine(isCalendarDate, "La fecha no es válida.");
 
 export const ExpenseFieldsSchema = z.object({
