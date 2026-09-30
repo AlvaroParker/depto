@@ -193,8 +193,8 @@ export function ExpenseKindManagement({ initialKinds }: ExpenseKindManagementPro
 			</section>
 
 			<section>
-				<div className="border-line bg-paper-strong/55 mb-4 flex items-center justify-between gap-3 rounded-2xl border px-5 py-4">
-					<div>
+				<div className="border-line bg-paper-strong/55 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-5 py-4">
+					<div className="min-w-0 [overflow-wrap:anywhere]">
 						<p className="font-display text-xl font-semibold">Categorías disponibles</p>
 						<p className="text-ink-muted mt-0.5 text-xs">Se muestran al registrar cada gasto.</p>
 					</div>
