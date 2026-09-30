@@ -55,9 +55,10 @@ export const DynamicClientRegistrationSchema = z.object({
 	client_name: z.string().trim().min(1).max(100),
 	grant_types: z
 		.array(z.enum(["authorization_code", "refresh_token"]))
+		.min(1)
 		.default(["authorization_code"]),
 	redirect_uris: redirectUrisSchema,
-	response_types: z.array(z.literal("code")).default(["code"]),
+	response_types: z.array(z.literal("code")).length(1).default(["code"]),
 	scope: z
 		.string()
 		.optional()

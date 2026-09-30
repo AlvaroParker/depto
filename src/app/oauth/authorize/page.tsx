@@ -53,12 +53,15 @@ export default async function AuthorizePage({ searchParams }: AuthorizePageProps
 		client.val &&
 		!client.val.revokedAt &&
 		client.val.redirectUris.includes(fields.redirect_uri) &&
+		client.val.grantTypes.includes("authorization_code") &&
 		fields.response_type === "code" &&
 		fields.state.length > 0 &&
 		fields.resource === origin &&
 		fields.code_challenge_method === "S256" &&
 		/^[A-Za-z0-9_-]{43}$/.test(fields.code_challenge) &&
-		scopes;
+		scopes &&
+		scopes.every((scope) => client.val!.scopes.includes(scope)) &&
+		(!scopes.includes("offline_access") || client.val.grantTypes.includes("refresh_token"));
 	if (!valid || !scopes || !client.ok || !client.val) {
 		return (
 			<p className="text-ink-muted mx-auto max-w-xl p-8 text-sm leading-6">

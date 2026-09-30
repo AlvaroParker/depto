@@ -143,3 +143,11 @@ tests/
 ## Complexity Tracking
 
 No constitution exception is required. The additional tables model security-critical OAuth lifecycle state that cannot be safely inferred from sessions, and application services eliminate rather than duplicate business logic.
+
+## Reliability audit implementation
+
+Implement FR-021–FR-028 in one PR with coherent commits. Use conditional D1 statements in a transactional batch for code exchange, an atomic upsert for rate limits, and ownership predicates for every revocation statement. Migrate registered client scopes with a compatibility default for existing registrations. Keep PKCE, resource binding, opaque hashed credentials and strict refresh-family reuse detection.
+
+Use separate ChatGPT descriptor and bounded inline-file parameters so discoverable file schemas remain concrete. Share byte validation and storage cleanup with existing file services, bound remote-file and email requests, and resume failed receipt uploads through expense idempotency. Extend MCP with typed schemas and existing finance services, including caller-owned reimbursement operations. Add safe OAuth diagnostics, connection-expiry status, and scheduled maintenance that preserves financial idempotency and live refresh families.
+
+Verify actual SDK discovery/calls, OAuth storage failure and concurrency, receipt retry/cleanup, private files and scope challenges in disposable D1/R2 fixtures. Run repository formatting, lint, type, unit, integration, browser and production build gates plus a local Workers preview smoke. Live ChatGPT acceptance requires the deployed version and an interactive account; do not claim it from local tests.

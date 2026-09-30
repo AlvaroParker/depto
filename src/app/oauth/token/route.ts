@@ -1,15 +1,15 @@
 import {
 	consumeOAuthRateLimit,
 	findAuthorizationCode,
+	findOAuthClient,
 	findRefreshToken,
-	insertAccessAndRefreshTokens,
-	markAuthorizationCodeConsumed,
+	redeemAuthorizationCode,
 	rotateRefreshToken,
 } from "@/lib/db/oauth";
 import { createOAuthCredential, sha256Base64Url, verifyPkceS256 } from "@/lib/oauth/crypto";
 import { oauthErrorResponse, oauthJsonResponse, type OAuthErrorCode } from "@/lib/oauth/errors";
 import { getOAuthOrigin } from "@/lib/oauth/metadata";
-import { serializeOAuthScopes } from "@/lib/oauth/validation";
+import { parseOAuthScopes, serializeOAuthScopes } from "@/lib/oauth/validation";
 import { getClientAddress } from "@/lib/util/request";
 
 async function clientMatches(
@@ -65,7 +65,12 @@ export async function POST(request: Request) {
 			"Token requests must use form encoding.",
 		);
 	}
-	const form = await request.formData();
+	let form: FormData;
+	try {
+		form = await request.formData();
+	} catch {
+		return oauthErrorResponse("invalid_request", "Token requests must contain a valid form.");
+	}
 	const value = (name: string) =>
 		typeof form.get(name) === "string" ? String(form.get(name)) : "";
 	const origin = getOAuthOrigin(request);
@@ -80,7 +85,13 @@ export async function POST(request: Request) {
 	if (value("grant_type") === "authorization_code") {
 		const codeValue = value("code");
 		const code = codeValue ? await findAuthorizationCode(await sha256Base64Url(codeValue)) : null;
-		if (!code || code.err || !code.val) {
+		if (code?.err)
+			return oauthErrorResponse(
+				"temporarily_unavailable",
+				"Authorization code lookup is unavailable.",
+				503,
+			);
+		if (!code || !code.val) {
 			return failedTokenExchange(
 				request,
 				value("client_id"),
@@ -106,41 +117,48 @@ export async function POST(request: Request) {
 				"The authorization code binding is invalid.",
 			);
 		}
-		const consumed = await markAuthorizationCodeConsumed(code.val.id);
-		if (consumed.err || !consumed.val) {
+		const client = await findOAuthClient(code.val.clientId);
+		if (client.err)
+			return oauthErrorResponse("temporarily_unavailable", "Client lookup is unavailable.", 503);
+		if (!client.val?.grantTypes.includes("authorization_code"))
+			return oauthErrorResponse(
+				"unauthorized_client",
+				"The client cannot exchange authorization codes.",
+			);
+		const accessToken = createOAuthCredential();
+		const allowsRefresh =
+			code.val.scopes.includes("offline_access") && client.val.grantTypes.includes("refresh_token");
+		const refreshToken = allowsRefresh ? createOAuthCredential() : undefined;
+		const inserted = await redeemAuthorizationCode(code.val, {
+			accessTokenHash: await sha256Base64Url(accessToken),
+			...(refreshToken
+				? {
+						refreshTokenHash: await sha256Base64Url(refreshToken),
+					}
+				: {}),
+		});
+		if (inserted.err)
+			return oauthErrorResponse("temporarily_unavailable", "Token issuance is unavailable.", 503);
+		if (!inserted.val)
 			return failedTokenExchange(
 				request,
 				value("client_id"),
 				"invalid_grant",
-				"The authorization code was already used.",
+				"The authorization code was already used or revoked.",
 			);
-		}
-		const accessToken = createOAuthCredential();
-		const allowsRefresh = code.val.scopes.includes("offline_access");
-		const refreshToken = allowsRefresh ? createOAuthCredential() : undefined;
-		const inserted = await insertAccessAndRefreshTokens({
-			accessTokenHash: await sha256Base64Url(accessToken),
-			clientId: code.val.clientId,
-			grantId: code.val.grantId,
-			...(refreshToken
-				? {
-						refreshFamilyId: crypto.randomUUID(),
-						refreshTokenHash: await sha256Base64Url(refreshToken),
-					}
-				: {}),
-			resource: origin,
-			scopes: code.val.scopes,
-			userId: code.val.userId,
-		});
-		if (inserted.err)
-			return oauthErrorResponse("server_error", "Token issuance is unavailable.", 503);
 		return tokenResponse(accessToken, serializeOAuthScopes(code.val.scopes), refreshToken);
 	}
 
 	if (value("grant_type") === "refresh_token") {
 		const refreshValue = value("refresh_token");
 		const found = refreshValue ? await findRefreshToken(await sha256Base64Url(refreshValue)) : null;
-		if (!found || found.err || !found.val) {
+		if (found?.err)
+			return oauthErrorResponse(
+				"temporarily_unavailable",
+				"Refresh token lookup is unavailable.",
+				503,
+			);
+		if (!found || !found.val) {
 			return failedTokenExchange(
 				request,
 				value("client_id"),
@@ -166,12 +184,22 @@ export async function POST(request: Request) {
 		}
 		const accessToken = createOAuthCredential();
 		const refreshToken = createOAuthCredential();
+		const client = await findOAuthClient(found.val.client_id);
+		if (client.err)
+			return oauthErrorResponse("temporarily_unavailable", "Client lookup is unavailable.", 503);
+		if (!client.val?.grantTypes.includes("refresh_token"))
+			return oauthErrorResponse("unauthorized_client", "The client cannot refresh tokens.");
+		const scopes = parseOAuthScopes(value("scope") || found.val.scopes);
+		const granted = new Set(found.val.scopes.split(" "));
+		if (!scopes || scopes.some((scope) => !granted.has(scope)))
+			return oauthErrorResponse("invalid_scope", "Refresh scopes must be a subset of the grant.");
 		const rotated = await rotateRefreshToken(found.val, {
 			accessTokenHash: await sha256Base64Url(accessToken),
 			refreshTokenHash: await sha256Base64Url(refreshToken),
+			scopes,
 		});
 		if (rotated.err)
-			return oauthErrorResponse("server_error", "Token issuance is unavailable.", 503);
+			return oauthErrorResponse("temporarily_unavailable", "Token issuance is unavailable.", 503);
 		if (rotated.val.kind !== "rotated") {
 			return failedTokenExchange(
 				request,
@@ -180,7 +208,7 @@ export async function POST(request: Request) {
 				"The refresh token is invalid or was reused.",
 			);
 		}
-		return tokenResponse(accessToken, found.val.scopes, refreshToken);
+		return tokenResponse(accessToken, serializeOAuthScopes(scopes), refreshToken);
 	}
 	return failedTokenExchange(
 		request,

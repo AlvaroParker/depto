@@ -113,3 +113,11 @@
 - US3: FR-012, SC-001–SC-002
 - US4: FR-013–FR-017 and FR-019, SC-003–SC-004
 - US5: FR-018–FR-020, SC-005
+
+## Reliability audit follow-up (FR-021–FR-028)
+
+- [ ] T057 Add OAuth atomic issuance, transient-error, ownership, scope-policy and concurrent rate-limit regressions; implement the fixes.
+- [ ] T058 Add file descriptor, byte validation, download deadline, receipt replay and cleanup regressions; implement safe file workflows.
+- [ ] T059 Publish concrete tool schemas, OAuth challenges and field errors; add missing expense, file, payment, debt and report tools using shared rules.
+- [ ] T060 Add connection expiry diagnostics, safe failure correlation and scheduled credential maintenance.
+- [ ] T061 Update contracts and operator troubleshooting; run all automated gates and local Workers preview, review the complete diff and open one PR.

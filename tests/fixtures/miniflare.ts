@@ -52,6 +52,7 @@ export async function createTestBindings(): Promise<TestBindings> {
 		"0012_add_participant_bank_accounts.sql",
 		"0013_add_user_telegram_ids.sql",
 		"0014_add_telegram_privacy_notice_version.sql",
+		"0015_oauth_client_scopes.sql",
 	]);
 	await bindings.database.batch(
 		[

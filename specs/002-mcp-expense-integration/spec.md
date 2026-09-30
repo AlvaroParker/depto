@@ -119,7 +119,7 @@ As a connected AI client, I can attach receipts and payment proofs through bound
 - **FR-012**: Regular users MUST be able to list and disconnect their grants from a Spanish settings interface without seeing credentials.
 - **FR-013**: The system MUST expose a stateless JSON-response Streamable HTTP MCP endpoint over POST and return 405 for unused GET and DELETE streaming operations.
 - **FR-014**: MCP requests MUST validate the configured host, validate any supplied origin, return OAuth-compatible challenges, and isolate request authentication and protocol state.
-- **FR-015**: MCP MUST expose exactly the eight tools defined in the MCP contract, with typed structured output, concise Spanish summaries, visible business errors, and accurate behavior annotations.
+- **FR-015**: MCP MUST expose the tools defined in the MCP contract, with typed structured output, concise Spanish summaries, visible business errors, and accurate behavior annotations.
 - **FR-016**: Expense creation MUST reuse existing validation, atomic splitting, notification delivery, and a user/tool/key idempotency record; receipt failure MUST not roll back the committed financial record.
 - **FR-017**: Reimbursement MCP tools MUST resolve the caller’s share server-side and reuse existing proof, status, and open-share rules.
 - **FR-018**: MCP file inputs MUST support ChatGPT file descriptors and bounded base64, enforce the existing 10 MB/type limits, and prevent server-side request forgery, unsafe redirects, and credential disclosure.
@@ -142,7 +142,7 @@ As a connected AI client, I can attach receipts and payment proofs through bound
 
 - **SC-001**: A first-time user can connect a compatible application and complete consent in under two minutes without copying a credential.
 - **SC-002**: Disconnecting an application or disabling its user prevents every subsequent API and MCP request from that grant, including requests using previously issued unexpired tokens.
-- **SC-003**: All eight MCP tools can be discovered and exercised by a compatible client, with 100% of mutations enforcing the connected user’s identity and granted permissions.
+- **SC-003**: All MCP tools can be discovered and exercised by a compatible client, with 100% of mutations enforcing the connected user’s identity and granted permissions.
 - **SC-004**: Repeating an expense-creation request with the same idempotency key never creates a duplicate financial record.
 - **SC-005**: Every tested unsafe or oversized remote file is rejected without accessing a private-network destination or leaving stored file data behind.
 - **SC-006**: Existing session-based financial journeys continue to pass unchanged while all finance endpoints also pass bearer-token scope tests.
@@ -154,3 +154,14 @@ As a connected AI client, I can attach receipts and payment proofs through bound
 - Existing household visibility and role permissions are unchanged.
 - MCP v1 is tools-only: no UI resource, prompt, sampling, notification, resumability, legacy SSE, or registry submission.
 - Protocol identifiers remain English while user-facing consent, errors, and settings copy are Spanish-first.
+
+## Reliability audit follow-up
+
+- **FR-021**: Authorization-code consumption and credential issuance MUST be atomic. Temporary storage failures MUST return retryable server errors rather than invalidate working credentials. Refresh reuse detection remains strict.
+- **FR-022**: Disconnect MUST affect only the caller's grants and credentials. Client registration scope and grant-type restrictions MUST be enforced, and concurrent rate-limit attempts MUST be counted atomically.
+- **FR-023**: ChatGPT file parameters MUST advertise its object descriptor (required `download_url` and `file_id`, optional `file_name`). File acquisition MUST have a bounded deadline, reject non-public IP destinations and validate bytes against the claimed type. Failed old-object cleanup MUST preserve the newly committed file.
+- **FR-024**: Retrying expense creation after a receipt failure MUST allow attachment to the original expense without duplicating it or replacing an existing receipt. Returned receipt metadata MUST reflect committed state.
+- **FR-025**: Tools MUST publish OAuth security metadata and actionable scope challenges. Validation errors MUST identify invalid fields without echoing credentials or file URLs.
+- **FR-026**: MCP MUST support updating and deleting expenses, attaching and removing existing receipts, reading private receipt/proof content, bulk payment of the caller's debt, debt details, and date-range expense reports using the web application's financial rules.
+- **FR-027**: Connected-application settings MUST distinguish connections awaiting exchange, active access, refreshable access and expired credentials. OAuth failure logs MUST include safe reason codes and correlation IDs without credentials or raw request bodies.
+- **FR-028**: Scheduled maintenance MUST remove expired short-lived OAuth records and rate-limit rows, retaining refresh-token predecessors while any token in their family remains live. Completed financial idempotency records MUST remain available to prevent duplicate expenses.

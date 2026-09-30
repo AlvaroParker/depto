@@ -11,6 +11,7 @@ import type {
 } from "@/lib/types/oauth";
 import { createId } from "@/lib/util/ids";
 import { parseOAuthScopes, serializeOAuthScopes } from "@/lib/oauth/validation";
+import { OAUTH_SCOPES } from "@/lib/oauth/constants";
 
 interface OAuthClientRow {
 	client_secret_hash: string | null;
@@ -21,6 +22,7 @@ interface OAuthClientRow {
 	name: string;
 	redirect_uris_json: string;
 	response_types_json: string;
+	scopes: string;
 	revoked_at: string | null;
 	token_endpoint_auth_method: "none" | "client_secret_post";
 }
@@ -93,6 +95,7 @@ export interface RegisteredClientInput {
 	name: string;
 	redirectUris: string[];
 	responseTypes: ["code"];
+	scopes?: OAuthScope[];
 	tokenEndpointAuthMethod: "none" | "client_secret_post";
 }
 
@@ -132,6 +135,7 @@ function mapClient(row: OAuthClientRow): OAuthClient {
 		name: row.name,
 		redirectUris: JSON.parse(row.redirect_uris_json) as string[],
 		responseTypes: JSON.parse(row.response_types_json) as ["code"],
+		scopes: parseOAuthScopes(row.scopes) ?? [],
 		revokedAt: row.revoked_at,
 		tokenEndpointAuthMethod: row.token_endpoint_auth_method,
 	};
@@ -160,8 +164,8 @@ export async function createOAuthClient(
 			.prepare(
 				`INSERT INTO oauth_clients
 				 (id, name, redirect_uris_json, grant_types_json, response_types_json,
-				  token_endpoint_auth_method, client_secret_hash, created_at, updated_at)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				  token_endpoint_auth_method, client_secret_hash, created_at, updated_at, scopes)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			)
 			.bind(
 				id,
@@ -173,6 +177,7 @@ export async function createOAuthClient(
 				input.clientSecretHash,
 				timestamp,
 				timestamp,
+				serializeOAuthScopes(input.scopes ?? OAUTH_SCOPES),
 			)
 			.run();
 		return {
@@ -184,6 +189,7 @@ export async function createOAuthClient(
 			name: input.name,
 			redirectUris: input.redirectUris,
 			responseTypes: input.responseTypes,
+			scopes: [...(input.scopes ?? OAUTH_SCOPES)],
 			revokedAt: null,
 			tokenEndpointAuthMethod: input.tokenEndpointAuthMethod,
 		};
@@ -337,6 +343,71 @@ export async function findAuthorizationCode(
 	});
 }
 
+/** The fresh access-token ID ties every statement to this redemption, even at identical timestamps. */
+export async function redeemAuthorizationCode(
+	code: AuthorizationCodeRecord,
+	input: { accessTokenHash: string; refreshTokenHash?: string },
+	database: D1Database = getDatabase(),
+	now = new Date(),
+): Promise<Result<boolean, DbError>> {
+	return safeDbCall(async () => {
+		const timestamp = now.toISOString();
+		const accessId = createId();
+		const familyId = input.refreshTokenHash ? createId() : null;
+		const statements = [
+			database
+				.prepare(
+					`INSERT INTO oauth_access_tokens
+			(id, token_hash, grant_id, client_id, user_id, resource, scopes, refresh_family_id, created_at, expires_at)
+			SELECT ?, ?, c.grant_id, c.client_id, c.user_id, c.resource, c.scopes, ?, ?, ?
+			FROM oauth_authorization_codes c
+			JOIN oauth_grants g ON g.id = c.grant_id JOIN oauth_clients cl ON cl.id = c.client_id
+			JOIN app_users u ON u.id = c.user_id
+			WHERE c.id = ? AND c.consumed_at IS NULL AND c.revoked_at IS NULL AND c.expires_at > ?
+			AND g.revoked_at IS NULL AND cl.revoked_at IS NULL AND u.disabled_at IS NULL
+			AND u.role = 'user' AND u.participant_id IS NOT NULL`,
+				)
+				.bind(
+					accessId,
+					input.accessTokenHash,
+					familyId,
+					timestamp,
+					new Date(now.getTime() + 3_600_000).toISOString(),
+					code.id,
+					timestamp,
+				),
+		];
+		if (input.refreshTokenHash) {
+			statements.push(
+				database
+					.prepare(
+						`INSERT INTO oauth_refresh_tokens
+				(id, token_hash, family_id, generation, grant_id, client_id, user_id, resource, scopes, created_at, expires_at)
+				SELECT ?, ?, refresh_family_id, 0, grant_id, client_id, user_id, resource, scopes, ?, ?
+				FROM oauth_access_tokens WHERE id = ?`,
+					)
+					.bind(
+						createId(),
+						input.refreshTokenHash,
+						timestamp,
+						new Date(now.getTime() + 90 * 86_400_000).toISOString(),
+						accessId,
+					),
+			);
+		}
+		statements.push(
+			database
+				.prepare(
+					`UPDATE oauth_authorization_codes SET consumed_at = ?
+			WHERE id = ? AND EXISTS (SELECT 1 FROM oauth_access_tokens WHERE id = ?)`,
+				)
+				.bind(timestamp, code.id, accessId),
+		);
+		const [inserted] = await database.batch(statements);
+		return inserted.meta.changes === 1;
+	});
+}
+
 export async function markAuthorizationCodeConsumed(
 	id: string,
 	database: D1Database = getDatabase(),
@@ -472,7 +543,7 @@ export async function revokeRefreshFamily(
 
 export async function rotateRefreshToken(
 	row: RefreshTokenRow,
-	input: { accessTokenHash: string; refreshTokenHash: string },
+	input: { accessTokenHash: string; refreshTokenHash: string; scopes?: OAuthScope[] },
 	database: D1Database = getDatabase(),
 	now = new Date(),
 ): Promise<Result<{ kind: "rotated" } | { kind: "reuse" } | { kind: "invalid" }, DbError>> {
@@ -493,12 +564,13 @@ export async function rotateRefreshToken(
 					 (id, token_hash, family_id, generation, grant_id, client_id, user_id, resource,
 					  scopes, created_at, expires_at)
 					 SELECT ?, ?, family_id, generation + 1, grant_id, client_id, user_id, resource,
-					        scopes, ?, ? FROM oauth_refresh_tokens
+					        ?, ?, ? FROM oauth_refresh_tokens
 					 WHERE id = ? AND rotated_at IS NULL AND revoked_at IS NULL AND expires_at > ?`,
 				)
 				.bind(
 					nextId,
 					input.refreshTokenHash,
+					input.scopes ? serializeOAuthScopes(input.scopes) : row.scopes,
 					timestamp,
 					new Date(now.getTime() + 90 * 24 * 60 * 60_000).toISOString(),
 					row.id,
@@ -516,15 +588,14 @@ export async function rotateRefreshToken(
 					 (id, token_hash, grant_id, client_id, user_id, resource, scopes,
 					  refresh_family_id, created_at, expires_at)
 					 SELECT ?, ?, grant_id, client_id, user_id, resource, scopes, family_id, ?, ?
-					 FROM oauth_refresh_tokens WHERE id = ? AND rotated_at = ?`,
+					 FROM oauth_refresh_tokens WHERE id = ?`,
 				)
 				.bind(
 					accessId,
 					input.accessTokenHash,
 					timestamp,
 					new Date(now.getTime() + 60 * 60_000).toISOString(),
-					row.id,
-					timestamp,
+					nextId,
 				),
 		]);
 		if (inserted.meta.changes !== 1) {
@@ -688,19 +759,19 @@ export async function revokeOAuthGrantForUser(
 				.bind(timestamp, timestamp, grantId, userId),
 			database
 				.prepare(
-					"UPDATE oauth_authorization_codes SET revoked_at = COALESCE(revoked_at, ?) WHERE grant_id = ?",
+					"UPDATE oauth_authorization_codes SET revoked_at = COALESCE(revoked_at, ?) WHERE grant_id = ? AND user_id = ?",
 				)
-				.bind(timestamp, grantId),
+				.bind(timestamp, grantId, userId),
 			database
 				.prepare(
-					"UPDATE oauth_access_tokens SET revoked_at = COALESCE(revoked_at, ?) WHERE grant_id = ?",
+					"UPDATE oauth_access_tokens SET revoked_at = COALESCE(revoked_at, ?) WHERE grant_id = ? AND user_id = ?",
 				)
-				.bind(timestamp, grantId),
+				.bind(timestamp, grantId, userId),
 			database
 				.prepare(
-					"UPDATE oauth_refresh_tokens SET revoked_at = COALESCE(revoked_at, ?) WHERE grant_id = ?",
+					"UPDATE oauth_refresh_tokens SET revoked_at = COALESCE(revoked_at, ?) WHERE grant_id = ? AND user_id = ?",
 				)
-				.bind(timestamp, grantId),
+				.bind(timestamp, grantId, userId),
 		]);
 		return grant.meta.changes === 1;
 	});
@@ -718,34 +789,31 @@ export async function consumeOAuthRateLimit(
 	now = new Date(),
 ): Promise<Result<boolean, DbError>> {
 	return safeDbCall(async () => {
-		const row = await database
-			.prepare(
-				`SELECT attempt_count, window_started_at, blocked_until
-				 FROM oauth_rate_limits WHERE operation = ? AND key_hash = ?`,
-			)
-			.bind(operation, keyHash)
-			.first<{ attempt_count: number; blocked_until: string | null; window_started_at: string }>();
 		const timestamp = now.toISOString();
-		if (row?.blocked_until && row.blocked_until > timestamp) return false;
-		const windowExpired =
-			!row || new Date(row.window_started_at).getTime() + options.windowMs <= now.getTime();
-		const count = windowExpired ? 1 : row.attempt_count + 1;
-		const windowStartedAt = windowExpired ? timestamp : row.window_started_at;
-		const blockedUntil =
-			count > options.limit ? new Date(now.getTime() + options.blockMs).toISOString() : null;
-		await database
+		const row = await database
 			.prepare(
 				`INSERT INTO oauth_rate_limits
 				 (operation, key_hash, attempt_count, window_started_at, blocked_until, updated_at)
-				 VALUES (?, ?, ?, ?, ?, ?)
+				 VALUES (?1, ?2, 1, ?3, NULL, ?3)
 				 ON CONFLICT(operation, key_hash) DO UPDATE SET
-				 attempt_count = excluded.attempt_count,
-				 window_started_at = excluded.window_started_at,
-				 blocked_until = excluded.blocked_until,
-				 updated_at = excluded.updated_at`,
+				 attempt_count = CASE WHEN blocked_until > ?3 THEN attempt_count
+				   WHEN window_started_at <= ?4 THEN 1 ELSE attempt_count + 1 END,
+				 window_started_at = CASE WHEN blocked_until > ?3 THEN window_started_at
+				   WHEN window_started_at <= ?4 THEN ?3 ELSE window_started_at END,
+				 blocked_until = CASE WHEN blocked_until > ?3 THEN blocked_until
+				   WHEN window_started_at <= ?4 THEN NULL WHEN attempt_count + 1 > ?5 THEN ?6 ELSE NULL END,
+				 updated_at = ?3
+				 RETURNING blocked_until`,
 			)
-			.bind(operation, keyHash, count, windowStartedAt, blockedUntil, timestamp)
-			.run();
-		return !blockedUntil;
+			.bind(
+				operation,
+				keyHash,
+				timestamp,
+				new Date(now.getTime() - options.windowMs).toISOString(),
+				options.limit,
+				new Date(now.getTime() + options.blockMs).toISOString(),
+			)
+			.first<{ blocked_until: string | null }>();
+		return Boolean(row && !row.blocked_until);
 	});
 }

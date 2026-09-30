@@ -3,6 +3,7 @@ import { createOAuthCredential, sha256Base64Url } from "@/lib/oauth/crypto";
 import { oauthErrorResponse, oauthJsonResponse } from "@/lib/oauth/errors";
 import { DynamicClientRegistrationSchema, parseOAuthScopes } from "@/lib/oauth/validation";
 import { getClientAddress } from "@/lib/util/request";
+import { OAUTH_SCOPES } from "@/lib/oauth/constants";
 
 export async function POST(request: Request) {
 	const rateLimit = await consumeOAuthRateLimit(
@@ -40,11 +41,11 @@ export async function POST(request: Request) {
 		name: parsed.data.client_name,
 		redirectUris: parsed.data.redirect_uris,
 		responseTypes: ["code"],
+		scopes: parsed.data.scope ? parseOAuthScopes(parsed.data.scope)! : [...OAUTH_SCOPES],
 		tokenEndpointAuthMethod: parsed.data.token_endpoint_auth_method,
 	});
 	if (created.err)
 		return oauthErrorResponse("server_error", "Client registration is unavailable.", 503);
-	const scope = parseOAuthScopes(parsed.data.scope);
 	return oauthJsonResponse(
 		{
 			client_id: created.val.id,
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
 			grant_types: created.val.grantTypes,
 			redirect_uris: created.val.redirectUris,
 			response_types: created.val.responseTypes,
-			scope: scope?.join(" ") ?? "expenses:read",
+			scope: created.val.scopes.join(" "),
 			token_endpoint_auth_method: created.val.tokenEndpointAuthMethod,
 		},
 		{ status: 201 },

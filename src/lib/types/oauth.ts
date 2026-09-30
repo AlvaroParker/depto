@@ -18,6 +18,7 @@ export interface OAuthClient {
 	name: string;
 	redirectUris: string[];
 	responseTypes: ["code"];
+	scopes: OAuthScope[];
 	revokedAt: string | null;
 	tokenEndpointAuthMethod: "none" | "client_secret_post";
 }
