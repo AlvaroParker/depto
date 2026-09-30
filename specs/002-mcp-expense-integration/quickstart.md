@@ -21,13 +21,14 @@
 
 1. Configure MCP Inspector with the public `/mcp` URL.
 2. Complete OAuth discovery and consent.
-3. Initialize and confirm exactly sixteen tools are listed, with per-tool OAuth scopes, concrete file descriptors and typed success/error output schemas.
+3. Initialize and confirm exactly nineteen tools are listed, with per-tool OAuth scopes, concrete file descriptors and typed success/error output schemas.
 4. Call reference data, balance, expense list, and expense detail.
 5. Create an expense with a unique idempotency key; repeat it and confirm the same expense is returned.
 6. Exercise paid/pending, proof, and open-share tools as the connected participant.
 7. Edit an expense, retry a failed receipt attachment with the original key, read its private file, and remove the receipt. Verify that deletion removes the expense from active balances.
 8. Compare debt details and date-range reports with the web UI. Confirm a bulk payment changes only the caller's pending shares toward the selected person.
 9. Confirm GET and DELETE `/mcp` return 405 and unauthenticated POST includes `resource_metadata` in `WWW-Authenticate`.
+10. Call `get_expense_comparison` for two explicit periods and verify peso/percentage changes. Call `get_expense_trends` across an empty month and verify the zero bucket. Call `get_my_spending_report` as two different users and confirm each receives their own shares and payments. Use read-only credentials for all three.
 
 ## Quality gates
 

@@ -67,7 +67,7 @@ describe("MCP server definition", () => {
 		expect(body.result.serverInfo.name).toBe("gastos-compartidos");
 	});
 
-	it("discovers sixteen annotated tools with output schemas", async () => {
+	it("discovers nineteen annotated tools with output schemas", async () => {
 		const response = await request({ id: 2, jsonrpc: "2.0", method: "tools/list", params: {} });
 		expect(response.status).toBe(200);
 		const body = (await response.json()) as {
@@ -92,6 +92,9 @@ describe("MCP server definition", () => {
 			"pay_all_my_debt",
 			"get_my_debt_breakdown",
 			"get_expense_report",
+			"get_expense_comparison",
+			"get_expense_trends",
+			"get_my_spending_report",
 		]);
 		expect(body.result.tools.every(({ outputSchema }) => outputSchema)).toBe(true);
 		expect(body.result.tools[0]?.annotations).toMatchObject({
@@ -99,6 +102,13 @@ describe("MCP server definition", () => {
 			idempotentHint: true,
 			readOnlyHint: true,
 		});
+		for (const tool of body.result.tools.slice(-3)) {
+			expect(tool.annotations).toMatchObject({
+				destructiveHint: false,
+				idempotentHint: true,
+				readOnlyHint: true,
+			});
+		}
 	});
 
 	it("publishes ChatGPT file descriptors and OAuth policy on the wire", async () => {

@@ -2,6 +2,16 @@ import { getDashboardSummary } from "@/lib/db/dashboard";
 import { listExpenseKinds, findExpenseKindById } from "@/lib/db/expense-kinds";
 import { softDeleteExpense, updateExpense } from "@/lib/db/expenses";
 import { getExpenseReport } from "@/lib/db/expense-reports";
+import {
+	getExpenseComparison,
+	getExpenseTrends,
+	getMySpendingReport,
+} from "@/lib/db/spending-insights";
+import {
+	ExpenseComparisonInputSchema,
+	ExpenseTrendsInputSchema,
+	MySpendingInputSchema,
+} from "@/lib/types/spending-insights";
 import { findTelegramDebtBreakdown } from "@/lib/db/telegram-debts";
 import { detachExpenseReceipt, findExpenseReceipt } from "@/lib/db/receipts";
 import {
@@ -458,4 +468,44 @@ export async function getExpenseReportTool(input: unknown, actor: OAuthActor) {
 	return mcpSuccess("Informe de gastos de la casa por categoría y pagador.", {
 		report: report.val,
 	});
+}
+
+export async function getExpenseComparisonTool(input: unknown, actor: OAuthActor) {
+	const denied = requireScope(actor, "expenses:read");
+	if (denied) return denied;
+	const parsed = ExpenseComparisonInputSchema.safeParse(input);
+	if (!parsed.success) return mcpValidationError(parsed.error);
+	const result = await getExpenseComparison(parsed.data);
+	if (result.err) return mcpBusinessError("No pudimos comparar los gastos.");
+	return mcpSuccess("Comparación de gastos registrados entre los períodos indicados.", {
+		comparison: result.val,
+	});
+}
+
+export async function getExpenseTrendsTool(input: unknown, actor: OAuthActor) {
+	const denied = requireScope(actor, "expenses:read");
+	if (denied) return denied;
+	const parsed = ExpenseTrendsInputSchema.safeParse(input);
+	if (!parsed.success) return mcpValidationError(parsed.error);
+	const result = await getExpenseTrends(parsed.data);
+	if (result.err) return mcpBusinessError("No pudimos calcular la evolución de gastos.");
+	return mcpSuccess(
+		"Evolución mensual de gastos registrados; los meses sin registros suman cero.",
+		{
+			trends: result.val,
+		},
+	);
+}
+
+export async function getMySpendingReportTool(input: unknown, actor: OAuthActor) {
+	const denied = requireScope(actor, "expenses:read");
+	if (denied) return denied;
+	const parsed = MySpendingInputSchema.safeParse(input);
+	if (!parsed.success) return mcpValidationError(parsed.error);
+	const result = await getMySpendingReport(parsed.data, actor.participantId);
+	if (result.err) return mcpBusinessError("No pudimos calcular tu informe de gastos.");
+	return mcpSuccess(
+		"Tus partes y pagos para gastos del período. Los reembolsos reflejan su estado actual, aunque se hayan pagado después.",
+		{ report: result.val },
+	);
 }
