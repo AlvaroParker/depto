@@ -55,15 +55,17 @@ Successful response:
 }
 ```
 
-OAuth errors use `invalid_request`, `invalid_client`, `invalid_grant`, `invalid_scope`, or `unsupported_grant_type`, include `Cache-Control: no-store`, and never echo credentials.
+Code consumption and credential issuance are one conditional D1 transaction. Codes remain redeemable after a rolled-back issuance failure. Concurrent redemption succeeds once. Requested refresh scopes may narrow the original grant, never expand it. Registration stores allowed scopes and enforces allowed grant types. Existing registrations retain the previous supported-scope set after migration.
+
+OAuth errors use `invalid_request`, `invalid_client`, `invalid_grant`, `invalid_scope`, `unauthorized_client`, or `unsupported_grant_type`, include `Cache-Control: no-store`, and never echo credentials. Temporary storage failures return `503 temporarily_unavailable` with `Retry-After`; they do not count as invalid credentials. Errors include `request_id` and `X-Request-Id` for safe structured-log correlation. Rate limits increment atomically under concurrency; blocked attempts return `429` with `Retry-After`.
 
 ## Revocation
 
-`POST /oauth/revoke` accepts `token`, optional `token_type_hint`, and client authentication. It always returns `200`; known refresh tokens revoke their family, while access tokens are individually revoked.
+`POST /oauth/revoke` accepts `token`, optional `token_type_hint`, and client authentication. It returns `200` for successful revocation or an unknown token, rejects invalid clients, and returns `503` on storage failure; known refresh tokens revoke their family, while access tokens are individually revoked.
 
 ## Connected applications
 
-- `GET /api/oauth/grants`: Auth.js session only; regular user only. Lists active client name, scopes, `createdAt`, and `lastUsedAt`.
+- `GET /api/oauth/grants`: Auth.js session only; regular user only. Lists unrevoked grants with client name, scopes, `createdAt`, `lastUsedAt`, `accessExpiresAt`, `refreshExpiresAt`, `refreshReuseDetected`, and `status` (`active`, `refreshable`, `awaiting_exchange`, `expired`).
 - `DELETE /api/oauth/grants/{id}`: Auth.js session only; owner only. Revokes grant, codes, and all access/refresh tokens and returns `204`.
 
 ## Bearer challenge
@@ -75,3 +77,7 @@ WWW-Authenticate: Bearer resource_metadata="{origin}/.well-known/oauth-protected
 ```
 
 Scope failures return `403` and may add `error="insufficient_scope"` and `scope="..."`.
+
+## Retention
+
+Daily Workers maintenance removes codes and access tokens seven days after expiry, stale rate-limit rows and abandoned idempotency reservations after seven days, and unconsented clients after thirty days. Refresh predecessors are retained while any family member is live; entire families are removed thirty days after their last expiry. Completed expense idempotency records and consent history remain. Maintenance never calls external services and logs only aggregate counts or a fixed failure event.

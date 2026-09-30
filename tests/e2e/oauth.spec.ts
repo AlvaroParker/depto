@@ -54,6 +54,7 @@ test("approves, denies, lists, and disconnects OAuth applications", async ({ pag
 	await expectNoHorizontalOverflow(page, "connected applications at 200x700");
 	const application = page.getByRole("listitem").filter({ hasText: approvedName });
 	await expect(application).toContainText("Lectura de gastos");
+	await expect(application).toContainText("Esperando que la aplicación complete la conexión");
 	await application.getByRole("button", { name: "Desconectar aplicación" }).click();
 	const disconnectDialog = page.getByRole("dialog", { name: "Desconectar aplicación" });
 	await expect(disconnectDialog).toContainText(approvedName);

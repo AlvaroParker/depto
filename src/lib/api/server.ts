@@ -31,16 +31,29 @@ export function actorAuthenticationErrorResponse(
 	result: Exclude<ActorAuthenticationResult, { kind: "authenticated" }>,
 	request: Request,
 ) {
-	if (result.kind === "storage_error") return databaseErrorResponse();
+	const requestId = crypto.randomUUID();
+	console.warn(
+		JSON.stringify({ event: "oauth_resource_error", reasonCode: result.kind, requestId }),
+	);
+	const diagnostic = <T>(response: NextResponse<T>): NextResponse<T> => {
+		response.headers.set("X-Request-Id", requestId);
+		response.headers.set("Cache-Control", "no-store");
+		return response;
+	};
+	if (result.kind === "storage_error") {
+		const response = databaseErrorResponse();
+		response.headers.set("Retry-After", "5");
+		return diagnostic(response);
+	}
 	if (result.kind === "forbidden") {
 		const response = forbiddenResponse();
 		response.headers.set(
 			"WWW-Authenticate",
 			`Bearer error="insufficient_scope", scope="${result.requiredScope}"`,
 		);
-		return response;
+		return diagnostic(response);
 	}
-	return bearerUnauthorizedResponse(request);
+	return diagnostic(bearerUnauthorizedResponse(request));
 }
 
 export function databaseErrorResponse() {

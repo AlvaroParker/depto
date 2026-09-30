@@ -7,7 +7,7 @@ Aplicación privada y móvil para que un hogar registre gastos compartidos, elij
 - Next.js 16 App Router, React 19, TypeScript y Tailwind CSS 4
 - Auth.js v5 Credentials con sesiones JWT
 - OAuth 2.1 con PKCE, tokens opacos de corta duración y refresh rotativo
-- MCP Streamable HTTP en `/mcp` con ocho herramientas autorizadas por OAuth
+- MCP Streamable HTTP en `/mcp` con dieciséis herramientas autorizadas por OAuth
 - RBAC con roles `root`, `admin` y `user`
 - Cloudflare D1 para usuarios, gastos, partes y estados
 - Cloudflare R2 privado para JPG, PNG, WebP y PDF de hasta 10 MB
@@ -88,6 +88,36 @@ Configura el conector con `https://tu-origen.example/mcp`. El mismo token, segú
 Las rutas de discovery son `/.well-known/oauth-protected-resource`,
 `/.well-known/oauth-protected-resource/mcp` y `/.well-known/oauth-authorization-server`. Consulta el flujo
 completo en [`specs/002-mcp-expense-integration/quickstart.md`](specs/002-mcp-expense-integration/quickstart.md).
+
+Las herramientas permiten crear, editar y eliminar gastos, gestionar recibos, leer archivos privados,
+marcar pagos propios, pagar toda la deuda hacia una persona y consultar detalles e informes por fecha.
+Los parámetros de archivo `receipt` y `proof` usan el descriptor de ChatGPT; otros clientes pueden
+enviar base64 mediante `receiptInline` y `proofInline`. Se validan tamaño, tipo y firma del archivo.
+Las descargas tienen un plazo total de 20 segundos y solo aceptan HTTPS hacia zonas DNS confiables
+(por defecto `oaiusercontent.com`). `MCP_FILE_ALLOWED_HOSTS` permite configurar una lista separada por
+comas de proveedores adicionales; cada zona incluye sus subdominios. No agregues hosts controlados
+por usuarios: la lista evita cambios de resolución DNS entre la validación y la descarga. Todos los
+destinos y redirecciones también se verifican contra direcciones privadas o reservadas.
+
+Si ChatGPT muestra **Reconnect Depto**, revisa el estado en Ajustes. «Conexión disponible» significa
+que la aplicación todavía puede renovar el acceso; «Conexión vencida» requiere una nueva conexión.
+«Esperando…» indica consentimiento aprobado sin intercambio de código completo. La reutilización de
+un refresh token revoca su familia por seguridad y se muestra en los ajustes. El cliente debe
+serializar renovaciones y guardar inmediatamente el nuevo refresh token; no reutilizar el anterior.
+
+Los errores OAuth incluyen `request_id` y `X-Request-Id`, correlacionables con los eventos
+`oauth_error` / `oauth_resource_error` de Workers. Un `503` con `Retry-After` indica un fallo temporal;
+no requiere borrar credenciales. Un `invalid_grant` indica un código o refresh token inválido,
+vencido, revocado o reutilizado. Los logs registran motivos seguros, hashes de cliente e IDs de grant
+cuando están disponibles, nunca tokens, secretos, cuerpos de solicitud ni URLs temporales.
+
+Aplica las migraciones `0015` y `0016` antes de desplegar esta versión. Las conexiones existentes
+conservan sus permisos registrados. El cron diario `17 4 * * *` (UTC) limpia códigos/access tokens
+vencidos y contadores después de siete días. Conserva todos los predecesores de una familia refresh
+hasta treinta días después del último vencimiento de la familia; conserva indefinidamente la
+idempotencia de gastos completados. Los clientes registrados sin grants se limpian tras treinta días.
+La comprobación local automatiza el SDK y OAuth; la aceptación final en ChatGPT requiere desplegar
+la versión, actualizar las herramientas del conector y comprobar renovación y archivos en una cuenta real.
 
 ## Comandos
 

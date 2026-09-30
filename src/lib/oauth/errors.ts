@@ -15,10 +15,18 @@ export function oauthErrorResponse(
 	error: OAuthErrorCode,
 	description: string,
 	status = error === "invalid_client" ? 401 : 400,
+	context: { clientHash?: string; grantId?: string; reasonCode?: string } = {},
 ): NextResponse {
 	const requestId = crypto.randomUUID();
 	console.warn(
-		JSON.stringify({ event: "oauth_error", error, reason: description, status, requestId }),
+		JSON.stringify({
+			event: "oauth_error",
+			error,
+			reason: description,
+			status,
+			requestId,
+			...context,
+		}),
 	);
 	const response = NextResponse.json(
 		{ error, error_description: description, request_id: requestId },

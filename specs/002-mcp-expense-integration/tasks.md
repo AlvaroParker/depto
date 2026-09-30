@@ -116,8 +116,8 @@
 
 ## Reliability audit follow-up (FR-021–FR-028)
 
-- [ ] T057 Add OAuth atomic issuance, transient-error, ownership, scope-policy and concurrent rate-limit regressions; implement the fixes.
-- [ ] T058 Add file descriptor, byte validation, download deadline, receipt replay and cleanup regressions; implement safe file workflows.
-- [ ] T059 Publish concrete tool schemas, OAuth challenges and field errors; add missing expense, file, payment, debt and report tools using shared rules.
-- [ ] T060 Add connection expiry diagnostics, safe failure correlation and scheduled credential maintenance.
+- [x] T057 Add OAuth atomic issuance, transient-error, ownership, scope-policy and concurrent rate-limit regressions; implement the fixes.
+- [x] T058 Add file descriptor, byte validation, download deadline, receipt replay and cleanup regressions; implement safe file workflows.
+- [x] T059 Publish concrete tool schemas, OAuth challenges and field errors; add missing expense, file, payment, debt and report tools using shared rules.
+- [x] T060 Add connection expiry diagnostics, safe failure correlation and scheduled credential maintenance.
 - [ ] T061 Update contracts and operator troubleshooting; run all automated gates and local Workers preview, review the complete diff and open one PR.

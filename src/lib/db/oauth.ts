@@ -716,17 +716,26 @@ export async function revokeOAuthToken(
 export async function listOAuthGrantsForUser(
 	userId: string,
 	database: D1Database = getDatabase(),
+	now = new Date(),
 ): Promise<Result<OAuthGrantSummary[], DbError>> {
 	return safeDbCall(async () => {
 		const rows = await database
 			.prepare(
-				`SELECT g.id, c.name AS client_name, g.scopes, g.created_at, g.last_used_at
+				`SELECT g.id, c.name AS client_name, g.scopes, g.created_at, g.last_used_at,
+				 (SELECT MAX(t.expires_at) FROM oauth_access_tokens t WHERE t.grant_id = g.id AND t.revoked_at IS NULL) AS access_expires_at,
+				 (SELECT MAX(t.expires_at) FROM oauth_refresh_tokens t WHERE t.grant_id = g.id AND t.revoked_at IS NULL AND t.rotated_at IS NULL) AS refresh_expires_at,
+				 (SELECT MAX(t.expires_at) FROM oauth_authorization_codes t WHERE t.grant_id = g.id AND t.revoked_at IS NULL AND t.consumed_at IS NULL) AS code_expires_at,
+				 EXISTS (SELECT 1 FROM oauth_refresh_tokens t WHERE t.grant_id = g.id AND t.reuse_detected_at IS NOT NULL) AS refresh_reuse_detected
 				 FROM oauth_grants g JOIN oauth_clients c ON c.id = g.client_id
 				 WHERE g.user_id = ? AND g.revoked_at IS NULL AND c.revoked_at IS NULL
 				 ORDER BY g.created_at DESC`,
 			)
 			.bind(userId)
 			.all<{
+				access_expires_at: string | null;
+				refresh_expires_at: string | null;
+				code_expires_at: string | null;
+				refresh_reuse_detected: number;
 				client_name: string;
 				created_at: string;
 				id: string;
@@ -734,12 +743,66 @@ export async function listOAuthGrantsForUser(
 				scopes: string;
 			}>();
 		return rows.results.map((row) => ({
+			accessExpiresAt: row.access_expires_at,
+			refreshExpiresAt: row.refresh_expires_at,
+			refreshReuseDetected: Boolean(row.refresh_reuse_detected),
+			status:
+				row.access_expires_at && row.access_expires_at > now.toISOString()
+					? "active"
+					: row.refresh_expires_at && row.refresh_expires_at > now.toISOString()
+						? "refreshable"
+						: row.code_expires_at && row.code_expires_at > now.toISOString()
+							? "awaiting_exchange"
+							: "expired",
 			clientName: row.client_name,
 			createdAt: row.created_at,
 			id: row.id,
 			lastUsedAt: row.last_used_at,
 			scopes: parseOAuthScopes(row.scopes) ?? [],
 		}));
+	});
+}
+
+/** Preserve refresh predecessors until the entire family has expired, including a 30-day audit window. */
+export function cleanupOAuthRecords(database: D1Database, now = new Date()) {
+	return safeDbCall(async () => {
+		const shortCutoff = new Date(now.getTime() - 7 * 86_400_000).toISOString();
+		const familyCutoff = new Date(now.getTime() - 30 * 86_400_000).toISOString();
+		const deadFamilies =
+			"SELECT family_id FROM oauth_refresh_tokens GROUP BY family_id HAVING MAX(expires_at) < ?";
+		const results = await database.batch([
+			database
+				.prepare("DELETE FROM oauth_authorization_codes WHERE expires_at < ?")
+				.bind(shortCutoff),
+			database.prepare("DELETE FROM oauth_access_tokens WHERE expires_at < ?").bind(shortCutoff),
+			// D1 foreign keys restrict deletion of a referenced successor. Clear only dead
+			// families inside this transaction before removing their entire chain.
+			database
+				.prepare(
+					`UPDATE oauth_refresh_tokens SET replaced_by_token_id = NULL, rotated_at = NULL WHERE family_id IN (${deadFamilies})`,
+				)
+				.bind(familyCutoff),
+			database
+				.prepare(`DELETE FROM oauth_refresh_tokens WHERE family_id IN (${deadFamilies})`)
+				.bind(familyCutoff),
+			database.prepare("DELETE FROM oauth_rate_limits WHERE updated_at < ?").bind(shortCutoff),
+			database
+				.prepare("DELETE FROM mcp_idempotency_records WHERE expense_id IS NULL AND expires_at < ?")
+				.bind(shortCutoff),
+			database
+				.prepare(
+					"DELETE FROM oauth_clients WHERE created_at < ? AND NOT EXISTS (SELECT 1 FROM oauth_grants g WHERE g.client_id = oauth_clients.id)",
+				)
+				.bind(familyCutoff),
+		]);
+		return {
+			codes: results[0].meta.changes,
+			accessTokens: results[1].meta.changes,
+			refreshTokens: results[3].meta.changes,
+			rateLimits: results[4].meta.changes,
+			abandonedIdempotency: results[5].meta.changes,
+			unusedClients: results[6].meta.changes,
+		};
 	});
 }
 

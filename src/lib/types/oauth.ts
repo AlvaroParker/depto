@@ -24,6 +24,10 @@ export interface OAuthClient {
 }
 
 export interface OAuthGrantSummary {
+	accessExpiresAt: string | null;
+	refreshExpiresAt: string | null;
+	status: "active" | "refreshable" | "awaiting_exchange" | "expired";
+	refreshReuseDetected: boolean;
 	clientName: string;
 	createdAt: string;
 	id: string;

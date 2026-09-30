@@ -12,6 +12,13 @@ const scopeLabels: Record<string, string> = {
 	offline_access: "Conexión persistente",
 };
 
+const connectionStatusLabels: Record<OAuthGrantSummary["status"], string> = {
+	active: "Conexión activa",
+	refreshable: "Conexión disponible: la aplicación puede renovar el acceso",
+	awaiting_exchange: "Esperando que la aplicación complete la conexión",
+	expired: "Conexión vencida: vuelve a conectar desde la aplicación",
+};
+
 export function ConnectedApplications({ initialGrants }: { initialGrants: OAuthGrantSummary[] }) {
 	const [grants, setGrants] = useState(initialGrants);
 	const [disconnectingGrant, setDisconnectingGrant] = useState<OAuthGrantSummary | null>(null);
@@ -73,6 +80,24 @@ export function ConnectedApplications({ initialGrants }: { initialGrants: OAuthG
 							<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
 								<div className="min-w-0 flex-1">
 									<h3 className="font-bold break-words">{grant.clientName}</h3>
+									<p className="mt-2 text-sm">{connectionStatusLabels[grant.status]}</p>
+									{grant.refreshReuseDetected ? (
+										<p className="text-ink-muted mt-1 text-sm">
+											La aplicación reutilizó una credencial anterior. Por seguridad, debes volver a
+											conectarla.
+										</p>
+									) : null}
+									{grant.refreshExpiresAt ? (
+										<p className="text-ink-muted mt-1 text-xs">
+											Puede renovar el acceso hasta el{" "}
+											{new Date(grant.refreshExpiresAt).toLocaleString("es-CL")}.
+										</p>
+									) : grant.status === "active" && grant.accessExpiresAt ? (
+										<p className="text-ink-muted mt-1 text-xs">
+											Acceso hasta el {new Date(grant.accessExpiresAt).toLocaleString("es-CL")}.
+											Esta conexión no tiene renovación automática.
+										</p>
+									) : null}
 									<p className="text-ink-muted mt-1 text-xs">
 										Conectada el {new Date(grant.createdAt).toLocaleString("es-CL")}
 									</p>

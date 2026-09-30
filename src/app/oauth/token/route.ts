@@ -39,16 +39,25 @@ async function failedTokenExchange(
 	error: OAuthErrorCode,
 	description: string,
 	status?: number,
+	context: { grantId?: string; reasonCode?: string } = {},
 ) {
+	const clientHash = await sha256Base64Url(clientId);
 	const limited = await consumeOAuthRateLimit(
 		"token_failure",
 		await sha256Base64Url(`${clientId}:${getClientAddress(request)}`),
 		{ blockMs: 15 * 60_000, limit: 20, windowMs: 60 * 60_000 },
 	);
+	if (limited.err)
+		return oauthErrorResponse(
+			"temporarily_unavailable",
+			"Token exchange protection is unavailable.",
+			503,
+			{ clientHash },
+		);
 	if (limited.ok && !limited.val) {
 		return oauthErrorResponse("temporarily_unavailable", "Too many failed token exchanges.", 429);
 	}
-	return oauthErrorResponse(error, description, status);
+	return oauthErrorResponse(error, description, status, { clientHash, ...context });
 }
 
 export async function POST(request: Request) {
@@ -206,6 +215,18 @@ export async function POST(request: Request) {
 				value("client_id"),
 				"invalid_grant",
 				"The refresh token is invalid or was reused.",
+				undefined,
+				{
+					grantId: found.val.grant_id,
+					reasonCode:
+						rotated.val.kind === "reuse"
+							? "refresh_reuse"
+							: found.val.expires_at <= new Date().toISOString()
+								? "refresh_expired"
+								: found.val.revoked_at || found.val.grant_revoked_at || found.val.client_revoked_at
+									? "refresh_revoked"
+									: "account_ineligible",
+				},
 			);
 		}
 		return tokenResponse(accessToken, serializeOAuthScopes(scopes), refreshToken);
