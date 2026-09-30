@@ -39,3 +39,20 @@ acceptance remains a deployment check and is not claimed from local verification
 1. Implement contracts, read models, and focused unit/D1 tests; commit together.
 2. Expose MCP tools, update contracts, add SDK tests, and run full verification;
    commit together and publish a PR against `main`.
+
+## Verification results — 2026-09-30
+
+Formatting, ESLint, TypeScript, 226 unit tests, 145 integration tests, 68 desktop/mobile
+browser tests, and the isolated first-install browser test passed. Next.js and
+OpenNext Cloudflare production builds passed.
+
+The compiled Worker was tested with local D1/R2 and disposable OAuth fixtures.
+SDK discovery returned nineteen tools. Read-only calls verified a $100,000 to
+$115,000 comparison (+$15,000 / +15%), an empty month in a three-month trend,
+and distinct personal reports for two authenticated participants, including an
+attempt to supply another participant ID. OAuth discovery and the unauthenticated
+bearer challenge also passed. The preview used `--local-upstream` matching the
+configured HTTPS origin so Wrangler preserved the host expected by `/mcp`.
+
+No live connector or production deployment was performed. After deployment,
+refresh the connector's tool list to discover the three additional tools.
