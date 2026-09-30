@@ -157,7 +157,7 @@ describe("MCP private file services", () => {
 		const first = await createExpenseTool(
 			{
 				...input,
-				receipt: { base64: btoa("invalid"), filename: "receipt.png", mimeType: "image/png" },
+				receiptInline: { base64: btoa("invalid"), filename: "receipt.png", mimeType: "image/png" },
 			},
 			actor,
 		);

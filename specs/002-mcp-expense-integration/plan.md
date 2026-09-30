@@ -6,7 +6,7 @@
 
 ## Summary
 
-Add an in-app OAuth 2.1 authorization server backed by existing Auth.js users, accept scoped opaque bearer tokens across the non-admin finance API, and expose eight expense tools through a stateless Web Standards Streamable HTTP MCP endpoint. Financial and file workflows move into shared server-only services so REST and MCP preserve the same validation, atomic writes, notifications, R2 privacy, and reimbursement rules.
+Add an in-app OAuth 2.1 authorization server backed by existing Auth.js users, accept scoped opaque bearer tokens across the non-admin finance API, and expose sixteen expense tools through a stateless Web Standards Streamable HTTP MCP endpoint. Financial and file workflows move into shared server-only services so REST and MCP preserve the same validation, atomic writes, notifications, R2 privacy, and reimbursement rules.
 
 ## Technical Context
 
@@ -26,7 +26,7 @@ Add an in-app OAuth 2.1 authorization server backed by existing Auth.js users, a
 
 **Constraints**: OAuth 2.1 authorization code + PKCE-S256, no personal keys, opaque hashed credentials, 128 MB Worker memory, 10 MB files, stateless JSON MCP, Spanish-first consent and settings
 
-**Scale/Scope**: One household, regular participant-linked users, registered interactive OAuth clients, eight MCP tools, existing finance API surface
+**Scale/Scope**: One household, regular participant-linked users, registered interactive OAuth clients, sixteen MCP tools, existing finance API surface
 
 ## Constitution Check
 
@@ -48,7 +48,7 @@ _GATE: Passed before research and after design._
 - Use Web Crypto for random bytes, SHA-256 credential hashes, and PKCE verification. Credentials are returned once and never logged.
 - Registration supports public clients and `client_secret_post` confidential clients with exact redirect arrays.
 - Authorization uses the existing Auth.js browser session; only enabled `user` accounts with participants may consent.
-- Token exchange uses conditional D1 writes. Refresh rotation is serialized by conditional update, and any rotated-token reuse revokes its family.
+- Code consumption and token issuance use one conditional D1 batch. Refresh rotation is serialized by conditional update, and any rotated-token reuse revokes its family.
 - Grant disconnection and disabled-user checks are evaluated during every bearer request, enabling immediate invalidation.
 
 ### Authenticated actor and scopes
@@ -67,16 +67,16 @@ _GATE: Passed before research and after design._
 
 ### MCP endpoint
 
-- Register eight tools on a new `McpServer` for each POST using v1 Web Standards Streamable HTTP with no session ID and JSON responses.
+- Register sixteen tools on a new `McpServer` for each POST using v1 Web Standards Streamable HTTP with no session ID and JSON responses.
 - Validate host/origin before bearer authentication. GET and DELETE return 405; no legacy SSE route exists.
 - Attach required scope to each tool handler and serialize safe DTOs with structured content, Spanish summaries, visible business errors, and tool annotations.
 - Close transport and server in `finally` to prevent request actor leakage.
 
 ### File acquisition
 
-- Define a union of ChatGPT file descriptors and generic base64 inputs. Publish `_meta["openai/fileParams"]` for receipt and proof tools.
+- Publish concrete ChatGPT file descriptors with `_meta["openai/fileParams"]` for receipt and proof tools, and separate parameters for generic base64 inputs.
 - Decode inline files with preflight encoded-length bounds.
-- Remote downloads require HTTPS and no credentials, manual bounded redirects, public DNS results for every hop, safe ports, accepted content type, and capped streaming bytes.
+- Remote downloads require HTTPS and no credentials, trusted DNS zones, manual bounded redirects, public DNS results for every hop, safe ports, accepted content type and byte signatures, capped streaming bytes, and a total deadline.
 - Existing R2 service functions use unique internal keys and compensating delete if metadata persistence fails.
 
 ### Connected applications UI
@@ -137,7 +137,7 @@ tests/
 3. Implement discovery, registration, authorization/consent, token rotation, revocation, rate limiting, and connected-grant APIs/UI.
 4. Introduce authenticated actors and apply exact scope mapping to all non-admin finance routes.
 5. Extract shared expense/file/reimbursement services without changing session behavior.
-6. Implement MCP protocol endpoint, results, eight tools, file acquisition, and idempotency.
+6. Implement MCP protocol endpoint, results, sixteen tools, file acquisition, and idempotency.
 7. Add integration/browser coverage and run every quality/build/preview/manual acceptance gate.
 
 ## Complexity Tracking

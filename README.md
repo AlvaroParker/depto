@@ -94,8 +94,8 @@ marcar pagos propios, pagar toda la deuda hacia una persona y consultar detalles
 Los parámetros de archivo `receipt` y `proof` usan el descriptor de ChatGPT; otros clientes pueden
 enviar base64 mediante `receiptInline` y `proofInline`. Se validan tamaño, tipo y firma del archivo.
 Las descargas tienen un plazo total de 20 segundos y solo aceptan HTTPS hacia zonas DNS confiables
-(por defecto `oaiusercontent.com`). `MCP_FILE_ALLOWED_HOSTS` permite configurar una lista separada por
-comas de proveedores adicionales; cada zona incluye sus subdominios. No agregues hosts controlados
+(por defecto `oaiusercontent.com`). `MCP_FILE_ALLOWED_HOSTS` reemplaza esa lista con zonas separadas por
+comas; incluye `oaiusercontent.com` al agregar proveedores. Cada zona incluye sus subdominios. No agregues hosts controlados
 por usuarios: la lista evita cambios de resolución DNS entre la validación y la descarga. Todos los
 destinos y redirecciones también se verifican contra direcciones privadas o reservadas.
 
