@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, CheckCircle2, LoaderCircle, Paperclip } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CheckCircle2, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { AttachmentInput } from "@/components/ui/attachment-input";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { BankAccountCopyAction } from "@/components/payments/bank-account-copy-action";
@@ -191,23 +192,22 @@ export function PersonalDebtOverview({
 							este pago no compensa esa deuda.
 						</p>
 					) : null}
-					<label className="grid gap-2 text-sm font-semibold" htmlFor="bulk-payment-proof">
-						<span>Comprobante de pago (opcional)</span>
-						<input
-							accept={PAYMENT_PROOF_CONTENT_TYPES.join(",")}
-							className="border-line-strong bg-paper-strong file:bg-ink file:text-paper focus-visible:outline-accent min-h-12 w-full max-w-full min-w-0 rounded-xl border px-3 py-2 text-sm file:mr-3 file:max-w-full file:rounded-full file:border-0 file:px-3 file:py-1.5 file:text-xs file:font-bold focus-visible:outline-2 focus-visible:outline-offset-2"
-							disabled={pending}
-							id="bulk-payment-proof"
-							onChange={(event) => {
-								setError("");
-								setFile(event.target.files?.[0] ?? null);
-							}}
-							type="file"
-						/>
-						<span className="text-ink-faint flex items-center gap-1.5 text-xs font-normal">
-							<Paperclip aria-hidden size={13} /> JPG, PNG o WebP · máximo 10 MB · privado
-						</span>
-					</label>
+					<AttachmentInput
+						accept={PAYMENT_PROOF_CONTENT_TYPES}
+						disabled={pending}
+						file={file}
+						hint="JPG, PNG o WebP · máximo 10 MB · privado"
+						id="bulk-payment-proof"
+						label="Comprobante de pago (opcional)"
+						onChange={(file) => {
+							setError("");
+							setFile(file);
+						}}
+						onClear={() => {
+							setError("");
+							setFile(null);
+						}}
+					/>
 					{progress !== null ? (
 						<p className="text-ink-muted text-sm" role="status">
 							Subiendo comprobante {progress}%

@@ -14,6 +14,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ExpenseKindIcon } from "@/components/expenses/expense-kind-icon";
+import { AttachmentInput } from "@/components/ui/attachment-input";
 import { Button } from "@/components/ui/button";
 import { Field, TextareaField } from "@/components/ui/field";
 import { apiRequest } from "@/lib/api/client";
@@ -125,6 +126,7 @@ export function ExpenseForm({
 	const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
 	const [formError, setFormError] = useState("");
 	const [receiptProgress, setReceiptProgress] = useState<number | null>(null);
+	const [receipt, setReceipt] = useState<File | null>(null);
 	const [savedId, setSavedId] = useState<string | null>(null);
 	const [pending, startTransition] = useTransition();
 
@@ -232,14 +234,17 @@ export function ExpenseForm({
 			});
 			return;
 		}
-		const receipt = formData.get("receipt");
-		const file = receipt instanceof File && receipt.size > 0 ? receipt : null;
+		const file = receipt;
 		if (file && !RECEIPT_CONTENT_TYPES.includes(file.type as never)) {
 			setErrors({ receipt: ["Usa un archivo JPG, PNG, WebP o PDF."] });
 			return;
 		}
 		if (file && file.size > MAX_RECEIPT_SIZE_BYTES) {
 			setErrors({ receipt: ["El comprobante no puede superar 10 MB."] });
+			return;
+		}
+		if (file && file.size < 1) {
+			setErrors({ receipt: ["El comprobante está vacío."] });
 			return;
 		}
 		const input: ExpenseInput = {
@@ -350,22 +355,27 @@ export function ExpenseForm({
 					</label>
 				</div>
 				<div className="min-w-0 sm:col-span-2">
-					<label
-						className="text-ink grid max-w-full min-w-0 gap-2 text-sm font-medium"
-						htmlFor="receipt"
-					>
-						<span>Comprobante (opcional)</span>
-						<input
-							accept={RECEIPT_CONTENT_TYPES.join(",")}
-							className="border-line-strong bg-paper file:bg-paper-strong file:text-ink min-h-12 w-full max-w-full min-w-0 rounded-xl border px-3 py-2 text-sm file:mr-3 file:max-w-full file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:font-semibold"
-							id="receipt"
-							name="receipt"
-							type="file"
-						/>
-						<span className={errors.receipt ? "text-danger text-xs" : "text-ink-muted text-xs"}>
-							{errors.receipt?.[0] ?? "JPG, PNG, WebP o PDF · máximo 10 MB"}
-						</span>
-					</label>
+					<AttachmentInput
+						accept={RECEIPT_CONTENT_TYPES}
+						disabled={pending}
+						file={receipt}
+						hint="JPG, PNG, WebP o PDF · máximo 10 MB"
+						id="receipt"
+						label="Comprobante (opcional)"
+						onChange={(file) => {
+							setReceipt(file);
+							setErrors((current) => ({ ...current, receipt: undefined }));
+						}}
+						onClear={() => {
+							setReceipt(null);
+							setErrors((current) => ({ ...current, receipt: undefined }));
+						}}
+					/>
+					{errors.receipt?.[0] ? (
+						<p className="text-danger mt-2 text-xs" role="alert">
+							{errors.receipt[0]}
+						</p>
+					) : null}
 				</div>
 				<Field
 					disabled={financialFieldsLocked}

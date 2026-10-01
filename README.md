@@ -178,6 +178,13 @@ pueden corregir cualquier reembolso. El comprobante de pago es opcional, acepta 
 hasta 10 MB y puede ser visto por cualquier integrante autenticado. Volver una parte a pendiente
 elimina su comprobante; la eliminación lógica del gasto lo conserva de forma inaccesible para auditoría.
 
+Al adjuntar comprobantes de compra o de pago, puedes elegir un archivo o usar **Pegar imagen**
+para adjuntar una captura desde el portapapeles. También puedes enfocar ese botón y presionar
+**Ctrl+V** o **⌘V**. Si el navegador no permite leer el portapapeles con el botón, usa el atajo
+de teclado o el selector de archivos. Los mismos formatos y el límite de 10 MB se aplican al pegar.
+En los formularios, el archivo seleccionado se puede quitar o reemplazar antes de guardar; al
+agregar un comprobante desde el detalle de un gasto, la carga comienza inmediatamente.
+
 ## Correctitud financiera
 
 Los montos se almacenan como enteros CLP. `participantIds` identifica a quienes reciben una parte y
