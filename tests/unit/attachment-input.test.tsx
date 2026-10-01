@@ -62,6 +62,8 @@ describe("attachment input", () => {
 
 	it("lets a pasted image replace a picked file, then clears or replaces the selection", () => {
 		render(<StatefulInput />);
+		expect(screen.getByRole("group", { name: "Comprobante" })).toBeVisible();
+		expect(screen.getAllByRole("button")).toHaveLength(2);
 		const input = screen.getByLabelText("Comprobante");
 		const pdf = new File(["pdf"], "boleta.pdf", { type: "application/pdf" });
 		fireEvent.change(input, { target: { files: [pdf] } });

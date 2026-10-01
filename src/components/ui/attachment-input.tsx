@@ -47,7 +47,7 @@ export function AttachmentInput({
 		onChange(candidate);
 	}
 
-	function paste(event: ClipboardEvent<HTMLDivElement>) {
+	function paste(event: ClipboardEvent<HTMLFieldSetElement>) {
 		if (disabled || request.current) return;
 		const image = Array.from(event.clipboardData.files).find((item) =>
 			item.type.startsWith("image/"),
@@ -93,13 +93,12 @@ export function AttachmentInput({
 	}
 
 	return (
-		<div className="grid min-w-0 gap-2" onPaste={paste}>
-			<label className="text-ink text-sm font-medium" htmlFor={inputId}>
-				{label}
-			</label>
+		<fieldset className="grid min-w-0 gap-2" onPaste={paste}>
+			<legend className="text-ink mb-2 text-sm font-medium">{label}</legend>
 			<input
 				accept={accept.join(",")}
-				aria-describedby={`${inputId}-hint`}
+				aria-hidden="true"
+				aria-label={label}
 				className="sr-only"
 				disabled={disabled || reading}
 				id={inputId}
@@ -115,6 +114,7 @@ export function AttachmentInput({
 			<div className="flex flex-wrap gap-2">
 				<Button
 					aria-busy={disabled}
+					aria-describedby={`${inputId}-hint`}
 					disabled={disabled || reading}
 					onClick={() => input.current?.click()}
 					variant="secondary"
@@ -168,6 +168,6 @@ export function AttachmentInput({
 					{error}
 				</p>
 			) : null}
-		</div>
+		</fieldset>
 	);
 }

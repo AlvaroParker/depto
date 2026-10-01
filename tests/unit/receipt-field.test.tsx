@@ -40,7 +40,7 @@ describe("ReceiptField", () => {
 		const button = screen.getByRole("button", { name: "Subir comprobante" });
 
 		expect(input).not.toBeNull();
-		expect(input).toHaveAccessibleName("Comprobante");
+		expect(input).toHaveAttribute("aria-hidden", "true");
 		expect(input).toHaveAttribute("tabindex", "-1");
 		const click = vi.spyOn(input!, "click");
 		await user.click(button);
