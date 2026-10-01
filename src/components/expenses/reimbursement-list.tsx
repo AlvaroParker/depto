@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { PaymentProofViewer } from "@/components/expenses/payment-proof-viewer";
 import { BankAccountCopyAction } from "@/components/payments/bank-account-copy-action";
+import { AttachmentInput } from "@/components/ui/attachment-input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -339,23 +340,22 @@ export function ReimbursementList({
 			>
 				<div className="grid gap-5">
 					<BankAccountCopyAction details={payeeBankTransferDetails} />
-					<label className="grid gap-2 text-sm font-semibold" htmlFor="payment-proof">
-						<span>Comprobante de pago (opcional)</span>
-						<input
-							accept={PAYMENT_PROOF_CONTENT_TYPES.join(",")}
-							className="border-line-strong bg-paper-strong file:bg-ink file:text-paper focus-visible:outline-accent min-h-12 w-full max-w-full min-w-0 rounded-xl border px-3 py-2 text-sm file:mr-3 file:max-w-full file:rounded-full file:border-0 file:px-3 file:py-1.5 file:text-xs file:font-bold focus-visible:outline-2 focus-visible:outline-offset-2"
-							disabled={pending}
-							id="payment-proof"
-							onChange={(event) => {
-								setError("");
-								setFile(event.target.files?.[0] ?? null);
-							}}
-							type="file"
-						/>
-						<span className="text-ink-faint text-xs font-normal">
-							JPG, PNG o WebP · máximo 10 MB
-						</span>
-					</label>
+					<AttachmentInput
+						accept={PAYMENT_PROOF_CONTENT_TYPES}
+						disabled={pending}
+						file={file}
+						hint="JPG, PNG o WebP · máximo 10 MB"
+						id="payment-proof"
+						label="Comprobante de pago (opcional)"
+						onChange={(file) => {
+							setError("");
+							setFile(file);
+						}}
+						onClear={() => {
+							setError("");
+							setFile(null);
+						}}
+					/>
 					{progress !== null ? (
 						<p className="text-ink-muted text-sm" role="status">
 							Subiendo comprobante {progress}%
