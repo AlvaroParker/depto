@@ -3,6 +3,10 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
   workerd: true
-minimumReleaseAgeExclude:
-  - miniflare@4.20260708.1
-  - wrangler@4.110.0
+overrides:
+  # Keep the MCP SDK's HTTP dependencies on patched versions within their existing majors.
+  "@hono/node-server@>=1.0.0 <1.19.15": 1.19.15
+  qs@>=6.0.0 <6.16.0: 6.16.0
+  # Miniflare 4 pins vulnerable versions; remove these when its stable release includes the fixes.
+  miniflare@4.20260730.0>sharp: 0.35.4
+  miniflare@4.20260730.0>undici: 7.29.1
