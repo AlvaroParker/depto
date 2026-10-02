@@ -32,11 +32,11 @@
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "1.29.0",
-		"@opennextjs/cloudflare": "^1.19.9",
+		"@opennextjs/cloudflare": "^1.20.7",
 		"clsx": "^2.1.1",
 		"lucide-react": "^1.23.0",
-		"next": "16.2.6",
-		"next-auth": "5.0.0-beta.31",
+		"next": "16.3.8",
+		"next-auth": "5.0.0-beta.32",
 		"react": "^19.1.7",
 		"react-dom": "^19.1.7",
 		"rut.js": "2.1.0",
@@ -54,17 +54,17 @@
 		"@types/node": "^20.19.43",
 		"@types/react": "^19.1.7",
 		"@types/react-dom": "^19.1.7",
-		"@vitest/coverage-v8": "^4.1.10",
-		"eslint": "^9",
-		"eslint-config-next": "16.2.6",
+		"@vitest/coverage-v8": "^4.1.11",
+		"eslint": "^9.39.5",
+		"eslint-config-next": "16.3.8",
 		"jsdom": "^29.1.1",
-		"miniflare": "^4.20260708.1",
+		"miniflare": "^4.20260730.0",
 		"prettier": "^3.9.4",
 		"prettier-plugin-tailwindcss": "^0.8.0",
 		"tailwindcss": "^4",
 		"tsx": "^4.23.0",
 		"typescript": "^5.7.4",
-		"vitest": "^4.1.10",
-		"wrangler": "^4.110.0"
+		"vitest": "^4.1.11",
+		"wrangler": "^4.145.0"
 	}
 }
