@@ -3,11 +3,11 @@
 Depto es una aplicación privada para llevar los gastos compartidos de un hogar en pesos chilenos
 (CLP).
 
-- **Web**. Registra gastos, elige quién participa en cada uno, divide el monto, adjunta comprobantes
-  y lleva el estado de los reembolsos.
-- **MCP**. Conecta un asistente compatible mediante OAuth para gestionar gastos y pagos propios,
+- **En la web**, registra gastos, elige quién participa, divide el monto y adjunta comprobantes.
+  También puedes llevar el estado de los reembolsos.
+- **Con MCP**, conecta un asistente compatible mediante OAuth para gestionar gastos y pagos propios,
   consultar tu saldo y comparar gastos entre períodos.
-- **Telegram**. Conecta un bot privado para registrar gastos con comprobantes opcionales y consultar
+- **En Telegram**, usa un bot privado para registrar gastos con comprobantes opcionales y consultar
   deudas y saldos desde el chat.
 
 ## Despliegue en Cloudflare
@@ -32,17 +32,17 @@ pnpm exec wrangler r2 bucket create expenses-receipts --update-config=false
 
 Edita [`wrangler.jsonc`](wrangler.jsonc) para tu cuenta.
 
-- **D1**. Sustituye `database_id` por el ID que devolvió Wrangler. Conserva `DB` como nombre del
+- En **D1**, sustituye `database_id` por el ID que devolvió Wrangler. Conserva `DB` como nombre del
   binding y `migrations` como directorio de migraciones. Usa `expenses-db` como nombre de la base
   para ejecutar los comandos de este README tal como están escritos.
-- **R2**. Usa el nombre de tu bucket en `bucket_name` y conserva el binding `RECEIPTS`. Mantén el
+- En **R2**, usa el nombre de tu bucket en `bucket_name` y conserva el binding `RECEIPTS`. Mantén el
   bucket privado. Puedes eliminar `preview_bucket_name` si no utilizas un bucket de pruebas separado.
-- **URL pública**. Reemplaza el dominio en `routes` por un subdominio de una zona de tu cuenta. Para
-  usar `workers.dev`, elimina `routes`, activa `workers_dev` y habilita tu subdominio `workers.dev`
-  en Cloudflare. Pon la URL base HTTPS, sin barra final, en `vars.APP_BASE_URL`.
-- **Nombre del Worker**. Si cambias `name`, cambia también `service` en `WORKER_SELF_REFERENCE` para
-  que ambos coincidan.
-- **Correo**. Si usas Resend, verifica tu dominio remitente y configura `vars.RESEND_FROM_EMAIL`. Si
+- Para la **URL pública**, reemplaza el dominio en `routes` por un subdominio de una zona de tu
+  cuenta. Para usar `workers.dev`, elimina `routes`, activa `workers_dev` y habilita tu subdominio
+  `workers.dev` en Cloudflare. Pon la URL base HTTPS, sin barra final, en `vars.APP_BASE_URL`.
+- Si cambias el **nombre del Worker** en `name`, usa el mismo valor en `service` del binding
+  `WORKER_SELF_REFERENCE`.
+- Para activar el **correo**, verifica tu dominio en Resend y configura `vars.RESEND_FROM_EMAIL`. Si
   prescindes del correo, elimina `RESEND_API_KEY` de `secrets.required`.
 
 ### 3. Aplica las migraciones y publica
@@ -65,12 +65,13 @@ ejecutar `pnpm deploy`. El Worker conserva los secretos ya configurados.
 
 ## Activar las integraciones
 
-- **MCP**. Añade `https://tu-dominio/mcp` en un cliente compatible con Streamable HTTP y OAuth.
-  Inicia sesión con una cuenta `user` y concede los permisos solicitados. Puedes revocarlos en
-  **Ajustes → Aplicaciones conectadas**. [Guía de MCP](specs/002-mcp-expense-integration/quickstart.md)
-- **Telegram**. Despliega la aplicación primero. Configura un Worker separado para tu bot con un
-  binding de servicio que apunte al Worker de Depto y al entrypoint `TelegramExpenses`. Cada usuario
-  que quiera usar el bot debe guardar su propio ID numérico en **Ajustes → Telegram**.
+- Para conectar **MCP**, añade `https://gastos.example.com/mcp` con el dominio de tu instalación en
+  un cliente compatible con Streamable HTTP y OAuth. Inicia sesión con una cuenta `user` y concede
+  los permisos solicitados. Puedes revocarlos en **Ajustes → Aplicaciones conectadas**.
+  [Guía de MCP](specs/002-mcp-expense-integration/quickstart.md)
+- Para activar **Telegram**, despliega Depto primero. Configura un binding de servicio en el Worker
+  de tu bot que apunte al Worker de Depto y al entrypoint `TelegramExpenses`. Luego publica el bot.
+  Cada usuario debe guardar su propio ID numérico en **Ajustes → Telegram**.
   [Contrato de integración](docs/telegram-conversation-rpc.md)
 
 ## Contribuciones y licencia
