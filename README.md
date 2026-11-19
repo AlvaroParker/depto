@@ -1,199 +1,79 @@
 # La cuenta de la casa
 
-Aplicación privada y móvil para que un hogar registre gastos compartidos, elija quién participa en cada compra, divida cada monto exactamente, adjunte comprobantes y lleve los reembolsos al día.
+Depto es una aplicación privada para llevar los gastos compartidos de un hogar en pesos chilenos
+(CLP).
 
-## Stack
+- **Web**. Registra gastos, elige quién participa en cada uno, divide el monto, adjunta comprobantes
+  y lleva el estado de los reembolsos.
+- **MCP**. Conecta un asistente compatible mediante OAuth para gestionar gastos y pagos propios,
+  consultar tu saldo y comparar gastos entre períodos.
+- **Telegram**. Conecta un bot privado para registrar gastos con comprobantes opcionales y consultar
+  deudas y saldos desde el chat.
 
-- Next.js 16 App Router, React 19, TypeScript y Tailwind CSS 4
-- Auth.js v5 Credentials con sesiones JWT
-- OAuth 2.1 con PKCE, tokens opacos de corta duración y refresh rotativo
-- MCP Streamable HTTP en `/mcp` con diecinueve herramientas autorizadas por OAuth
-- RBAC con roles `root`, `admin` y `user`
-- Cloudflare D1 para usuarios, gastos, partes y estados
-- Cloudflare R2 privado para JPG, PNG, WebP y PDF de hasta 10 MB
-- Resend para avisar por correo a quienes participan en un gasto nuevo
-- OpenNext para ejecutar Next.js en Cloudflare Workers
-- Vitest + Miniflare y Playwright
+## Despliegue en Cloudflare
 
-Wrangler/Miniflare simula D1 y R2 localmente y persiste su estado en `.wrangler/state`; no se necesita Docker.
+Necesitas una cuenta de Cloudflare con Workers, D1 y R2 habilitados, Node.js 24 y pnpm 11. Workers
+ejecuta la aplicación Next.js mediante OpenNext, D1 guarda los datos del hogar y un bucket privado de
+R2 guarda los comprobantes. Resend es opcional y envía avisos por correo cuando se registra un gasto.
 
-## Requisitos
+### 1. Crea los recursos
 
-- Node.js 20 o posterior
-- pnpm 11 (`corepack enable` si no está disponible)
-- Una cuenta de Cloudflare solamente para preview/deploy remoto
-
-## Inicio local
+Clona el repositorio y ejecuta estos comandos desde su raíz. Si ya tienes la base o el bucket, puedes
+usar los recursos existentes de tu instalación.
 
 ```bash
-pnpm install
-cp .dev.vars.example .dev.vars
-pnpm auth:secret
+pnpm install --frozen-lockfile
+pnpm exec wrangler login
+pnpm exec wrangler d1 create expenses-db --update-config=false
+pnpm exec wrangler r2 bucket create expenses-receipts --update-config=false
 ```
 
-Copia el valor generado en `AUTH_SECRET` dentro de `.env` o `.dev.vars`. Luego crea la base local:
+### 2. Configura el Worker
+
+Edita [`wrangler.jsonc`](wrangler.jsonc) para tu cuenta.
+
+- **D1**. Sustituye `database_id` por el ID que devolvió Wrangler. Conserva `DB` como nombre del
+  binding y `migrations` como directorio de migraciones. Usa `expenses-db` como nombre de la base
+  para ejecutar los comandos de este README tal como están escritos.
+- **R2**. Usa el nombre de tu bucket en `bucket_name` y conserva el binding `RECEIPTS`. Mantén el
+  bucket privado. Puedes eliminar `preview_bucket_name` si no utilizas un bucket de pruebas separado.
+- **URL pública**. Reemplaza el dominio en `routes` por un subdominio de una zona de tu cuenta. Para
+  usar `workers.dev`, elimina `routes`, activa `workers_dev` y habilita tu subdominio `workers.dev`
+  en Cloudflare. Pon la URL base HTTPS, sin barra final, en `vars.APP_BASE_URL`.
+- **Nombre del Worker**. Si cambias `name`, cambia también `service` en `WORKER_SELF_REFERENCE` para
+  que ambos coincidan.
+- **Correo**. Si usas Resend, verifica tu dominio remitente y configura `vars.RESEND_FROM_EMAIL`. Si
+  prescindes del correo, elimina `RESEND_API_KEY` de `secrets.required`.
+
+### 3. Aplica las migraciones y publica
+
+Ejecuta `pnpm auth:secret` y guarda la línea `AUTH_SECRET=...` que genera en un archivo `.env.deploy`
+en la raíz del repositorio. Si usas Resend, añade una segunda línea `RESEND_API_KEY=...`. Mantén ese
+archivo fuera de Git.
 
 ```bash
-pnpm db:migrate:local
-pnpm dev
+pnpm db:migrate:remote
+pnpm deploy --secrets-file=.env.deploy
 ```
 
-Abre `http://localhost:3000`. En una base nueva, la aplicación redirige a `/setup` para crear el único usuario `root`. Después, root puede crear administradores y usuarios desde **Ajustes → Administrar usuarios**. `pnpm db:reset:local` elimina solamente el estado simulado local y vuelve a aplicar migraciones.
+En una instalación nueva, abre `/setup` en tu URL pública apenas termine el despliegue y crea la
+cuenta `root`. Desde **Ajustes → Administrar usuarios**, crea una cuenta `user` por integrante, con
+su correo. Usa esas cuentas para gestionar los gastos desde la web.
 
-Cada cuenta creada con rol `user` requiere un correo y genera automáticamente su participante. Las
-cuentas `root` y `admin` administran accesos, pero no participan en gastos. Si `RESEND_API_KEY` está
-vacío en desarrollo, el gasto se crea normalmente y el envío se omite.
+En despliegues posteriores, vuelve a aplicar las migraciones con `pnpm db:migrate:remote` antes de
+ejecutar `pnpm deploy`. El Worker conserva los secretos ya configurados.
 
-Cada usuario regular puede guardar o reemplazar su ID numérico de Telegram en **Ajustes → Telegram**.
-Es un dato declarado por el usuario: no se aceptan nombres `@usuario`, no se consulta Telegram para
-resolverlo ni verificar su propiedad. Guardarlo autoriza al bot privado a registrar gastos en nombre
-de esa cuenta; debe configurarse solamente la cuenta propia. Eliminarlo o reemplazarlo revoca el acceso
-del ID anterior de inmediato.
+## Activar las integraciones
 
-## Integración privada de Telegram
+- **MCP**. Añade `https://tu-dominio/mcp` en un cliente compatible con Streamable HTTP y OAuth.
+  Inicia sesión con una cuenta `user` y concede los permisos solicitados. Puedes revocarlos en
+  **Ajustes → Aplicaciones conectadas**. [Guía de MCP](specs/002-mcp-expense-integration/quickstart.md)
+- **Telegram**. Despliega la aplicación primero. Configura un Worker separado para tu bot con un
+  binding de servicio que apunte al Worker de Depto y al entrypoint `TelegramExpenses`. Cada usuario
+  que quiera usar el bot debe guardar su propio ID numérico en **Ajustes → Telegram**.
+  [Contrato de integración](docs/telegram-conversation-rpc.md)
 
-El Worker del sitio exporta `TelegramExpenses` como un `WorkerEntrypoint` nombrado para una vinculación
-de servicio de Cloudflare; no agrega una ruta HTTP pública. El bot puede buscar el resultado de una
-actualización, crear un gasto con o sin comprobante o reparar un comprobante que no logró adjuntarse. En
-cada llamada, el sitio vuelve a resolver el ID de Telegram contra una cuenta regular activa y su
-participante activo antes de leer o escribir datos.
+## Contribuciones y licencia
 
-Las solicitudes usan un contrato versionado y estricto. Un comprobante opcional y su stream deben
-estar presentes juntos; se aceptan JPEG, PNG, WebP o PDF de hasta 10 MB y se validan por tamaño y
-firma binaria. Una creación sin comprobante devuelve `not_provided` y no escribe en R2. La creación
-es atómica e idempotente por actualización de Telegram: repetir la misma solicitud devuelve el gasto
-existente, mientras que reutilizar la clave con datos distintos falla sin crear otro gasto.
-
-Para desplegar la integración, publica primero este Worker `expenses`, luego configura en el Worker del
-bot una vinculación de servicio que apunte a `expenses` con el entrypoint `TelegramExpenses` y finalmente
-publica el bot. Para retirar o revertir la integración, despliega primero el bot sin esa dependencia y
-después cambia el entrypoint del sitio.
-
-The additive conversational read and privacy contracts are documented in
-[`docs/telegram-conversation-rpc.md`](docs/telegram-conversation-rpc.md).
-
-## OAuth y MCP
-
-Los usuarios regulares pueden conectar aplicaciones sin crear ni copiar claves personales. El servidor
-publica discovery OAuth, registro dinámico, consentimiento en español, intercambio y revocación. Los
-access tokens duran una hora; `offline_access` entrega refresh tokens rotativos con vencimiento móvil de
-90 días. **Ajustes → Aplicaciones conectadas** permite revisar permisos y desconectar una aplicación de
-inmediato.
-
-`APP_BASE_URL` es el issuer y recurso OAuth exacto. `http://localhost:3000` se admite solamente en
-desarrollo local; MCP Inspector, ChatGPT y Claude requieren una URL HTTPS pública de preview o túnel.
-Configura el conector con `https://tu-origen.example/mcp`. El mismo token, según sus scopes, puede usar
-`/mcp` y las rutas financieras no administrativas bajo `/api`.
-
-Las rutas de discovery son `/.well-known/oauth-protected-resource`,
-`/.well-known/oauth-protected-resource/mcp` y `/.well-known/oauth-authorization-server`. Consulta el flujo
-completo en [`specs/002-mcp-expense-integration/quickstart.md`](specs/002-mcp-expense-integration/quickstart.md).
-
-Las herramientas permiten crear, editar y eliminar gastos, gestionar recibos, leer archivos privados,
-marcar pagos propios, pagar toda la deuda hacia una persona y consultar detalles e informes por fecha.
-Con `expenses:read`, `get_expense_comparison` compara dos períodos y calcula variaciones en pesos y
-porcentaje; `get_expense_trends` entrega una serie mensual, incluyendo meses sin registros; y
-`get_my_spending_report` distingue tus partes, pagos adelantados y reembolsos. Los rangos usan fechas
-inclusivas del gasto y admiten hasta 60 meses calendario. Los informes personales muestran el estado
-actual de los reembolsos, aunque se hayan pagado después del período. Consulta los ejemplos en el
-[contrato MCP](specs/002-mcp-expense-integration/contracts/mcp-tools.md#spending-insights).
-
-Los parámetros de archivo `receipt` y `proof` usan el descriptor de ChatGPT; otros clientes pueden
-enviar base64 mediante `receiptInline` y `proofInline`. Se validan tamaño, tipo y firma del archivo.
-Las descargas tienen un plazo total de 20 segundos y solo aceptan HTTPS hacia zonas DNS confiables
-(por defecto `oaiusercontent.com`). `MCP_FILE_ALLOWED_HOSTS` reemplaza esa lista con zonas separadas por
-comas; incluye `oaiusercontent.com` al agregar proveedores. Cada zona incluye sus subdominios. No agregues hosts controlados
-por usuarios: la lista evita cambios de resolución DNS entre la validación y la descarga. Todos los
-destinos y redirecciones también se verifican contra direcciones privadas o reservadas.
-
-Si ChatGPT muestra **Reconnect Depto**, revisa el estado en Ajustes. «Conexión disponible» significa
-que la aplicación todavía puede renovar el acceso; «Conexión vencida» requiere una nueva conexión.
-«Esperando…» indica consentimiento aprobado sin intercambio de código completo. La reutilización de
-un refresh token revoca su familia por seguridad y se muestra en los ajustes. El cliente debe
-serializar renovaciones y guardar inmediatamente el nuevo refresh token; no reutilizar el anterior.
-
-Los errores OAuth incluyen `request_id` y `X-Request-Id`, correlacionables con los eventos
-`oauth_error` / `oauth_resource_error` de Workers. Un `503` con `Retry-After` indica un fallo temporal;
-no requiere borrar credenciales. Un `invalid_grant` indica un código o refresh token inválido,
-vencido, revocado o reutilizado. Los logs registran motivos seguros, hashes de cliente e IDs de grant
-cuando están disponibles, nunca tokens, secretos, cuerpos de solicitud ni URLs temporales.
-
-Aplica las migraciones `0015` y `0016` antes de desplegar esta versión. Las conexiones existentes
-conservan sus permisos registrados. El cron diario `17 4 * * *` (UTC) limpia códigos/access tokens
-vencidos y contadores después de siete días. Conserva todos los predecesores de una familia refresh
-hasta treinta días después del último vencimiento de la familia; conserva indefinidamente la
-idempotencia de gastos completados. Los clientes registrados sin grants se limpian tras treinta días.
-La comprobación local automatiza el SDK y OAuth; la aceptación final en ChatGPT requiere desplegar
-la versión, actualizar las herramientas del conector y comprobar renovación y archivos en una cuenta real.
-
-## Comandos
-
-| Comando                   | Propósito                                                 |
-| ------------------------- | --------------------------------------------------------- |
-| `pnpm run init`           | Borra D1/R2 local, migra y abre preview en `0.0.0.0:3000` |
-| `pnpm dev`                | Desarrollo Next.js con bindings locales                   |
-| `pnpm db:migrate:local`   | Aplica migraciones D1 locales                             |
-| `pnpm test`               | Pruebas unitarias                                         |
-| `pnpm test:integration`   | D1/R2 realistas mediante Miniflare                        |
-| `pnpm test:e2e`           | Journeys de escritorio y móvil; usa una base local limpia |
-| `pnpm test:e2e:bootstrap` | Journey aislado de primera instalación y creación de root |
-| `pnpm format:check`       | Verifica Prettier                                         |
-| `pnpm lint`               | Ejecuta ESLint                                            |
-| `pnpm typecheck`          | Verifica TypeScript estricto                              |
-| `pnpm build`              | Build de producción Next.js                               |
-| `pnpm cf:build`           | Build OpenNext para Cloudflare Workers                    |
-| `pnpm preview`            | Build OpenNext y preview en Workers local                 |
-
-El suite E2E genera claves efímeras en memoria, reinicia `.wrangler/state` y crea sus usuarios mediante la API de administración. En Arch Linux, Chromium puede requerir las bibliotecas gráficas/accesibilidad estándar del sistema.
-
-`pnpm run init` es destructivo: elimina todo el estado local de Wrangler, incluidos D1 y R2. No
-afecta recursos remotos de Cloudflare.
-
-## Recursos remotos y despliegue
-
-1. Crea una base D1 y un bucket R2 privados en Cloudflare.
-2. Reemplaza solamente para tu entorno los identificadores de ejemplo en `wrangler.jsonc`; no confirmes identificadores de producción.
-3. Verifica `depto.parker.ci` como dominio remitente en Resend.
-4. Configura `AUTH_SECRET` y `RESEND_API_KEY` con `wrangler secret put NOMBRE_DEL_SECRETO`.
-5. Ejecuta `pnpm db:migrate:remote`.
-6. Valida con `pnpm preview` y despliega con `pnpm deploy`.
-7. Abre el despliegue inmediatamente y completa `/setup` para crear el usuario root.
-
-## Roles y administración
-
-- `root`: existe exactamente uno, no se puede eliminar, desactivar ni degradar.
-- `admin`: puede crear y eliminar otros administradores y usuarios regulares, y actualizar el
-  nombre visible, usuario y contraseña de las cuentas con rol `user`.
-- `user`: usa los flujos de gastos, comprobantes y reembolsos, sin administrar accesos.
-
-Al crear un gasto, cada participante seleccionado que tenga correo recibe un mensaje individual de
-`info@depto.parker.ci` con el total, pagador, fecha, su parte exacta y el enlace privado al detalle.
-Una falla temporal de Resend no revierte el gasto ya guardado.
-
-Cada cuenta tiene un solo rol jerárquico. Combinar roles no agrega permisos y haría ambiguas las garantías del único root. “Eliminar” una cuenta desactiva su acceso y conserva sus referencias históricas para auditoría.
-
-El bucket no tiene URL pública. Los comprobantes de compra y de pago se leen únicamente por rutas
-autenticadas. Cada usuario regular puede marcar y respaldar solamente su propia parte; root y admin
-pueden corregir cualquier reembolso. El comprobante de pago es opcional, acepta JPG, PNG o WebP de
-hasta 10 MB y puede ser visto por cualquier integrante autenticado. Volver una parte a pendiente
-elimina su comprobante; la eliminación lógica del gasto lo conserva de forma inaccesible para auditoría.
-
-Al adjuntar comprobantes de compra o de pago, puedes elegir un archivo o usar **Pegar imagen**
-para adjuntar una captura desde el portapapeles. También puedes enfocar ese botón y presionar
-**Ctrl+V** o **⌘V**. Si el navegador no permite leer el portapapeles con el botón, usa el atajo
-de teclado o el selector de archivos. Los mismos formatos y el límite de 10 MB se aplican al pegar.
-En los formularios, el archivo seleccionado se puede quitar o reemplazar antes de guardar; al
-agregar un comprobante desde el detalle de un gasto, la carga comienza inmediatamente.
-
-## Correctitud financiera
-
-Los montos se almacenan como enteros CLP. `participantIds` identifica a quienes reciben una parte y
-cada gasto crea solo esas partes dentro de un `D1.batch()`: base `floor(monto / cantidad)` y los pesos
-restantes se asignan en el orden estable de participantes. En divisiones iguales o específicas, una
-persona activa puede pagar sin recibir una parte; todas las partes quedan como deuda hacia ella. Una
-cuenta abierta siempre incluye a quien pagó porque su parte absorbe el saldo restante. Agregar un
-usuario no modifica las partes de gastos anteriores. Cambiar monto, pagador o destinatarios reinicia
-estados pagados solamente después de confirmación explícita. Este comportamiento usa el esquema D1
-existente y no requiere una migración.
-
-La especificación OAuth/MCP y su plan ejecutable están en [`specs/002-mcp-expense-integration`](specs/002-mcp-expense-integration/).
+Consulta la [guía de contribución](CONTRIBUTING.md) para ejecutar y probar el proyecto en local.
+Depto se distribuye bajo la [licencia MIT](LICENSE).
