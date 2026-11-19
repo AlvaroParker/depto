@@ -112,10 +112,14 @@ jobs:
       - name: Run integration tests
         run: pnpm test:integration
 
-  e2e-tests:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+  e2e-shards:
+    name: E2E shard ${{ matrix.shard }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ["1/3", "2/3", "3/3"]
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -128,15 +132,25 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Install Chromium
-        run: pnpm exec playwright install --with-deps chromium
       - name: Run browser tests
-        run: pnpm test:e2e
+        env:
+          E2E_CHROMIUM_PATH: /usr/bin/google-chrome
+        run: pnpm test:e2e --shard=${{ matrix.shard }} --reporter=list
+
+  e2e-tests:
+    name: E2E Tests
+    needs: e2e-shards
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require all E2E shards to pass
+        run: test "${{ needs.e2e-shards.result }}" = success
 
   bootstrap-e2e:
     name: Bootstrap E2E
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -149,9 +163,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Install Chromium
-        run: pnpm exec playwright install --with-deps chromium
       - name: Run first-deployment browser test
+        env:
+          E2E_CHROMIUM_PATH: /usr/bin/google-chrome
         run: pnpm test:e2e:bootstrap
 
   next-build:
