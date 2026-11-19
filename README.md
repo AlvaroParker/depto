@@ -1,5 +1,7 @@
 # La cuenta de la casa
 
+[![CI](https://github.com/AlvaroParker/depto/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/AlvaroParker/depto/actions/workflows/ci.yml?query=branch%3Amain)
+
 Depto es una aplicación privada para llevar los gastos compartidos de un hogar en pesos chilenos
 (CLP).
 
