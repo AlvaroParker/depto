@@ -13,16 +13,14 @@ if (!Number.isInteger(e2ePort) || e2ePort < 1 || e2ePort > 65_535) {
 const e2eBaseUrl = `http://127.0.0.1:${e2ePort}`;
 process.env.E2E_BASE_URL = e2eBaseUrl;
 const browserCache = path.join(homedir(), ".cache/ms-playwright");
-const chromiumPath =
-	process.env.E2E_CHROMIUM_PATH ??
-	(existsSync(browserCache)
-		? readdirSync(browserCache)
-				.filter((entry) => entry.startsWith("chromium-") && !entry.includes("headless"))
-				.sort()
-				.reverse()
-				.map((entry) => path.join(browserCache, entry, "chrome-linux64/chrome"))
-				.find(existsSync)
-		: undefined);
+const fallbackChromium = existsSync(browserCache)
+	? readdirSync(browserCache)
+			.filter((entry) => entry.startsWith("chromium-") && !entry.includes("headless"))
+			.sort()
+			.reverse()
+			.map((entry) => path.join(browserCache, entry, "chrome-linux64/chrome"))
+			.find(existsSync)
+	: undefined;
 
 export default defineConfig({
 	expect: { timeout: 10_000 },
@@ -33,7 +31,7 @@ export default defineConfig({
 	testDir: "./tests/e2e",
 	use: {
 		baseURL: e2eBaseUrl,
-		launchOptions: chromiumPath ? { executablePath: chromiumPath } : undefined,
+		launchOptions: fallbackChromium ? { executablePath: fallbackChromium } : undefined,
 		screenshot: "only-on-failure",
 		trace: "retain-on-failure",
 	},
