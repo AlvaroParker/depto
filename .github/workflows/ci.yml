@@ -112,8 +112,8 @@ jobs:
       - name: Run integration tests
         run: pnpm test:integration
 
-  e2e-shards:
-    name: E2E shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+  e2e-tests:
+    name: E2E Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
@@ -152,16 +152,6 @@ jobs:
           name: e2e-results-${{ matrix.shardIndex }}
           path: test-results/
           retention-days: 7
-
-  e2e-tests:
-    name: E2E Tests
-    needs: e2e-shards
-    if: ${{ !cancelled() }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - name: Require all E2E shards to pass
-        run: test "${{ needs.e2e-shards.result }}" = success
 
   bootstrap-e2e:
     name: Bootstrap E2E
@@ -236,3 +226,29 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build for Cloudflare Workers
         run: pnpm cf:build
+
+  # The only check branch protection needs to require. Add every new job to `needs`.
+  # `!cancelled()` runs this job even when a dependency fails, so it reports a
+  # failure instead of being skipped; GitHub treats a skipped required check as passing.
+  required-checks:
+    name: Required Checks
+    if: ${{ !cancelled() }}
+    needs:
+      - format
+      - lint
+      - typecheck
+      - unit-tests
+      - integration-tests
+      - e2e-tests
+      - bootstrap-e2e
+      - next-build
+      - cloudflare-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every CI job to pass
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$NEEDS"
+          jq -e 'all(.[]; .result == "success")' <<< "$NEEDS" > /dev/null
